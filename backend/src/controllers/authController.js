@@ -10,7 +10,7 @@ const register = async (req, res) => {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    const { data, error, profile, profileError } = await registerWithEmail({
+    const { data, error, appUser, appUserError } = await registerWithEmail({
       email,
       password,
       fullName: full_name,
@@ -21,15 +21,15 @@ const register = async (req, res) => {
       return res.status(400).json({ error: error.message });
     }
 
-    if (profileError) {
+    if (appUserError) {
       return res.status(500).json({
-        error: 'User created, but profile insert failed',
-        details: profileError.message,
+        error: 'User created, but app user insert failed',
+        details: appUserError.message,
         data,
       });
     }
 
-    return res.status(201).json({ data, profile });
+    return res.status(201).json({ data, appUser });
   } catch (err) {
     return res.status(500).json({ error: 'Unexpected error' });
   }

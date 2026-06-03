@@ -1,8 +1,8 @@
-const supabase = require('../services/supabaseClient');
+const { db } = require('../services/firestoreClient');
 
 const getHealth = async (req, res) => {
-  const hasSupabase = Boolean(supabase);
-  res.json({ status: 'ok', supabase: hasSupabase });
+  const hasFirestore = Boolean(db);
+  res.json({ status: 'ok', firestore: hasFirestore });
 };
 
 module.exports = { getHealth };

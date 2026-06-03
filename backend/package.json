@@ -4,6 +4,9 @@
   "description": "",
   "main": "src/server.js",
   "scripts": {
+    "init:firestore": "node scripts/initFirestore.js",
+    "migrate:users": "node scripts/migrateProfilesToUsers.js",
+    "cleanup:user-uid": "node scripts/removeUserUidField.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/server.js"
   },
@@ -12,8 +15,8 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@supabase/supabase-js": "^2.107.0",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1"
+    "express": "^5.2.1",
+    "firebase-admin": "^13.10.0"
   }
 }
