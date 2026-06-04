@@ -74,7 +74,17 @@ const getUserById = async (id) => {
   }
 };
 
+const deleteUserById = async (id) => {
+  try {
+    await usersCollection.doc(String(id)).delete();
+    return { data: true, error: null };
+  } catch (err) {
+    return { data: null, error: toServiceError(err) };
+  }
+}
+
 module.exports = {
   listUsers,
   getUserById,
+  deleteUserById
 };
