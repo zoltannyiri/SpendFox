@@ -74,7 +74,7 @@ const deleteSubscription = async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
-    return res.json({ data });
+    return res.json({ message: `Subscription with ID ${id} deleted successfully` });
   } catch (err) {
     return res.status(500).json({ error: 'Unexpected error' });
   }
