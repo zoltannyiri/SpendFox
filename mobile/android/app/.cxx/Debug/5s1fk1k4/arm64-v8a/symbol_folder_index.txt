@@ -1,0 +1,1 @@
+C:\SpendFox\mobile\android\app\build\intermediates\cxx\Debug\5s1fk1k4\obj\arm64-v8a

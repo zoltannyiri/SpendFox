@@ -1,0 +1,7 @@
+{
+  "eslint.workingDirectories": [
+    { "directory": "mobile", "changeProcessCWD": true },
+    { "directory": "backend", "changeProcessCWD": true }
+  ],
+  "typescript.tsdk": "mobile/node_modules/typescript/lib"
+}

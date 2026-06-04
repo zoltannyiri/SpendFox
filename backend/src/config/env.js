@@ -9,6 +9,11 @@ if (!firebaseServiceAccountPath) {
 }
 
 console.log(`[env] FIREBASE_SERVICE_ACCOUNT_PATH loaded: ${firebaseServiceAccountPath}`);
+console.log(
+  `[env] FIREBASE_WEB_API_KEY loaded: ${
+    firebaseWebApiKey ? `yes (${firebaseWebApiKey.slice(0, 6)}..., length ${firebaseWebApiKey.length})` : 'no'
+  }`
+);
 
 module.exports = {
   firebaseServiceAccountPath,
