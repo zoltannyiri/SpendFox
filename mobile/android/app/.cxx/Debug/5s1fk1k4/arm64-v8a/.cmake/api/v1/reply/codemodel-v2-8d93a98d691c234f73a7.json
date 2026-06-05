@@ -253,21 +253,21 @@
 				{
 					"directoryIndex" : 0,
 					"id" : "appmodules::@6890427a1f51a3e7e1df",
-					"jsonFile" : "target-appmodules-Debug-6b7875b7ca4a8d9bedee.json",
+					"jsonFile" : "target-appmodules-Debug-5bc7d5a9f9ff27bf9240.json",
 					"name" : "appmodules",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 4,
 					"id" : "core::@1b9a7d546b295b7d0867",
-					"jsonFile" : "target-core-Debug-397509b38a6cefb90bc2.json",
+					"jsonFile" : "target-core-Debug-f910400f4462fa4143cd.json",
 					"name" : "core",
 					"projectIndex" : 2
 				},
 				{
 					"directoryIndex" : 3,
 					"id" : "react-native-mmkv::@4ae6a1e65d3e68ba0197",
-					"jsonFile" : "target-react-native-mmkv-Debug-21b01dffbde311ae4c5d.json",
+					"jsonFile" : "target-react-native-mmkv-Debug-f7564aaf988851954a17.json",
 					"name" : "react-native-mmkv",
 					"projectIndex" : 1
 				},
@@ -295,7 +295,7 @@
 				{
 					"directoryIndex" : 1,
 					"id" : "react_codegen_rngesturehandler_codegen::@39f233abcd2c728bc6ec",
-					"jsonFile" : "target-react_codegen_rngesturehandler_codegen-Debug-5e0578619ce457622788.json",
+					"jsonFile" : "target-react_codegen_rngesturehandler_codegen-Debug-fe0817e7651091e3c2f1.json",
 					"name" : "react_codegen_rngesturehandler_codegen",
 					"projectIndex" : 0
 				},
@@ -309,21 +309,21 @@
 				{
 					"directoryIndex" : 7,
 					"id" : "react_codegen_rnscreens::@25bcbd507e98d3a854ad",
-					"jsonFile" : "target-react_codegen_rnscreens-Debug-98d0c1ca68d9f58094fe.json",
+					"jsonFile" : "target-react_codegen_rnscreens-Debug-2039afbedc3c7e64ccaf.json",
 					"name" : "react_codegen_rnscreens",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 8,
 					"id" : "react_codegen_rnsvg::@4f40eb209d0c0b4a3b65",
-					"jsonFile" : "target-react_codegen_rnsvg-Debug-2ca8da4b38b753a79e4e.json",
+					"jsonFile" : "target-react_codegen_rnsvg-Debug-3176a5be2f37d6a31f3c.json",
 					"name" : "react_codegen_rnsvg",
 					"projectIndex" : 0
 				},
 				{
 					"directoryIndex" : 6,
 					"id" : "react_codegen_safeareacontext::@7984cd80db47aa7b952a",
-					"jsonFile" : "target-react_codegen_safeareacontext-Debug-ee9c9b204f187e0febc5.json",
+					"jsonFile" : "target-react_codegen_safeareacontext-Debug-1f112f2d346430f2462f.json",
 					"name" : "react_codegen_safeareacontext",
 					"projectIndex" : 0
 				}
@@ -333,7 +333,7 @@
 	"kind" : "codemodel",
 	"paths" : 
 	{
-		"build" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86",
+		"build" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/arm64-v8a",
 		"source" : "C:/SpendFox/mobile/node_modules/react-native/ReactAndroid/cmake-utils/default-app-setup"
 	},
 	"version" : 

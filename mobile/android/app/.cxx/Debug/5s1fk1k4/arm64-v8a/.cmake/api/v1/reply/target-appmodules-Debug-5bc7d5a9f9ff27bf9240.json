@@ -354,6 +354,14 @@
 		},
 		{
 			"backtrace" : 4,
+			"id" : "react_codegen_rnscreens::@25bcbd507e98d3a854ad"
+		},
+		{
+			"backtrace" : 4,
+			"id" : "react_codegen_safeareacontext::@7984cd80db47aa7b952a"
+		},
+		{
+			"backtrace" : 4,
 			"id" : "core::@1b9a7d546b295b7d0867"
 		},
 		{
@@ -362,11 +370,7 @@
 		},
 		{
 			"backtrace" : 4,
-			"id" : "react_codegen_safeareacontext::@7984cd80db47aa7b952a"
-		},
-		{
-			"backtrace" : 4,
-			"id" : "react_codegen_rnscreens::@25bcbd507e98d3a854ad"
+			"id" : "react_codegen_RNVectorIconsSpec::@479809fae146501fd34d"
 		},
 		{
 			"backtrace" : 4,
@@ -375,10 +379,6 @@
 		{
 			"backtrace" : 4,
 			"id" : "react_codegen_RNWorkletsSpec::@c787b30dd2b0f948dced"
-		},
-		{
-			"backtrace" : 4,
-			"id" : "react_codegen_RNVectorIconsSpec::@479809fae146501fd34d"
 		}
 	],
 	"id" : "appmodules::@6890427a1f51a3e7e1df",

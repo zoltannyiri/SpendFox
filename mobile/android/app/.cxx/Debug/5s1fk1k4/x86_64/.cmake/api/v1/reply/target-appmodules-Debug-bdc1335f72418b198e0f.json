@@ -354,7 +354,11 @@
 		},
 		{
 			"backtrace" : 4,
-			"id" : "core::@1b9a7d546b295b7d0867"
+			"id" : "react_codegen_rnscreens::@25bcbd507e98d3a854ad"
+		},
+		{
+			"backtrace" : 4,
+			"id" : "react_codegen_safeareacontext::@7984cd80db47aa7b952a"
 		},
 		{
 			"backtrace" : 4,
@@ -362,11 +366,7 @@
 		},
 		{
 			"backtrace" : 4,
-			"id" : "react_codegen_rnscreens::@25bcbd507e98d3a854ad"
-		},
-		{
-			"backtrace" : 4,
-			"id" : "react_codegen_safeareacontext::@7984cd80db47aa7b952a"
+			"id" : "core::@1b9a7d546b295b7d0867"
 		},
 		{
 			"backtrace" : 4,

@@ -2,7 +2,7 @@
 	"artifacts" : 
 	[
 		{
-			"path" : "C:/SpendFox/mobile/android/app/build/intermediates/cxx/Debug/5s1fk1k4/obj/x86/libappmodules.so"
+			"path" : "C:/SpendFox/mobile/android/app/build/intermediates/cxx/Debug/5s1fk1k4/obj/armeabi-v7a/libappmodules.so"
 		}
 	],
 	"backtrace" : 3,
@@ -119,7 +119,7 @@
 			"compileCommandFragments" : 
 			[
 				{
-					"fragment" : "-g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D__BIONIC_NO_PAGE_SIZE_MACRO -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC"
+					"fragment" : "-g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D__BIONIC_NO_PAGE_SIZE_MACRO -D_FORTIFY_SOURCE=2 -march=armv7-a -mthumb -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC"
 				},
 				{
 					"backtrace" : 7,
@@ -358,11 +358,11 @@
 		},
 		{
 			"backtrace" : 4,
-			"id" : "react_codegen_rnreanimated::@8afabad14bfffa3f8b9a"
+			"id" : "react_codegen_safeareacontext::@7984cd80db47aa7b952a"
 		},
 		{
 			"backtrace" : 4,
-			"id" : "react_codegen_safeareacontext::@7984cd80db47aa7b952a"
+			"id" : "react_codegen_rnreanimated::@8afabad14bfffa3f8b9a"
 		},
 		{
 			"backtrace" : 4,
@@ -392,22 +392,22 @@
 			},
 			{
 				"backtrace" : 4,
-				"fragment" : "C:\\SpendFox\\mobile\\android\\app\\build\\intermediates\\cxx\\Debug\\5s1fk1k4\\obj\\x86\\libreact-native-mmkv.so",
+				"fragment" : "C:\\SpendFox\\mobile\\android\\app\\build\\intermediates\\cxx\\Debug\\5s1fk1k4\\obj\\armeabi-v7a\\libreact-native-mmkv.so",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 4,
-				"fragment" : "C:\\SpendFox\\mobile\\android\\app\\build\\intermediates\\cxx\\Debug\\5s1fk1k4\\obj\\x86\\libreact_codegen_safeareacontext.so",
+				"fragment" : "C:\\SpendFox\\mobile\\android\\app\\build\\intermediates\\cxx\\Debug\\5s1fk1k4\\obj\\armeabi-v7a\\libreact_codegen_safeareacontext.so",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 4,
-				"fragment" : "C:\\SpendFox\\mobile\\android\\app\\build\\intermediates\\cxx\\Debug\\5s1fk1k4\\obj\\x86\\libreact_codegen_rnscreens.so",
+				"fragment" : "C:\\SpendFox\\mobile\\android\\app\\build\\intermediates\\cxx\\Debug\\5s1fk1k4\\obj\\armeabi-v7a\\libreact_codegen_rnscreens.so",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 4,
-				"fragment" : "C:\\SpendFox\\mobile\\android\\app\\build\\intermediates\\cxx\\Debug\\5s1fk1k4\\obj\\x86\\libreact_codegen_rnsvg.so",
+				"fragment" : "C:\\SpendFox\\mobile\\android\\app\\build\\intermediates\\cxx\\Debug\\5s1fk1k4\\obj\\armeabi-v7a\\libreact_codegen_rnsvg.so",
 				"role" : "libraries"
 			},
 			{
@@ -415,11 +415,11 @@
 				"role" : "libraries"
 			},
 			{
-				"fragment" : "C:\\Users\\zolik\\AppData\\Local\\Android\\Sdk\\ndk\\27.1.12297006\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\lib\\i686-linux-android\\24\\libz.so",
+				"fragment" : "C:\\Users\\zolik\\AppData\\Local\\Android\\Sdk\\ndk\\27.1.12297006\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\lib\\arm-linux-androideabi\\24\\libz.so",
 				"role" : "libraries"
 			},
 			{
-				"fragment" : "C:\\Users\\zolik\\AppData\\Local\\Android\\Sdk\\ndk\\27.1.12297006\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\lib\\i686-linux-android\\24\\liblog.so",
+				"fragment" : "C:\\Users\\zolik\\AppData\\Local\\Android\\Sdk\\ndk\\27.1.12297006\\toolchains\\llvm\\prebuilt\\windows-x86_64\\sysroot\\usr\\lib\\arm-linux-androideabi\\24\\liblog.so",
 				"role" : "libraries"
 			},
 			{
@@ -428,17 +428,17 @@
 			},
 			{
 				"backtrace" : 5,
-				"fragment" : "C:\\Users\\zolik\\.gradle\\caches\\8.14.3\\transforms\\48f32c88ab848eeaa4d6425b771aa34b\\transformed\\fbjni-0.7.0\\prefab\\modules\\fbjni\\libs\\android.x86\\libfbjni.so",
+				"fragment" : "C:\\Users\\zolik\\.gradle\\caches\\8.14.3\\transforms\\48f32c88ab848eeaa4d6425b771aa34b\\transformed\\fbjni-0.7.0\\prefab\\modules\\fbjni\\libs\\android.armeabi-v7a\\libfbjni.so",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 5,
-				"fragment" : "C:\\Users\\zolik\\.gradle\\caches\\8.14.3\\transforms\\5e3de19cdc6bd36e24739a92b8cabbb2\\transformed\\react-android-0.81.4-debug\\prefab\\modules\\jsi\\libs\\android.x86\\libjsi.so",
+				"fragment" : "C:\\Users\\zolik\\.gradle\\caches\\8.14.3\\transforms\\5e3de19cdc6bd36e24739a92b8cabbb2\\transformed\\react-android-0.81.4-debug\\prefab\\modules\\jsi\\libs\\android.armeabi-v7a\\libjsi.so",
 				"role" : "libraries"
 			},
 			{
 				"backtrace" : 5,
-				"fragment" : "C:\\Users\\zolik\\.gradle\\caches\\8.14.3\\transforms\\5e3de19cdc6bd36e24739a92b8cabbb2\\transformed\\react-android-0.81.4-debug\\prefab\\modules\\reactnative\\libs\\android.x86\\libreactnative.so",
+				"fragment" : "C:\\Users\\zolik\\.gradle\\caches\\8.14.3\\transforms\\5e3de19cdc6bd36e24739a92b8cabbb2\\transformed\\react-android-0.81.4-debug\\prefab\\modules\\reactnative\\libs\\android.armeabi-v7a\\libreactnative.so",
 				"role" : "libraries"
 			},
 			{
@@ -528,211 +528,211 @@
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/rngesturehandler_codegen_autolinked_build/CMakeFiles/react_codegen_rngesturehandler_codegen.dir/react/renderer/components/rngesturehandler_codegen/ComponentDescriptors.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/rngesturehandler_codegen_autolinked_build/CMakeFiles/react_codegen_rngesturehandler_codegen.dir/react/renderer/components/rngesturehandler_codegen/ComponentDescriptors.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/rngesturehandler_codegen_autolinked_build/CMakeFiles/react_codegen_rngesturehandler_codegen.dir/react/renderer/components/rngesturehandler_codegen/EventEmitters.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/rngesturehandler_codegen_autolinked_build/CMakeFiles/react_codegen_rngesturehandler_codegen.dir/react/renderer/components/rngesturehandler_codegen/EventEmitters.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/rngesturehandler_codegen_autolinked_build/CMakeFiles/react_codegen_rngesturehandler_codegen.dir/react/renderer/components/rngesturehandler_codegen/Props.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/rngesturehandler_codegen_autolinked_build/CMakeFiles/react_codegen_rngesturehandler_codegen.dir/react/renderer/components/rngesturehandler_codegen/Props.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/rngesturehandler_codegen_autolinked_build/CMakeFiles/react_codegen_rngesturehandler_codegen.dir/react/renderer/components/rngesturehandler_codegen/ShadowNodes.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/rngesturehandler_codegen_autolinked_build/CMakeFiles/react_codegen_rngesturehandler_codegen.dir/react/renderer/components/rngesturehandler_codegen/ShadowNodes.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/rngesturehandler_codegen_autolinked_build/CMakeFiles/react_codegen_rngesturehandler_codegen.dir/react/renderer/components/rngesturehandler_codegen/States.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/rngesturehandler_codegen_autolinked_build/CMakeFiles/react_codegen_rngesturehandler_codegen.dir/react/renderer/components/rngesturehandler_codegen/States.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/rngesturehandler_codegen_autolinked_build/CMakeFiles/react_codegen_rngesturehandler_codegen.dir/react/renderer/components/rngesturehandler_codegen/rngesturehandler_codegenJSI-generated.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/rngesturehandler_codegen_autolinked_build/CMakeFiles/react_codegen_rngesturehandler_codegen.dir/bac033cd950586cef66695376748dd33/rngesturehandler_codegenJSI-generated.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/rngesturehandler_codegen_autolinked_build/CMakeFiles/react_codegen_rngesturehandler_codegen.dir/rngesturehandler_codegen-generated.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/rngesturehandler_codegen_autolinked_build/CMakeFiles/react_codegen_rngesturehandler_codegen.dir/rngesturehandler_codegen-generated.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNMmkvSpec_autolinked_build/CMakeFiles/react_codegen_RNMmkvSpec.dir/RNMmkvSpec-generated.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNMmkvSpec_autolinked_build/CMakeFiles/react_codegen_RNMmkvSpec.dir/RNMmkvSpec-generated.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNMmkvSpec_autolinked_build/CMakeFiles/react_codegen_RNMmkvSpec.dir/react/renderer/components/RNMmkvSpec/ComponentDescriptors.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNMmkvSpec_autolinked_build/CMakeFiles/react_codegen_RNMmkvSpec.dir/react/renderer/components/RNMmkvSpec/ComponentDescriptors.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNMmkvSpec_autolinked_build/CMakeFiles/react_codegen_RNMmkvSpec.dir/react/renderer/components/RNMmkvSpec/EventEmitters.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNMmkvSpec_autolinked_build/CMakeFiles/react_codegen_RNMmkvSpec.dir/react/renderer/components/RNMmkvSpec/EventEmitters.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNMmkvSpec_autolinked_build/CMakeFiles/react_codegen_RNMmkvSpec.dir/react/renderer/components/RNMmkvSpec/Props.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNMmkvSpec_autolinked_build/CMakeFiles/react_codegen_RNMmkvSpec.dir/react/renderer/components/RNMmkvSpec/Props.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNMmkvSpec_autolinked_build/CMakeFiles/react_codegen_RNMmkvSpec.dir/react/renderer/components/RNMmkvSpec/RNMmkvSpecJSI-generated.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNMmkvSpec_autolinked_build/CMakeFiles/react_codegen_RNMmkvSpec.dir/react/renderer/components/RNMmkvSpec/RNMmkvSpecJSI-generated.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNMmkvSpec_autolinked_build/CMakeFiles/react_codegen_RNMmkvSpec.dir/react/renderer/components/RNMmkvSpec/ShadowNodes.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNMmkvSpec_autolinked_build/CMakeFiles/react_codegen_RNMmkvSpec.dir/react/renderer/components/RNMmkvSpec/ShadowNodes.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNMmkvSpec_autolinked_build/CMakeFiles/react_codegen_RNMmkvSpec.dir/react/renderer/components/RNMmkvSpec/States.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNMmkvSpec_autolinked_build/CMakeFiles/react_codegen_RNMmkvSpec.dir/react/renderer/components/RNMmkvSpec/States.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/rnreanimated_autolinked_build/CMakeFiles/react_codegen_rnreanimated.dir/react/renderer/components/rnreanimated/ComponentDescriptors.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/rnreanimated_autolinked_build/CMakeFiles/react_codegen_rnreanimated.dir/react/renderer/components/rnreanimated/ComponentDescriptors.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/rnreanimated_autolinked_build/CMakeFiles/react_codegen_rnreanimated.dir/react/renderer/components/rnreanimated/EventEmitters.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/rnreanimated_autolinked_build/CMakeFiles/react_codegen_rnreanimated.dir/react/renderer/components/rnreanimated/EventEmitters.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/rnreanimated_autolinked_build/CMakeFiles/react_codegen_rnreanimated.dir/react/renderer/components/rnreanimated/Props.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/rnreanimated_autolinked_build/CMakeFiles/react_codegen_rnreanimated.dir/react/renderer/components/rnreanimated/Props.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/rnreanimated_autolinked_build/CMakeFiles/react_codegen_rnreanimated.dir/react/renderer/components/rnreanimated/ShadowNodes.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/rnreanimated_autolinked_build/CMakeFiles/react_codegen_rnreanimated.dir/react/renderer/components/rnreanimated/ShadowNodes.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/rnreanimated_autolinked_build/CMakeFiles/react_codegen_rnreanimated.dir/react/renderer/components/rnreanimated/States.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/rnreanimated_autolinked_build/CMakeFiles/react_codegen_rnreanimated.dir/react/renderer/components/rnreanimated/States.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/rnreanimated_autolinked_build/CMakeFiles/react_codegen_rnreanimated.dir/react/renderer/components/rnreanimated/rnreanimatedJSI-generated.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/rnreanimated_autolinked_build/CMakeFiles/react_codegen_rnreanimated.dir/react/renderer/components/rnreanimated/rnreanimatedJSI-generated.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/rnreanimated_autolinked_build/CMakeFiles/react_codegen_rnreanimated.dir/rnreanimated-generated.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/rnreanimated_autolinked_build/CMakeFiles/react_codegen_rnreanimated.dir/rnreanimated-generated.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNVectorIconsSpec_autolinked_build/CMakeFiles/react_codegen_RNVectorIconsSpec.dir/RNVectorIconsSpec-generated.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNVectorIconsSpec_autolinked_build/CMakeFiles/react_codegen_RNVectorIconsSpec.dir/RNVectorIconsSpec-generated.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNVectorIconsSpec_autolinked_build/CMakeFiles/react_codegen_RNVectorIconsSpec.dir/react/renderer/components/RNVectorIconsSpec/ComponentDescriptors.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNVectorIconsSpec_autolinked_build/CMakeFiles/react_codegen_RNVectorIconsSpec.dir/react/renderer/components/RNVectorIconsSpec/ComponentDescriptors.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNVectorIconsSpec_autolinked_build/CMakeFiles/react_codegen_RNVectorIconsSpec.dir/react/renderer/components/RNVectorIconsSpec/EventEmitters.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNVectorIconsSpec_autolinked_build/CMakeFiles/react_codegen_RNVectorIconsSpec.dir/react/renderer/components/RNVectorIconsSpec/EventEmitters.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNVectorIconsSpec_autolinked_build/CMakeFiles/react_codegen_RNVectorIconsSpec.dir/react/renderer/components/RNVectorIconsSpec/Props.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNVectorIconsSpec_autolinked_build/CMakeFiles/react_codegen_RNVectorIconsSpec.dir/react/renderer/components/RNVectorIconsSpec/Props.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNVectorIconsSpec_autolinked_build/CMakeFiles/react_codegen_RNVectorIconsSpec.dir/react/renderer/components/RNVectorIconsSpec/RNVectorIconsSpecJSI-generated.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNVectorIconsSpec_autolinked_build/CMakeFiles/react_codegen_RNVectorIconsSpec.dir/react/renderer/components/RNVectorIconsSpec/RNVectorIconsSpecJSI-generated.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNVectorIconsSpec_autolinked_build/CMakeFiles/react_codegen_RNVectorIconsSpec.dir/react/renderer/components/RNVectorIconsSpec/ShadowNodes.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNVectorIconsSpec_autolinked_build/CMakeFiles/react_codegen_RNVectorIconsSpec.dir/react/renderer/components/RNVectorIconsSpec/ShadowNodes.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNVectorIconsSpec_autolinked_build/CMakeFiles/react_codegen_RNVectorIconsSpec.dir/react/renderer/components/RNVectorIconsSpec/States.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNVectorIconsSpec_autolinked_build/CMakeFiles/react_codegen_RNVectorIconsSpec.dir/react/renderer/components/RNVectorIconsSpec/States.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNWorkletsSpec_autolinked_build/CMakeFiles/react_codegen_RNWorkletsSpec.dir/RNWorkletsSpec-generated.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNWorkletsSpec_autolinked_build/CMakeFiles/react_codegen_RNWorkletsSpec.dir/RNWorkletsSpec-generated.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNWorkletsSpec_autolinked_build/CMakeFiles/react_codegen_RNWorkletsSpec.dir/react/renderer/components/RNWorkletsSpec/ComponentDescriptors.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNWorkletsSpec_autolinked_build/CMakeFiles/react_codegen_RNWorkletsSpec.dir/react/renderer/components/RNWorkletsSpec/ComponentDescriptors.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNWorkletsSpec_autolinked_build/CMakeFiles/react_codegen_RNWorkletsSpec.dir/react/renderer/components/RNWorkletsSpec/EventEmitters.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNWorkletsSpec_autolinked_build/CMakeFiles/react_codegen_RNWorkletsSpec.dir/react/renderer/components/RNWorkletsSpec/EventEmitters.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNWorkletsSpec_autolinked_build/CMakeFiles/react_codegen_RNWorkletsSpec.dir/react/renderer/components/RNWorkletsSpec/Props.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNWorkletsSpec_autolinked_build/CMakeFiles/react_codegen_RNWorkletsSpec.dir/react/renderer/components/RNWorkletsSpec/Props.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNWorkletsSpec_autolinked_build/CMakeFiles/react_codegen_RNWorkletsSpec.dir/react/renderer/components/RNWorkletsSpec/RNWorkletsSpecJSI-generated.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNWorkletsSpec_autolinked_build/CMakeFiles/react_codegen_RNWorkletsSpec.dir/react/renderer/components/RNWorkletsSpec/RNWorkletsSpecJSI-generated.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNWorkletsSpec_autolinked_build/CMakeFiles/react_codegen_RNWorkletsSpec.dir/react/renderer/components/RNWorkletsSpec/ShadowNodes.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNWorkletsSpec_autolinked_build/CMakeFiles/react_codegen_RNWorkletsSpec.dir/react/renderer/components/RNWorkletsSpec/ShadowNodes.cpp.o",
 			"sourceGroupIndex" : 1
 		},
 		{
 			"backtrace" : 4,
 			"isGenerated" : true,
-			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/x86/RNWorkletsSpec_autolinked_build/CMakeFiles/react_codegen_RNWorkletsSpec.dir/react/renderer/components/RNWorkletsSpec/States.cpp.o",
+			"path" : "C:/SpendFox/mobile/android/app/.cxx/Debug/5s1fk1k4/armeabi-v7a/RNWorkletsSpec_autolinked_build/CMakeFiles/react_codegen_RNWorkletsSpec.dir/react/renderer/components/RNWorkletsSpec/States.cpp.o",
 			"sourceGroupIndex" : 1
 		}
 	],
