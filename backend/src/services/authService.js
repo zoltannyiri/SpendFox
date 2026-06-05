@@ -6,7 +6,7 @@ const toAuthError = (err) => ({
   message: err.message || 'Authentication failed',
 });
 
-const registerWithEmail = async ({ email, password, fullName, username }) => {
+const registerWithEmail = async ({ email, password, fullName, username, avatar_url }) => {
   try {
     const nextUserId = await getNextId('users');
     const uid = String(nextUserId);
@@ -16,6 +16,7 @@ const registerWithEmail = async ({ email, password, fullName, username }) => {
       email,
       password,
       displayName: fullName,
+      avatar_url: avatar_url || null,
     });
 
     const appUserPayload = {
@@ -23,6 +24,7 @@ const registerWithEmail = async ({ email, password, fullName, username }) => {
       email: user.email,
       full_name: fullName || null,
       username: username || null,
+      avatar_url: avatar_url || null,
       created_at: admin.firestore.FieldValue.serverTimestamp(),
       updated_at: admin.firestore.FieldValue.serverTimestamp(),
     };
@@ -37,6 +39,7 @@ const registerWithEmail = async ({ email, password, fullName, username }) => {
         user: {
           id: nextUserId,
           email: user.email,
+          avatar_url: avatar_url || null,
           user_metadata: {
             full_name: fullName || null,
             username: username || null,
@@ -101,6 +104,7 @@ const loginWithEmail = async ({ email, password }) => {
           user_metadata: {
             full_name: appUser?.full_name || user.displayName || null,
             username: appUser?.username || null,
+            avatar_url: appUser?.avatar_url || user.photoURL || null,
           },
         },
         session: {

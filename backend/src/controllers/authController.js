@@ -2,7 +2,7 @@ const { registerWithEmail, loginWithEmail } = require('../services/authService')
 
 const register = async (req, res) => {
   try {
-    const { email, password, full_name, username } = req.body;
+    const { email, password, full_name, username, avatar_url } = req.body;
 
     console.log('[auth.register] email:', JSON.stringify(email));
 
@@ -15,6 +15,7 @@ const register = async (req, res) => {
       password,
       fullName: full_name,
       username,
+      avatar_url: avatar_url || null,
     });
 
     if (error) {
