@@ -4,6 +4,7 @@ const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const dictionaryRoutes = require('./routes/dictionaryRoutes');
+const profileRoutes = require('./routes/profileRoutes');
 
 const app = express();
 
@@ -13,5 +14,6 @@ app.use('/api', subscriptionRoutes);
 app.use('/api', authRoutes);
 app.use('/api', userRoutes);
 app.use('/api', dictionaryRoutes);
+app.use('/api', profileRoutes);
 
 module.exports = app;

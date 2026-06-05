@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "start": "concurrently -n metro,android -c auto \"react-native start\" \"npm:android:run\" --kill-others-on-fail",
+    "start": "concurrently -n metro,android -c auto \"react-native start\" \"npm:android:run\" ",
     "android:run": "wait-on tcp:8081 && react-native run-android",
     "android": "react-native run-android",
     "ios": "react-native run-ios",

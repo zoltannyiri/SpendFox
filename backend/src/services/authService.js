@@ -94,7 +94,17 @@ const loginWithEmail = async ({ email, password }) => {
 
     const user = await admin.auth().getUser(result.localId);
     const appUserSnapshot = await db.collection('users').doc(user.uid).get();
-    const appUser = appUserSnapshot.exists ? appUserSnapshot.data() : null;
+
+    if (!appUserSnapshot.exists) {
+      return {
+        data: null,
+        error: {
+          message: 'User profile not found',
+        },
+      };
+    }
+
+    const appUser = appUserSnapshot.data();
 
     return {
       data: {

@@ -2,23 +2,50 @@ import React, { Component } from 'react';
 import './global.css';
 import {
   Alert,
+  BackHandler,
   NativeModules,
   Platform,
-  Pressable,
   StatusBar,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import axios from 'axios';
 import { MMKV } from 'react-native-mmkv';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { NativeBaseProvider } from 'native-base';
 import LoginScreen from './src/screens/loginscreen/LoginScreen';
 import RegisterScreen from './src/screens/registerscreen/RegisterScreen';
+import HomeScreen from './src/screens/homescreen/HomeScreen';
+import SubscriptionsScreen from './src/screens/subscriptionscreen/SubscriptionsScreen';
 
 const Stack = createNativeStackNavigator();
 const storage = new MMKV();
+const API_BASE = process.env.REACT_APP_API_HOST ?? 'http://10.0.2.2:5000/api';
+
+axios.defaults.baseURL = API_BASE;
+
+if (typeof BackHandler.removeEventListener !== 'function') {
+  BackHandler.removeEventListener = () => {};
+}
+
+axios.interceptors.request.use(
+  (config) => {
+    const token = storage.getString('userToken');
+
+    config.headers = {
+      ...(config.headers || {}),
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    };
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 const deviceLanguage =
   Platform.OS === 'ios'
@@ -27,15 +54,6 @@ const deviceLanguage =
     : NativeModules.I18nManager?.localeIdentifier;
 
 const HeaderLeft = () => null;
-
-const HomeScreen = () => (
-  <View style={styles.container}>
-    <Text style={styles.title}>Home</Text>
-    <Pressable style={styles.button} onPress={() => window.App?.logout()}>
-      <Text style={styles.buttonText}>Logout</Text>
-    </Pressable>
-  </View>
-);
 
 const ProfileScreen = () => (
   <View style={styles.container}>
@@ -62,6 +80,11 @@ class App extends Component {
     }
   }
 
+  loginSuccess = (token) => {
+    storage.set('userToken', token);
+    this.setState({ userToken: token });
+  };
+
   alert = (response, button = 'Ok') => {
     console.log(JSON.stringify(response, null, 2));
 
@@ -82,10 +105,10 @@ class App extends Component {
     Alert.alert(message, String(title), [{ text: button }]);
   };
 
-  loginSuccess = (token) => {
-    storage.set('userToken', token);
-    this.setState({ userToken: token });
-  };
+  // loginSuccess = (token) => {
+  //   storage.set('userToken', token);
+  //   this.setState({ userToken: token });
+  // };
 
   logout = () => {
     storage.delete('userToken');
@@ -97,62 +120,72 @@ class App extends Component {
 
     return (
       <GestureHandlerRootView style={styles.root}>
-        <StatusBar barStyle="light-content" backgroundColor="#19386e" />
-        <NavigationContainer>
-          <Stack.Navigator
-            screenOptions={() => ({
-              headerShown: true,
-              headerStyle: { backgroundColor: '#19386e' },
-              headerTintColor: '#fff',
-              headerTitleStyle: { fontWeight: '600' },
-              headerShadowVisible: true,
-              headerTitleAlign: 'left',
-              statusBarStyle: 'light',
-              statusBarColor: '#19386e',
-              headerLeft: HeaderLeft,
-            })}
-          >
-            {!userToken ? (
-              <>
-                <Stack.Screen
-                  name="LoginScreen"
-                  component={LoginScreen}
-                  options={{
-                    title: 'Login',
-                    headerShown: false,
-                    headerLeft: undefined,
-                  }}
-                />
-                <Stack.Screen
-                  name="RegisterScreen"
-                  component={RegisterScreen}
-                  options={{
-                    title: 'Register',
-                    headerShown: false,
-                    headerLeft: undefined,
-                  }}
-                />
-              </>
-            ) : (
-              <>
-                <Stack.Screen
-                  name="HomeScreen"
-                  component={HomeScreen}
-                  options={{
-                    title: 'Home',
-                  }}
-                />
-                <Stack.Screen
-                  name="ProfileScreen"
-                  component={ProfileScreen}
-                  options={{
-                    title: 'Profil',
-                  }}
-                />
-              </>
-            )}
-          </Stack.Navigator>
-        </NavigationContainer>
+        <NativeBaseProvider>
+          <StatusBar barStyle="light-content" backgroundColor="#19386e" />
+          <NavigationContainer>
+            <Stack.Navigator
+              screenOptions={() => ({
+                headerShown: true,
+                headerStyle: { backgroundColor: '#19386e' },
+                headerTintColor: '#fff',
+                headerTitleStyle: { fontWeight: '600' },
+                headerShadowVisible: true,
+                headerTitleAlign: 'left',
+                statusBarStyle: 'light',
+                statusBarColor: '#19386e',
+                headerLeft: HeaderLeft,
+              })}
+            >
+              {!userToken ? (
+                <>
+                  <Stack.Screen
+                    name="LoginScreen"
+                    component={LoginScreen}
+                    options={{
+                      title: 'Login',
+                      headerShown: false,
+                      headerLeft: undefined,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="RegisterScreen"
+                    component={RegisterScreen}
+                    options={{
+                      title: 'Register',
+                      headerShown: false,
+                      headerLeft: undefined,
+                    }}
+                  />
+                </>
+              ) : (
+                <>
+                  <Stack.Screen
+                    name="HomeScreen"
+                    component={HomeScreen}
+                    options={{
+                      title: 'Home',
+                      headerShown: false,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="ProfileScreen"
+                    component={ProfileScreen}
+                    options={{
+                      title: 'Profil',
+                    }}
+                  />
+                  <Stack.Screen
+                    name="Subscriptions"
+                    component={SubscriptionsScreen}
+                    options={{
+                      title: 'Előfizetéseim',
+                    }}
+                  />
+                </>
+              )}
+            </Stack.Navigator>
+          </NavigationContainer>
+        </NativeBaseProvider>
       </GestureHandlerRootView>
     );
   }

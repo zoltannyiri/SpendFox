@@ -1,4 +1,4 @@
-const { db } = require('./firestoreClient');
+const { admin, db } = require('./firestoreClient');
 
 const usersCollection = db.collection('users');
 
@@ -74,17 +74,42 @@ const getUserById = async (id) => {
   }
 };
 
+const getUserByUid = async (uid) => {
+  try {
+    const doc = await usersCollection.doc(String(uid)).get();
+
+    if (!doc.exists) {
+      return { data: null, error: { message: 'User not found' } };
+    }
+
+    return { data: snapshotToUser(doc), error: null };
+  } catch (err) {
+    return { data: null, error: toServiceError(err) };
+  }
+};
+
 const deleteUserById = async (id) => {
   try {
-    await usersCollection.doc(String(id)).delete();
+    const userId = String(id);
+
+    try {
+      await admin.auth().deleteUser(userId);
+    } catch (err) {
+      if (err.code !== 'auth/user-not-found') {
+        throw err;
+      }
+    }
+
+    await usersCollection.doc(userId).delete();
     return { data: true, error: null };
   } catch (err) {
     return { data: null, error: toServiceError(err) };
   }
-}
+};
 
 module.exports = {
   listUsers,
   getUserById,
-  deleteUserById
+  getUserByUid,
+  deleteUserById,
 };
