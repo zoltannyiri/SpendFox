@@ -204,11 +204,11 @@ export default function RegisterScreen({navigation}) {
 
           <View className="mt-44 flex-row justify-center">
             <Text className="text-sm font-semibold text-white">
-              Don't have an account?{' '}
+              Have an account?{' '}
             </Text>
             <Pressable>
-              <Text className="text-sm font-semibold text-fox-cyan">
-                SignUp here
+              <Text className="text-sm font-semibold text-fox-cyan" onPress={() => navigation.navigate('LoginScreen')}>
+                Login here
               </Text>
             </Pressable>
           </View>
