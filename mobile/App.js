@@ -20,6 +20,7 @@ import LoginScreen from './src/screens/loginscreen/LoginScreen';
 import RegisterScreen from './src/screens/registerscreen/RegisterScreen';
 import HomeScreen from './src/screens/homescreen/HomeScreen';
 import SubscriptionsScreen from './src/screens/subscriptionscreen/SubscriptionsScreen';
+import SubscriptionsFormScreen from './src/screens/subscriptionscreen/SubscriptionsFormScreen';
 
 const Stack = createNativeStackNavigator();
 const storage = new MMKV();
@@ -80,8 +81,13 @@ class App extends Component {
     }
   }
 
-  loginSuccess = (token) => {
+  loginSuccess = (token, user) => {
     storage.set('userToken', token);
+
+    if (user) {
+      storage.set('appUser', JSON.stringify(user));
+    }
+
     this.setState({ userToken: token });
   };
 
@@ -112,6 +118,7 @@ class App extends Component {
 
   logout = () => {
     storage.delete('userToken');
+    storage.delete('appUser');
     this.setState({ userToken: null });
   };
 
@@ -179,6 +186,13 @@ class App extends Component {
                     component={SubscriptionsScreen}
                     options={{
                       title: 'Előfizetéseim',
+                    }}
+                  />
+                  <Stack.Screen
+                    name="SubscriptionsForm"
+                    component={SubscriptionsFormScreen}
+                    options={{
+                      title: 'Előfizetés hozzáadása',
                     }}
                   />
                 </>

@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
 import AppLogoComponent from '../../components/logocomponent/AppLogoComponent';
-import RegisterScreen from '../registerscreen/RegisterScreen';
 
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_HOST,
@@ -56,7 +55,7 @@ export default function LoginScreen({navigation}) {
         return;
       }
 
-      window.App?.loginSuccess?.(token);
+      window.App?.loginSuccess?.(token, data?.data?.user);
     } catch (e) {
       const status = e?.response?.status;
       const url = e?.response?.config?.url || '/auth/login';

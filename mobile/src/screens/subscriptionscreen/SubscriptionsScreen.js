@@ -4,20 +4,19 @@ import {
   Pressable,
   ScrollView,
   StatusBar,
-  StyleSheet,
   Text,
   View,
 } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import axios from 'axios';
+import { MMKV } from 'react-native-mmkv';
+
+const storage = new MMKV();
 
 const COLORS = {
-  bg: '#f7f7f8',
   black: '#111111',
-  muted: '#73737a',
   blue: '#0ca9f2',
   navy: '#19386e',
-  cream: '#fff7e6',
   white: '#ffffff',
 };
 
@@ -45,13 +44,12 @@ export default function SubscriptionsScreen({ navigation }) {
       setLoading(true);
       setErrorText('');
 
-      const profileResponse = await axios.get('/profile');
-      const userId = profileResponse.data?.data?.id;
-      const subscriptionResponse = await axios.get('/subscriptions', {
+      const userId = await getStoredUserId();
+      const response = await axios.get('/subscriptions', {
         params: userId ? { userId } : undefined,
       });
 
-      setSubscriptions(subscriptionResponse.data?.data || []);
+      setSubscriptions(response.data?.data || []);
     } catch (err) {
       console.log('Failed to load subscriptions:', err?.response?.data || err?.message);
       setErrorText('Nem sikerult betolteni az elofizeteseket.');
@@ -65,64 +63,83 @@ export default function SubscriptionsScreen({ navigation }) {
   }, []);
 
   return (
-    <View style={styles.screen}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.bg} />
+    <View className="flex-1 bg-[#f7f7f8]">
+      <StatusBar barStyle="dark-content" backgroundColor="#f7f7f8" />
 
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
+        className="flex-1"
+        contentContainerClassName="px-5 pb-10 pt-16"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.header}>
-          <Pressable style={styles.roundButton} onPress={() => navigation.goBack()}>
+        <View className="mb-7 flex-row items-center justify-between">
+          <Pressable
+            className="h-10 w-10 items-center justify-center rounded-full bg-white"
+            onPress={() => navigation.goBack()}
+          >
             <BackIcon />
           </Pressable>
-          <Text style={styles.headerTitle}>Elofizeteseim</Text>
-          <Pressable style={styles.addButton}>
-            <Text style={styles.addButtonText}>+</Text>
+
+          <Text className="text-base font-extrabold text-black">Elofizeteseim</Text>
+
+          <Pressable className="h-10 w-10 items-center justify-center rounded-full bg-black" 
+            onPress={() => navigation.navigate('SubscriptionsForm')}>
+            <Text className="text-2xl leading-7 text-white">+</Text>
           </Pressable>
         </View>
 
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryTop}>
+        <View className="rounded-2xl bg-[#0ca9f2] px-5 py-5">
+          <View className="flex-row items-start justify-between">
             <View>
-              <Text style={styles.summaryLabel}>Havi osszesen</Text>
-              <Text style={styles.summaryAmount}>{formatMoney(totalMonthly)}</Text>
+              <Text className="text-sm font-bold text-white/80">Havi osszesen</Text>
+              <Text className="mt-1 text-4xl font-extrabold text-white">
+                {formatMoney(totalMonthly)}
+              </Text>
             </View>
-            <View style={styles.summaryIcon}>
+
+            <View className="h-14 w-14 items-center justify-center rounded-full bg-white/15">
               <WalletIcon />
             </View>
           </View>
 
-          <View style={styles.summaryPills}>
+          <View className="mt-5 flex-row">
             <SummaryPill label="Aktiv" value={String(subscriptions.length)} />
-            <View style={styles.pillGap} />
+            <View className="w-3" />
             <SummaryPill label="Kovetkezo" value={getNextBillingLabel(subscriptions)} />
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Lista</Text>
+        <View className="mt-7">
+          <Text className="mb-3 text-lg font-extrabold text-black">Lista</Text>
 
           {loading ? (
-            <View style={styles.centerState}>
+            <View className="mt-16 items-center">
               <ActivityIndicator color={COLORS.blue} size="large" />
-              <Text style={styles.stateText}>Betoltes...</Text>
+              <Text className="mt-3 text-sm font-semibold text-neutral-500">
+                Betoltes...
+              </Text>
             </View>
           ) : errorText ? (
-            <View style={styles.stateCard}>
+            <View className="mt-10 items-center rounded-2xl bg-white px-5 py-8">
               <ErrorIcon />
-              <Text style={styles.errorText}>{errorText}</Text>
-              <Pressable style={styles.retryButton} onPress={loadSubscriptions}>
-                <Text style={styles.retryText}>Ujraprobalom</Text>
+              <Text className="mt-4 text-center text-sm font-bold text-neutral-700">
+                {errorText}
+              </Text>
+              <Pressable
+                className="mt-5 rounded-full bg-black px-5 py-3"
+                onPress={loadSubscriptions}
+              >
+                <Text className="text-sm font-extrabold text-white">Ujraprobalom</Text>
               </Pressable>
             </View>
           ) : subscriptions.length === 0 ? (
-            <View style={styles.stateCard}>
+            <View className="mt-10 items-center rounded-2xl bg-white px-5 py-8">
               <EmptyIcon />
-              <Text style={styles.emptyTitle}>Meg nincs elofizetesed</Text>
-              <Text style={styles.emptyText}>
-                Add hozza az elso szolgaltatast, hogy egy helyen lasd a havi kiadasaidat.
+              <Text className="mt-4 text-center text-base font-extrabold text-black">
+                Meg nincs elofizetesed
+              </Text>
+              <Text className="mt-2 text-center text-sm font-semibold leading-5 text-neutral-500">
+                Add hozza az elso szolgaltatast, hogy egy helyen lasd a havi
+                kiadasaidat.
               </Text>
             </View>
           ) : (
@@ -145,25 +162,28 @@ function SubscriptionCard({ subscription }) {
     : '';
 
   return (
-    <Pressable style={({ pressed }) => [styles.subscriptionCard, pressed && styles.pressed]}>
-      <View style={styles.subscriptionIcon}>
+    <Pressable
+      className="mb-3 flex-row items-center rounded-2xl bg-white px-4 py-4"
+      style={({ pressed }) => [pressed && { opacity: 0.86 }]}
+    >
+      <View className="h-12 w-12 items-center justify-center rounded-full bg-fox-cream">
         <SubscriptionIcon />
       </View>
 
-      <View style={styles.subscriptionBody}>
-        <Text style={styles.subscriptionName}>{name}</Text>
-        <Text style={styles.subscriptionMeta}>
+      <View className="ml-4 flex-1">
+        <Text className="text-base font-extrabold text-black">{name}</Text>
+        <Text className="mt-1 text-xs font-semibold text-neutral-500">
           {billingCycle}
           {nextBilling}
         </Text>
       </View>
 
-      <View style={styles.subscriptionPriceWrap}>
-        <Text style={styles.subscriptionPrice}>
+      <View className="items-end">
+        <Text className="text-base font-extrabold text-black">
           {formatMoney(subscription.price, currency)}
         </Text>
         {subscription.is_shared ? (
-          <Text style={styles.sharedText}>Megosztott</Text>
+          <Text className="mt-1 text-xs font-bold text-[#0ca9f2]">Megosztott</Text>
         ) : null}
       </View>
     </Pressable>
@@ -172,9 +192,9 @@ function SubscriptionCard({ subscription }) {
 
 function SummaryPill({ label, value }) {
   return (
-    <View style={styles.summaryPill}>
-      <Text style={styles.pillLabel}>{label}</Text>
-      <Text style={styles.pillValue}>{value}</Text>
+    <View className="flex-1 rounded-2xl bg-white/15 px-4 py-3">
+      <Text className="text-xs font-bold text-white/75">{label}</Text>
+      <Text className="mt-1 text-lg font-extrabold text-white">{value}</Text>
     </View>
   );
 }
@@ -208,6 +228,31 @@ function getNextBillingLabel(items) {
     .sort();
 
   return dates[0] || '-';
+}
+
+async function getStoredUserId() {
+  const storedUser = storage.getString('appUser');
+
+  if (storedUser) {
+    try {
+      const user = JSON.parse(storedUser);
+
+      if (user?.id) {
+        return user.id;
+      }
+    } catch (err) {
+      console.log('Failed to parse stored user:', err?.message);
+    }
+  }
+
+  const profileResponse = await axios.get('/profile');
+  const profile = profileResponse.data?.data;
+
+  if (profile) {
+    storage.set('appUser', JSON.stringify(profile));
+  }
+
+  return profile?.id;
 }
 
 function SvgIcon({ children, size = 22 }) {
@@ -282,7 +327,7 @@ function SubscriptionIcon() {
 function EmptyIcon() {
   return (
     <Svg width={80} height={80} viewBox="0 0 80 80" fill="none">
-      <Circle cx="40" cy="40" r="40" fill={COLORS.cream} />
+      <Circle cx="40" cy="40" r="40" fill="#fff7e6" />
       <Path
         d="M24 34h32v18a5 5 0 0 1-5 5H29a5 5 0 0 1-5-5V34Z"
         fill={COLORS.blue}
@@ -308,214 +353,3 @@ function ErrorIcon() {
     </Svg>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: COLORS.bg,
-  },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    paddingTop: 64,
-  },
-  header: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 28,
-  },
-  roundButton: {
-    alignItems: 'center',
-    backgroundColor: COLORS.white,
-    borderRadius: 20,
-    height: 40,
-    justifyContent: 'center',
-    width: 40,
-  },
-  addButton: {
-    alignItems: 'center',
-    backgroundColor: COLORS.black,
-    borderRadius: 20,
-    height: 40,
-    justifyContent: 'center',
-    width: 40,
-  },
-  addButtonText: {
-    color: COLORS.white,
-    fontSize: 28,
-    lineHeight: 31,
-  },
-  headerTitle: {
-    color: COLORS.black,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  summaryCard: {
-    backgroundColor: COLORS.blue,
-    borderRadius: 16,
-    padding: 20,
-  },
-  summaryTop: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  summaryLabel: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  summaryAmount: {
-    color: COLORS.white,
-    fontSize: 36,
-    fontWeight: '800',
-    marginTop: 4,
-  },
-  summaryIcon: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 28,
-    height: 56,
-    justifyContent: 'center',
-    width: 56,
-  },
-  summaryPills: {
-    flexDirection: 'row',
-    marginTop: 20,
-  },
-  summaryPill: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 16,
-    flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  pillGap: {
-    width: 12,
-  },
-  pillLabel: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  pillValue: {
-    color: COLORS.white,
-    fontSize: 18,
-    fontWeight: '800',
-    marginTop: 4,
-  },
-  section: {
-    marginTop: 28,
-  },
-  sectionTitle: {
-    color: COLORS.black,
-    fontSize: 18,
-    fontWeight: '800',
-    marginBottom: 12,
-  },
-  centerState: {
-    alignItems: 'center',
-    marginTop: 64,
-  },
-  stateText: {
-    color: COLORS.muted,
-    fontSize: 14,
-    fontWeight: '600',
-    marginTop: 12,
-  },
-  stateCard: {
-    alignItems: 'center',
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    marginTop: 40,
-    paddingHorizontal: 20,
-    paddingVertical: 32,
-  },
-  errorText: {
-    color: '#404047',
-    fontSize: 14,
-    fontWeight: '700',
-    marginTop: 16,
-    textAlign: 'center',
-  },
-  retryButton: {
-    backgroundColor: COLORS.black,
-    borderRadius: 999,
-    marginTop: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-  },
-  retryText: {
-    color: COLORS.white,
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  emptyTitle: {
-    color: COLORS.black,
-    fontSize: 16,
-    fontWeight: '800',
-    marginTop: 16,
-    textAlign: 'center',
-  },
-  emptyText: {
-    color: COLORS.muted,
-    fontSize: 14,
-    fontWeight: '600',
-    lineHeight: 20,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  subscriptionCard: {
-    alignItems: 'center',
-    backgroundColor: COLORS.white,
-    borderRadius: 16,
-    flexDirection: 'row',
-    marginBottom: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-  },
-  pressed: {
-    opacity: 0.86,
-  },
-  subscriptionIcon: {
-    alignItems: 'center',
-    backgroundColor: COLORS.cream,
-    borderRadius: 24,
-    height: 48,
-    justifyContent: 'center',
-    width: 48,
-  },
-  subscriptionBody: {
-    flex: 1,
-    marginLeft: 16,
-  },
-  subscriptionName: {
-    color: COLORS.black,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  subscriptionMeta: {
-    color: COLORS.muted,
-    fontSize: 12,
-    fontWeight: '600',
-    marginTop: 4,
-  },
-  subscriptionPriceWrap: {
-    alignItems: 'flex-end',
-  },
-  subscriptionPrice: {
-    color: COLORS.black,
-    fontSize: 16,
-    fontWeight: '800',
-  },
-  sharedText: {
-    color: COLORS.blue,
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 4,
-  },
-});
