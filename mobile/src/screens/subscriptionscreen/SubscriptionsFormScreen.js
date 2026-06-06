@@ -5,6 +5,7 @@ import {
   Pressable,
   ScrollView,
   StatusBar,
+  StyleSheet,
   Text,
   TextInput,
   View,
@@ -13,6 +14,7 @@ import Svg, { Path } from 'react-native-svg';
 import axios from 'axios';
 import { useNavigation } from '@react-navigation/native';
 import { MMKV } from 'react-native-mmkv';
+import { Dropdown } from 'react-native-element-dropdown';
 
 const storage = new MMKV();
 
@@ -41,16 +43,14 @@ export default function SubscriptionsFormScreen() {
 
         setCurrencies(items);
 
-        if (items[0]?.code && !currency) {
-          setCurrency(items[0].code);
-        }
+        setCurrency((currentCurrency) => currentCurrency || items[0]?.code || 'HUF');
       } catch (err) {
         console.log('Failed to load currency:', err?.response?.data || err?.message);
       }
     };
 
     loadCurrency();
-  }, [currency]);
+  }, []);
 
   const handleSave = async () => {
     try {
@@ -147,13 +147,24 @@ export default function SubscriptionsFormScreen() {
 
             <View className="w-28">
               <FieldLabel label="Deviza" />
-              <View className="h-14 justify-center rounded-2xl bg-white px-3">
+              {/* <View className="h-14 justify-center rounded-2xl bg-white px-3">
                 <Text className="text-base font-extrabold text-black">{currency}</Text>
-              </View>
+              </View> */}
+              <Dropdown
+                data={currencies.map((c) => ({ label: c.code, value: c.code }))}
+                labelField="label"
+                valueField="value"
+                value={currency}
+                onChange={(item) => setCurrency(item.value)}
+                style={styles.dropdown}
+                selectedTextStyle={styles.dropdownText}
+                itemTextStyle={styles.dropdownItemText}
+                placeholderStyle={styles.dropdownText}
+              />
             </View>
           </View>
 
-          {currencies.length > 0 && (
+          {/* {currencies.length > 0 && (
             <View className="mt-3 flex-row flex-wrap">
               {currencies.map((item) => {
                 const active = item.code === currency;
@@ -177,7 +188,7 @@ export default function SubscriptionsFormScreen() {
                 );
               })}
             </View>
-          )}
+          )} */}
 
           <View className="mt-5">
             <FieldLabel label="Szamlazasi ciklus" />
@@ -242,3 +253,22 @@ function BackIcon() {
     </Svg>
   );
 }
+
+const styles = StyleSheet.create({
+  dropdown: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    height: 56,
+    paddingHorizontal: 12,
+  },
+  dropdownItemText: {
+    color: '#111',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  dropdownText: {
+    color: '#111',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+});
