@@ -144,7 +144,11 @@ export default function SubscriptionsFormScreen() {
             <BackIcon />
           </Pressable>
 
-          <Text className="text-base font-extrabold text-black">Új előfizetés</Text>
+          {isEditMode ? (
+            <Text className="text-base font-extrabold text-black">Előfizetés szerkesztése</Text>
+          ) : (
+            <Text className="text-base font-extrabold text-black">Új előfizetés</Text>
+          )}
 
           <View className="h-10 w-10" />
         </View>
