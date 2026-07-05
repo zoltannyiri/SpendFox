@@ -207,7 +207,7 @@ function SubscriptionCard({ subscription, onEdit }) {
   const currency = subscription.currency || 'HUF';
   const billingCycle = getBillingCycleLabel(subscription.billing_cycle);
   const nextBilling = subscription.next_billing_date
-    ? ` - ${subscription.next_billing_date}`
+    ? `Következő előfizetés: ${subscription.next_billing_date}`
     : '';
 
   return (
@@ -223,7 +223,9 @@ function SubscriptionCard({ subscription, onEdit }) {
         <Text className="text-base font-extrabold text-black">{name}</Text>
         <Text className="mt-1 text-xs font-semibold text-neutral-500">
           {billingCycle}
-          {getNextBillingDate(subscription, new Date()) ? ` - ${formatDateOnly(getNextBillingDate(subscription, new Date()))}` : ''}
+        </Text>
+        <Text className="mt-1 text-xs font-semibold text-neutral-500">
+          {nextBilling}
         </Text>
       </View>
 
