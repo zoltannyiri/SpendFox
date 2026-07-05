@@ -15,6 +15,7 @@ import axios from 'axios';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { MMKV } from 'react-native-mmkv';
 import { Dropdown } from 'react-native-element-dropdown';
+import { Alert } from 'react-native';
 
 const storage = new MMKV();
 
@@ -61,6 +62,34 @@ export default function SubscriptionsFormScreen() {
 
     loadCurrency();
   }, []);
+
+  const handleDeleteSubscription = () => {
+    Alert.alert(
+      'Előfizetés törlése',
+      'Biztosan törölni szeretnéd ezt az előfizetést?',
+      [
+        { text: 'Mégse', style: 'cancel' },
+        {
+          text: 'Törlés',
+          style: 'destructive',
+          onPress: deleteSubscription,
+        },
+      ]
+    );
+  };
+
+  const deleteSubscription = async () => {
+    try {
+      setSaving(true);
+      await axios.delete(`/subscriptions/${editingSubscription.id}`);
+      navigation.goBack();
+    } catch (err) {
+      console.log('Failed to delete subscription:', err?.response?.data || err?.message);
+      setErrorText('Nem sikerult törölni az előfizetést.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleSave = async () => {
     try {
@@ -271,6 +300,20 @@ export default function SubscriptionsFormScreen() {
             </View>
           </View>
         </View>
+        {isEditMode ? (
+          <Pressable
+            className={`mt-8 h-14 items-center justify-center rounded-2xl ${
+              saving ? 'bg-neutral-400' : 'bg-red-600'
+            }`}
+            disabled={saving}
+            onPress={handleDeleteSubscription}
+          >
+            <Text className="text-base font-extrabold text-white">
+              {saving ? 'Mentés...' : 'Előfizetés törlése'}
+            </Text>
+          </Pressable>
+        ) : null}
+
 
         <Pressable
           className={`mt-8 h-14 items-center justify-center rounded-2xl ${
