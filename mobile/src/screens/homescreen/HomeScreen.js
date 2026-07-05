@@ -6,11 +6,11 @@ import axios from 'axios';
 import { Image } from 'react-native';
 
 const MENU_ITEMS = [
-  { label: 'Account settings', icon: SettingsIcon },
+  { label: 'Profil beállítások', icon: SettingsIcon },
   { label: 'Előfizetéseim', icon: ErrorIcon, onPress: ({navigation}) => navigation.navigate('Subscriptions') },
-  { label: 'Edit profile', icon: EditIcon },
-  { label: 'Log out', icon: LogoutIcon, action: () => window.App?.logout?.() },
-  { label: 'Get help', icon: HelpIcon },
+  { label: 'Profil szerkesztése', icon: EditIcon },
+  { label: 'Kijelentkezés', icon: LogoutIcon, action: () => window.App?.logout?.() },
+  { label: 'Súgó', icon: HelpIcon },
 ];
 
 
@@ -126,6 +126,7 @@ function IconButton({ children }) {
 }
 
 function BottomBar() {
+  const navigation = useNavigation();
   return (
     <View className="absolute inset-x-0 bottom-0 border-t border-neutral-200 bg-white/95 px-6 pb-5 pt-3">
       <View className="flex-row items-center justify-between">
@@ -135,7 +136,7 @@ function BottomBar() {
         <TabIcon>
           <DocumentIcon />
         </TabIcon>
-        <Pressable className="h-12 w-12 items-center justify-center rounded-full bg-black">
+        <Pressable className="h-12 w-12 items-center justify-center rounded-full bg-black" onPress={() => navigation.navigate('Subscriptions')}>
           <Text className="text-2xl leading-7 text-white">+</Text>
         </Pressable>
         <TabIcon label="Profile">

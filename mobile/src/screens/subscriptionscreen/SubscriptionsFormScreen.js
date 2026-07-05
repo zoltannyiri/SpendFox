@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import axios from 'axios';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { MMKV } from 'react-native-mmkv';
 import { Dropdown } from 'react-native-element-dropdown';
 
@@ -20,18 +20,28 @@ const storage = new MMKV();
 
 const BILLING_CYCLES = [
   { label: 'Havi', value: 'monthly' },
-  { label: 'Eves', value: 'yearly' },
+  { label: 'Éves', value: 'yearly' },
   { label: 'Heti', value: 'weekly' },
 ];
 
 export default function SubscriptionsFormScreen() {
   const navigation = useNavigation();
+  const route = useRoute();
+  const editingSubscription = route.params?.subscription || null;
+  const isEditMode = Boolean(editingSubscription?.id);
 
   const [currencies, setCurrencies] = useState([]);
-  const [name, setName] = useState('');
-  const [price, setPrice] = useState('');
-  const [currency, setCurrency] = useState('HUF');
-  const [billingCycle, setBillingCycle] = useState('monthly');
+  const [name, setName] = useState(editingSubscription?.name || '');
+  const [price, setPrice] = useState(
+    editingSubscription?.price === undefined ? '' : String(editingSubscription.price)
+  );
+  const [currency, setCurrency] = useState(editingSubscription?.currency || 'HUF');
+  const [billingCycle, setBillingCycle] = useState(
+    editingSubscription?.billing_cycle || 'monthly'
+  );
+  const [isActive, setIsActive] = useState(
+    editingSubscription?.is_active ?? true
+  );
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState('');
 
@@ -59,14 +69,21 @@ export default function SubscriptionsFormScreen() {
 
       const user = JSON.parse(storage.getString('appUser') || '{}');
 
-      await axios.post('/subscriptions', {
+      const payload = {
         name: name.trim(),
         price: Number(price),
         currency,
         billing_cycle: billingCycle,
-        is_shared: false,
+        is_shared: editingSubscription?.is_shared || false,
+        is_active: isActive,
         user_id: user.id,
-      });
+      };
+
+      if (isEditMode) {
+        await axios.patch(`/subscriptions/${editingSubscription.id}`, payload);
+      } else {
+        await axios.post('/subscriptions', payload);
+      }
 
       navigation.goBack();
     } catch (err) {
@@ -98,7 +115,7 @@ export default function SubscriptionsFormScreen() {
             <BackIcon />
           </Pressable>
 
-          <Text className="text-base font-extrabold text-black">Uj elofizetes</Text>
+          <Text className="text-base font-extrabold text-black">Új előfizetés</Text>
 
           <View className="h-10 w-10" />
         </View>
@@ -106,11 +123,10 @@ export default function SubscriptionsFormScreen() {
         <View className="rounded-2xl bg-[#0ca9f2] px-5 py-5">
           <Text className="text-sm font-bold text-white/80">SpendFox</Text>
           <Text className="mt-1 text-3xl font-extrabold text-white">
-            Kovess minden havi koltseget
+            Kövess minden havi költséget
           </Text>
           <Text className="mt-3 text-sm font-semibold leading-5 text-white/80">
-            Add hozza a szolgaltatast, arat es fizetesi ciklust. A tobbit majd
-            osszeszamoljuk.
+            Add hozzá a szolgáltatást, árát és fizetési ciklust.
           </Text>
         </View>
 
@@ -121,7 +137,7 @@ export default function SubscriptionsFormScreen() {
         )}
 
         <View className="mt-7">
-          <FieldLabel label="Nev" />
+          <FieldLabel label="Név" />
           <TextInput
             className="h-14 rounded-2xl bg-white px-4 text-base font-semibold text-black"
             placeholder="Netflix, Spotify, YouTube..."
@@ -133,7 +149,7 @@ export default function SubscriptionsFormScreen() {
 
           <View className="mt-5 flex-row">
             <View className="mr-3 flex-1">
-              <FieldLabel label="Ar" />
+              <FieldLabel label="Ár" />
               <TextInput
                 className="h-14 rounded-2xl bg-white px-4 text-base font-semibold text-black"
                 placeholder="3990"
@@ -191,7 +207,7 @@ export default function SubscriptionsFormScreen() {
           )} */}
 
           <View className="mt-5">
-            <FieldLabel label="Szamlazasi ciklus" />
+            <FieldLabel label="Számlázási ciklus" />
             <View className="flex-row rounded-2xl bg-white p-1">
               {BILLING_CYCLES.map((item) => {
                 const active = item.value === billingCycle;
@@ -216,6 +232,44 @@ export default function SubscriptionsFormScreen() {
               })}
             </View>
           </View>
+
+          <View className="mt-5">
+            <FieldLabel label="Aktív előfizetés?" />
+            <View className="flex-row rounded-2xl bg-white p-1">
+              <Pressable
+                className={`h-12 flex-1 items-center justify-center rounded-xl ${
+                  isActive ? 'bg-[#0ca9f2]' : 'bg-white'
+                }`}
+                onPress={() => 
+                  setIsActive(true)
+                }
+              >
+                <Text
+                  className={`text-sm font-extrabold ${
+                    isActive ? 'text-white' : 'text-neutral-500'
+                  }`}
+                >
+                  Igen
+                </Text>
+              </Pressable>
+              <Pressable
+                className={`h-12 flex-1 items-center justify-center rounded-xl ${
+                  !isActive ? 'bg-[#0ca9f2]' : 'bg-white'
+                }`}
+                onPress={() =>
+                  setIsActive(false)
+                }
+              >
+                <Text
+                  className={`text-sm font-extrabold ${
+                    !isActive ? 'text-white' : 'text-neutral-500'
+                  }`}
+                >
+                  Nem
+                </Text>
+              </Pressable>
+            </View>
+          </View>
         </View>
 
         <Pressable
@@ -226,7 +280,7 @@ export default function SubscriptionsFormScreen() {
           onPress={handleSave}
         >
           <Text className="text-base font-extrabold text-white">
-            {saving ? 'Mentes...' : 'Elofizetes mentese'}
+            {saving ? 'Mentes...' : 'Előfizetés mentése'}
           </Text>
         </Pressable>
       </ScrollView>

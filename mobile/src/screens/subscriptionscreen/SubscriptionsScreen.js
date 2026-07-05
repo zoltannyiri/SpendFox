@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -10,6 +10,7 @@ import {
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import axios from 'axios';
 import { MMKV } from 'react-native-mmkv';
+import { useFocusEffect } from '@react-navigation/native';
 
 const storage = new MMKV();
 
@@ -28,10 +29,11 @@ export default function SubscriptionsScreen({ navigation }) {
   const totalMonthly = useMemo(
     () =>
       subscriptions.reduce((sum, item) => {
+        // if (item.billing_cycle === 'yearly') return;
         const price = Number(item.price) || 0;
 
         if (item.billing_cycle === 'yearly') {
-          return sum + price / 12;
+          return sum;
         }
 
         return sum + price;
@@ -39,7 +41,24 @@ export default function SubscriptionsScreen({ navigation }) {
     [subscriptions]
   );
 
-  const loadSubscriptions = async () => {
+  const totalYearly = useMemo(
+    () =>
+      subscriptions.reduce((sum, item) => {
+        const price = Number(item.price) || 0;
+        if (item.billing_cycle === 'monthly') {
+          return sum + price * 12;
+        }
+
+        // if (item.billing_cycle === 'yearly') {
+        //   return sum + price / 12;
+        // }
+
+        return sum + price;
+      }, 0),
+    [subscriptions]
+  );
+
+  const loadSubscriptions = useCallback(async () => {
     try {
       setLoading(true);
       setErrorText('');
@@ -52,15 +71,16 @@ export default function SubscriptionsScreen({ navigation }) {
       setSubscriptions(response.data?.data || []);
     } catch (err) {
       console.log('Failed to load subscriptions:', err?.response?.data || err?.message);
-      setErrorText('Nem sikerult betolteni az elofizeteseket.');
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadSubscriptions();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadSubscriptions();
+    }, [loadSubscriptions])
+  );
 
   return (
     <View className="flex-1 bg-[#f7f7f8]">
@@ -68,7 +88,7 @@ export default function SubscriptionsScreen({ navigation }) {
 
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-5 pb-10 pt-16"
+        contentContainerClassName="px-5 pb-10 pt-16" 
         showsVerticalScrollIndicator={false}
       >
         <View className="mb-7 flex-row items-center justify-between">
@@ -79,7 +99,7 @@ export default function SubscriptionsScreen({ navigation }) {
             <BackIcon />
           </Pressable>
 
-          <Text className="text-base font-extrabold text-black">Elofizeteseim</Text>
+          <Text className="text-base font-extrabold text-black">Előfizetéseim</Text>
 
           <Pressable className="h-10 w-10 items-center justify-center rounded-full bg-black" 
             onPress={() => navigation.navigate('SubscriptionsForm')}>
@@ -90,7 +110,7 @@ export default function SubscriptionsScreen({ navigation }) {
         <View className="rounded-2xl bg-[#0ca9f2] px-5 py-5">
           <View className="flex-row items-start justify-between">
             <View>
-              <Text className="text-sm font-bold text-white/80">Havi osszesen</Text>
+              <Text className="text-sm font-bold text-white/80">Havi előfizetések összesen</Text>
               <Text className="mt-1 text-4xl font-extrabold text-white">
                 {formatMoney(totalMonthly)}
               </Text>
@@ -100,11 +120,19 @@ export default function SubscriptionsScreen({ navigation }) {
               <WalletIcon />
             </View>
           </View>
+          
+
+          <View className="mt-5">
+            <Text className="text-sm font-bold text-white/80">Éves előfizetések összesen</Text>
+            <Text className="mt-1 text-4xl font-extrabold text-white">
+              {formatMoney(totalYearly)}
+            </Text>
+          </View>
 
           <View className="mt-5 flex-row">
-            <SummaryPill label="Aktiv" value={String(subscriptions.length)} />
+            <SummaryPill label="Aktív" value={String(subscriptions.length)} />
             <View className="w-3" />
-            <SummaryPill label="Kovetkezo" value={getNextBillingLabel(subscriptions)} />
+            <SummaryPill label="Következő" value={getNextBillingLabel(subscriptions)} />
           </View>
         </View>
 
@@ -115,7 +143,7 @@ export default function SubscriptionsScreen({ navigation }) {
             <View className="mt-16 items-center">
               <ActivityIndicator color={COLORS.blue} size="large" />
               <Text className="mt-3 text-sm font-semibold text-neutral-500">
-                Betoltes...
+                Betöltés...
               </Text>
             </View>
           ) : errorText ? (
@@ -128,23 +156,37 @@ export default function SubscriptionsScreen({ navigation }) {
                 className="mt-5 rounded-full bg-black px-5 py-3"
                 onPress={loadSubscriptions}
               >
-                <Text className="text-sm font-extrabold text-white">Ujraprobalom</Text>
+                <Text className="text-sm font-extrabold text-white">Újrapróbálom</Text>
               </Pressable>
             </View>
           ) : subscriptions.length === 0 ? (
             <View className="mt-10 items-center rounded-2xl bg-white px-5 py-8">
               <EmptyIcon />
               <Text className="mt-4 text-center text-base font-extrabold text-black">
-                Meg nincs elofizetesed
+                Még nincs előfizetésed
               </Text>
               <Text className="mt-2 text-center text-sm font-semibold leading-5 text-neutral-500">
-                Add hozza az elso szolgaltatast, hogy egy helyen lasd a havi
-                kiadasaidat.
+                Add hozzá az első szolgáltatást, hogy egy helyen lássd a havi
+                kiadásaidat.
               </Text>
+              <Pressable
+                className="mt-5 rounded-full bg-black px-5 py-3"
+                onPress={() => navigation.navigate('SubscriptionsForm')}
+              >
+                <Text className="text-sm font-extrabold text-white">Hozzáadás</Text>
+              </Pressable>
             </View>
           ) : (
             subscriptions.map((item) => (
-              <SubscriptionCard key={String(item.id)} subscription={item} />
+              <SubscriptionCard
+                key={String(item.id)}
+                subscription={item}
+                onEdit={() =>
+                  navigation.navigate('SubscriptionsForm', {
+                    subscription: item,
+                  })
+                }
+              />
             ))
           )}
         </View>
@@ -153,8 +195,8 @@ export default function SubscriptionsScreen({ navigation }) {
   );
 }
 
-function SubscriptionCard({ subscription }) {
-  const name = subscription.name || 'Nevtelen elofizetes';
+function SubscriptionCard({ subscription, onEdit }) {
+  const name = subscription.name || 'Névtelen előfizetés';
   const currency = subscription.currency || 'HUF';
   const billingCycle = getBillingCycleLabel(subscription.billing_cycle);
   const nextBilling = subscription.next_billing_date
@@ -185,6 +227,12 @@ function SubscriptionCard({ subscription }) {
         {subscription.is_shared ? (
           <Text className="mt-1 text-xs font-bold text-[#0ca9f2]">Megosztott</Text>
         ) : null}
+        <Pressable
+          className="mt-2 rounded-full bg-black px-3 py-1.5"
+          onPress={onEdit}
+        >
+          <Text className="text-xs font-extrabold text-white">Modosit</Text>
+        </Pressable>
       </View>
     </Pressable>
   );
@@ -211,7 +259,7 @@ function formatMoney(value, currency = 'HUF') {
 
 function getBillingCycleLabel(value) {
   if (value === 'yearly') {
-    return 'Eves';
+    return 'Éves';
   }
 
   if (value === 'weekly') {
