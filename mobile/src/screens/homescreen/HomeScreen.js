@@ -4,6 +4,9 @@ import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import axios from 'axios';
 import { Image } from 'react-native';
+import { MMKV } from 'react-native-mmkv';
+
+const storage = new MMKV();
 
 const MENU_ITEMS = [
   { label: 'Profil beállítások', icon: SettingsIcon },
@@ -20,18 +23,23 @@ export default function HomeScreen() {
   const [profileAvatar, setProfileAvatar] = useState('');
 
   useEffect(() => {
+    const storedUser = getStoredUser();
+
+    if (storedUser) {
+      setProfileName(getUserName(storedUser));
+      setProfileAvatar(getUserAvatar(storedUser));
+    }
+
     const loadProfile = async () => {
       try {
         const response = await axios.get('/profile');
-        // const name = response.data?.data?.full_name || '';
+        const profile = response.data?.data;
 
-        // if (isMounted) {
-        //   setProfileName(name);
-        // }
-        setProfileName(response.data?.data?.full_name);
-        setProfileAvatar(response.data?.data?.avatar_url);
-
-        console.log(response.data);
+        if (profile) {
+          storage.set('appUser', JSON.stringify(profile));
+          setProfileName(getUserName(profile));
+          setProfileAvatar(getUserAvatar(profile));
+        }
       } catch (err) {
         console.log('Failed to load profile:', err?.response?.data || err?.message);
       }
@@ -62,11 +70,15 @@ export default function HomeScreen() {
         </View>
 
         <View className="items-center">
-          <Image
-            source={{ uri: profileAvatar }}
-            className="h-20 w-20 rounded-full bg-fox-cream"
-            resizeMode="cover"
-          />
+          {profileAvatar ? (
+            <Image
+              source={{ uri: profileAvatar }}
+              className="h-20 w-20 rounded-full bg-fox-cream"
+              resizeMode="cover"
+            />
+          ) : (
+            <View className="h-20 w-20 rounded-full bg-fox-cream" />
+          )}
           <Text className="mt-3 text-xl font-extrabold text-black">{profileName}</Text>
           {/* <Text className="mt-0.5 text-xs font-semibold text-neutral-500">
             Budapest, Hungary
@@ -115,6 +127,25 @@ export default function HomeScreen() {
       <BottomBar />
     </View>
   );
+}
+
+function getStoredUser() {
+  try {
+    const storedUser = storage.getString('appUser');
+
+    return storedUser ? JSON.parse(storedUser) : null;
+  } catch (err) {
+    console.log('Failed to parse stored profile:', err?.message);
+    return null;
+  }
+}
+
+function getUserName(user) {
+  return user?.full_name || user?.user_metadata?.full_name || user?.email || '';
+}
+
+function getUserAvatar(user) {
+  return user?.avatar_url || user?.user_metadata?.avatar_url || '';
 }
 
 function IconButton({ children }) {

@@ -25,6 +25,7 @@ import SubscriptionsFormScreen from './src/screens/subscriptionscreen/Subscripti
 const Stack = createNativeStackNavigator();
 const storage = new MMKV();
 const API_BASE = process.env.REACT_APP_API_HOST ?? 'http://10.0.2.2:5000/api';
+let refreshRequest = null;
 
 axios.defaults.baseURL = API_BASE;
 
@@ -47,6 +48,85 @@ axios.interceptors.request.use(
   },
   (error) => Promise.reject(error)
 );
+
+axios.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error?.response?.status !== 401 || originalRequest?._retry) {
+      return Promise.reject(error);
+    }
+
+    const refreshToken = storage.getString('refreshToken');
+
+    if (!refreshToken) {
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+
+    try {
+      if (!refreshRequest) {
+        refreshRequest = refreshAccessToken(refreshToken).finally(() => {
+          refreshRequest = null;
+        });
+      }
+
+      const token = await refreshRequest;
+
+      originalRequest.headers = {
+        ...(originalRequest.headers || {}),
+        Authorization: `Bearer ${token}`,
+      };
+
+      return axios(originalRequest);
+    } catch (refreshError) {
+      storage.delete('userToken');
+      storage.delete('refreshToken');
+      storage.delete('tokenExpiresAt');
+      storage.delete('appUser');
+      window.App?.logout?.();
+
+      return Promise.reject(refreshError);
+    }
+  }
+);
+
+async function refreshAccessToken(refreshToken) {
+  const response = await fetch(`${API_BASE}/auth/refresh`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+
+  const result = await response.json();
+
+  if (!response.ok) {
+    throw new Error(result?.error || 'Token refresh failed');
+  }
+
+  const session = result?.data?.session;
+
+  if (!session?.access_token) {
+    throw new Error('Refresh response did not contain an access token');
+  }
+
+  storage.set('userToken', session.access_token);
+
+  if (session.refresh_token) {
+    storage.set('refreshToken', session.refresh_token);
+  }
+
+  if (session.expires_in) {
+    storage.set('tokenExpiresAt', String(Date.now() + Number(session.expires_in) * 1000));
+  }
+
+  return session.access_token;
+}
 
 const deviceLanguage =
   Platform.OS === 'ios'
@@ -81,8 +161,16 @@ class App extends Component {
     }
   }
 
-  loginSuccess = (token, user) => {
+  loginSuccess = (token, user, session) => {
     storage.set('userToken', token);
+
+    if (session?.refresh_token) {
+      storage.set('refreshToken', session.refresh_token);
+    }
+
+    if (session?.expires_in) {
+      storage.set('tokenExpiresAt', String(Date.now() + Number(session.expires_in) * 1000));
+    }
 
     if (user) {
       storage.set('appUser', JSON.stringify(user));
@@ -118,6 +206,8 @@ class App extends Component {
 
   logout = () => {
     storage.delete('userToken');
+    storage.delete('refreshToken');
+    storage.delete('tokenExpiresAt');
     storage.delete('appUser');
     this.setState({ userToken: null });
   };

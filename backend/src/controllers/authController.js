@@ -1,4 +1,4 @@
-const { registerWithEmail, loginWithEmail } = require('../services/authService');
+const { registerWithEmail, loginWithEmail, refreshSession } = require('../services/authService');
 
 const register = async (req, res) => {
   try {
@@ -58,7 +58,24 @@ const login = async (req, res) => {
   }
 };
 
+const refresh = async (req, res) => {
+  try {
+    const { refresh_token } = req.body;
+
+    const { data, error } = await refreshSession({ refreshToken: refresh_token });
+
+    if (error) {
+      return res.status(401).json({ error: error.message });
+    }
+
+    return res.json({ data });
+  } catch (err) {
+    return res.status(500).json({ error: 'Unexpected error' });
+  }
+};
+
 module.exports = {
   register,
   login,
+  refresh,
 };

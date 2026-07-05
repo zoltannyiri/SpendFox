@@ -130,7 +130,66 @@ const loginWithEmail = async ({ email, password }) => {
   }
 };
 
+const refreshSession = async ({ refreshToken }) => {
+  if (!firebaseWebApiKey) {
+    return {
+      data: null,
+      error: {
+        message: 'Missing FIREBASE_WEB_API_KEY from .env file for token refresh',
+      },
+    };
+  }
+
+  if (!refreshToken) {
+    return {
+      data: null,
+      error: {
+        message: 'Refresh token is required',
+      },
+    };
+  }
+
+  try {
+    const response = await fetch(
+      `https://securetoken.googleapis.com/v1/token?key=${firebaseWebApiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          refresh_token: refreshToken,
+        }).toString(),
+      }
+    );
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      return {
+        data: null,
+        error: {
+          message: result.error?.message || 'Token refresh failed',
+        },
+      };
+    }
+
+    return {
+      data: {
+        session: {
+          access_token: result.id_token,
+          refresh_token: result.refresh_token,
+          expires_in: Number(result.expires_in),
+        },
+      },
+      error: null,
+    };
+  } catch (err) {
+    return { data: null, error: toAuthError(err) };
+  }
+};
+
 module.exports = {
   registerWithEmail,
   loginWithEmail,
+  refreshSession,
 };

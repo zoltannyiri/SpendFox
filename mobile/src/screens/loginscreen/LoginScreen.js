@@ -55,7 +55,7 @@ export default function LoginScreen({navigation}) {
         return;
       }
 
-      window.App?.loginSuccess?.(token, data?.data?.user);
+      window.App?.loginSuccess?.(token, data?.data?.user, data?.data?.session);
     } catch (e) {
       const status = e?.response?.status;
       const url = e?.response?.config?.url || '/auth/login';
