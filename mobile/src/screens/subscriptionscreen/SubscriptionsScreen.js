@@ -31,6 +31,10 @@ export default function SubscriptionsScreen({ navigation }) {
       subscriptions.reduce((sum, item) => {
         // if (item.billing_cycle === 'yearly') return;
         const price = Number(item.price) || 0;
+        
+        if (item.is_active === false) {
+          return sum;
+        }
 
         if (item.billing_cycle === 'yearly') {
           return sum;
@@ -45,6 +49,9 @@ export default function SubscriptionsScreen({ navigation }) {
     () =>
       subscriptions.reduce((sum, item) => {
         const price = Number(item.price) || 0;
+        if (item.is_active === false) {
+          return sum;
+        }
         if (item.billing_cycle === 'monthly') {
           return sum + price * 12;
         }
@@ -216,7 +223,7 @@ function SubscriptionCard({ subscription, onEdit }) {
         <Text className="text-base font-extrabold text-black">{name}</Text>
         <Text className="mt-1 text-xs font-semibold text-neutral-500">
           {billingCycle}
-          {nextBilling}
+          {getNextBillingDate(subscription, new Date()) ? ` - ${formatDateOnly(getNextBillingDate(subscription, new Date()))}` : ''}
         </Text>
       </View>
 
@@ -231,7 +238,7 @@ function SubscriptionCard({ subscription, onEdit }) {
           className="mt-2 rounded-full bg-black px-3 py-1.5"
           onPress={onEdit}
         >
-          <Text className="text-xs font-extrabold text-white">Modosit</Text>
+          <Text className="text-xs font-extrabold text-white">Módosít</Text>
         </Pressable>
       </View>
     </Pressable>
@@ -270,12 +277,85 @@ function getBillingCycleLabel(value) {
 }
 
 function getNextBillingLabel(items) {
+  const today = startOfDay(new Date());
   const dates = items
-    .map((item) => item.next_billing_date)
+    .filter((item) => item.is_active !== false)
+    .map((item) => getNextBillingDate(item, today))
     .filter(Boolean)
-    .sort();
+    .sort((a, b) => a.getTime() - b.getTime());
 
-  return dates[0] || '-';
+  return dates[0] ? formatDateOnly(dates[0]) : '-';
+}
+
+function getNextBillingDate(item, today) {
+  const billingDate = parseDateValue(item.next_billing_date);
+
+  if (!billingDate) {
+    return null;
+  }
+
+  if (item.billing_cycle === 'monthly') {
+    return getNextMonthlyBillingDate(billingDate, today);
+  }
+
+  const date = startOfDay(billingDate);
+
+  return date >= today ? date : null;
+}
+
+function getNextMonthlyBillingDate(sourceDate, today) {
+  const paymentDay = sourceDate.getDate();
+  let candidate = createDateWithClampedDay(
+    today.getFullYear(),
+    today.getMonth(),
+    paymentDay
+  );
+
+  if (candidate <= today) {
+    candidate = createDateWithClampedDay(
+      today.getFullYear(),
+      today.getMonth() + 1,
+      paymentDay
+    );
+  }
+
+  return candidate;
+}
+
+function createDateWithClampedDay(year, month, day) {
+  const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+
+  return new Date(year, month, Math.min(day, lastDayOfMonth));
+}
+
+function parseDateValue(value) {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (typeof value === 'object' && typeof value._seconds === 'number') {
+    return new Date(value._seconds * 1000);
+  }
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+function formatDateOnly(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
 }
 
 async function getStoredUserId() {
