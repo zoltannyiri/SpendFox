@@ -11,7 +11,7 @@ const storage = new MMKV();
 const MENU_ITEMS = [
   { label: 'Profil beállítások', icon: SettingsIcon },
   { label: 'Előfizetéseim', icon: ErrorIcon, onPress: ({navigation}) => navigation.navigate('Subscriptions') },
-  { label: 'Profil szerkesztése', icon: EditIcon },
+  { label: 'Profil szerkesztése', icon: EditIcon, onPress: ({navigation}) => navigation.navigate('ProfileSettingsScreen') },
   { label: 'Kijelentkezés', icon: LogoutIcon, action: () => window.App?.logout?.() },
   { label: 'Súgó', icon: HelpIcon },
 ];

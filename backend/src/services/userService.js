@@ -33,6 +33,10 @@ const toServiceError = (err) => ({
   message: err.message || 'Firestore operation failed',
 });
 
+const isHttpUrl = (value) =>
+  typeof value === 'string' &&
+  (value.startsWith('http://') || value.startsWith('https://'));
+
 const listUsers = async (userId) => {
   try {
     let query = usersCollection;
@@ -88,6 +92,49 @@ const getUserByUid = async (uid) => {
   }
 };
 
+const updateUserByUid = async (uid, payload) => {
+  try {
+    const userId = String(uid);
+    const docRef = usersCollection.doc(userId);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      return { data: null, error: { message: 'User not found' } };
+    }
+
+    const cleanPayload = Object.fromEntries(
+      Object.entries({
+        email: payload.email,
+        full_name: payload.full_name,
+        username: payload.username,
+        avatar_url: payload.avatar_url,
+        updated_at: admin.firestore.FieldValue.serverTimestamp(),
+      }).filter(([, value]) => value !== undefined)
+    );
+
+    await docRef.update(cleanPayload);
+
+    const authPayload = Object.fromEntries(
+      Object.entries({
+        email: payload.email,
+        displayName: payload.full_name,
+      }).filter(([, value]) => value !== undefined)
+    );
+
+    if (payload.avatar_url === null || isHttpUrl(payload.avatar_url)) {
+      authPayload.photoURL = payload.avatar_url;
+    }
+
+    await admin.auth().updateUser(userId, authPayload);
+
+    const updatedDoc = await docRef.get();
+
+    return { data: snapshotToUser(updatedDoc), error: null };
+  } catch (err) {
+    return { data: null, error: toServiceError(err) };
+  }
+};
+
 const deleteUserById = async (id) => {
   try {
     const userId = String(id);
@@ -111,5 +158,6 @@ module.exports = {
   listUsers,
   getUserById,
   getUserByUid,
+  updateUserByUid,
   deleteUserById,
 };

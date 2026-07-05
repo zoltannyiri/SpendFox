@@ -21,6 +21,8 @@ import RegisterScreen from './src/screens/registerscreen/RegisterScreen';
 import HomeScreen from './src/screens/homescreen/HomeScreen';
 import SubscriptionsScreen from './src/screens/subscriptionscreen/SubscriptionsScreen';
 import SubscriptionsFormScreen from './src/screens/subscriptionscreen/SubscriptionsFormScreen';
+import ProfileSettingsScreen from './src/screens/profilesettingsscreen/ProfileSettingsScreen';
+import ProfileSettingsForm from './src/screens/profilesettingsscreen/ProfileSettingsForm';
 
 const Stack = createNativeStackNavigator();
 const storage = new MMKV();
@@ -283,6 +285,20 @@ class App extends Component {
                     component={SubscriptionsFormScreen}
                     options={{
                       title: 'Előfizetés hozzáadása',
+                    }}
+                  />
+                  <Stack.Screen
+                    name="ProfileSettingsScreen"
+                    component={ProfileSettingsScreen}
+                    options={{
+                      title: 'Profil szerkesztése',
+                    }}
+                  />
+                  <Stack.Screen
+                    name="ProfileSettingsForm"
+                    component={ProfileSettingsForm}
+                    options={{
+                      title: 'Profil szerkesztése',
                     }}
                   />
                 </>
