@@ -13,12 +13,6 @@ import {
 import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
 import AppLogoComponent from '../../components/logocomponent/AppLogoComponent';
 
-const api = axios.create({
-  baseURL: process.env.REACT_APP_API_HOST,
-  timeout: 15000,
-  headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-});
-
 export default function RegisterScreen({navigation}) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -43,14 +37,16 @@ export default function RegisterScreen({navigation}) {
         username: username.trim()
       };
 
-      console.log('[register] POST', `${api.defaults.baseURL}/auth/register`, {
+      console.log('[register] POST', `${axios.defaults.baseURL}/auth/register`, {
         email: payload.email,
         password: '***',
         full_name: payload.full_name,
         username: payload.username,
       });
 
-      const { data } = await api.post('/auth/register', payload);
+      const { data } = await axios.post('/auth/register', payload, {
+        timeout: 15000,
+      });
 
       console.log('[register] response:', JSON.stringify(data, null, 2));
 
@@ -69,7 +65,7 @@ export default function RegisterScreen({navigation}) {
     } catch (e) {
       const status = e?.response?.status;
       const url = e?.response?.config?.url || '/auth/register';
-      const baseURL = e?.response?.config?.baseURL || api.defaults.baseURL;
+      const baseURL = e?.response?.config?.baseURL || axios.defaults.baseURL;
       const responseData = e?.response?.data;
       const serverMsg = responseData?.error || responseData?.message || responseData?.detail;
 

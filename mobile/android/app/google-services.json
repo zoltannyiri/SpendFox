@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "465246613466",
+    "project_id": "spendfox-bf104",
+    "storage_bucket": "spendfox-bf104.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:465246613466:android:e1bb807f507d9fa824dae3",
+        "android_client_info": {
+          "package_name": "com.spendfoxmobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB8DcC5H8PAY-7_Vt7-rkXIbnCRt0vaWaY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

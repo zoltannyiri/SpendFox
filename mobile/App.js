@@ -23,10 +23,14 @@ import SubscriptionsScreen from './src/screens/subscriptionscreen/SubscriptionsS
 import SubscriptionsFormScreen from './src/screens/subscriptionscreen/SubscriptionsFormScreen';
 import ProfileSettingsScreen from './src/screens/profilesettingsscreen/ProfileSettingsScreen';
 import ProfileSettingsForm from './src/screens/profilesettingsscreen/ProfileSettingsForm';
+import {
+  requestAndRegisterPushToken,
+  setupPushListeners,
+} from './src/services/push/PushTokenService';
 
 const Stack = createNativeStackNavigator();
 const storage = new MMKV();
-const API_BASE = process.env.REACT_APP_API_HOST ?? 'http://10.0.2.2:5000/api';
+const API_BASE = process.env.REACT_APP_API_HOST ?? 'http://192.168.0.2:5000/api';
 let refreshRequest = null;
 
 axios.defaults.baseURL = API_BASE;
@@ -154,6 +158,8 @@ class App extends Component {
   }
 
   componentDidMount() {
+    this.unsubscribePushListeners = setupPushListeners();
+
     if (!storage.getString('language') || storage.getString('language') === undefined) {
       if (deviceLanguage?.substring(0, 2) === 'hu') {
         storage.set('language', 'hu');
@@ -161,6 +167,14 @@ class App extends Component {
         storage.set('language', 'en');
       }
     }
+
+    if (this.state.userToken) {
+      requestAndRegisterPushToken();
+    }
+  }
+
+  componentWillUnmount() {
+    this.unsubscribePushListeners?.();
   }
 
   loginSuccess = (token, user, session) => {
@@ -179,6 +193,7 @@ class App extends Component {
     }
 
     this.setState({ userToken: token });
+    requestAndRegisterPushToken();
   };
 
   alert = (response, button = 'Ok') => {
