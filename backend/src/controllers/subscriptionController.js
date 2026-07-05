@@ -41,6 +41,7 @@ const createSubscription = async (req, res) => {
       is_shared,
       user_id,
       next_billing_date,
+      is_active,
     } = req.body;
 
     const payload = {
@@ -51,6 +52,7 @@ const createSubscription = async (req, res) => {
       is_shared,
       user_id,
       next_billing_date,
+      is_active,
     };
 
     const { data, error } = await createSubscriptionRecord(payload);
@@ -91,6 +93,7 @@ const updateSubscription = async (req, res) => {
       is_shared,
       user_id,
       next_billing_date,
+      is_active,
     } = req.body;
 
     const payload = {
@@ -101,6 +104,7 @@ const updateSubscription = async (req, res) => {
       is_shared,
       user_id,
       next_billing_date,
+      is_active,
     };
 
     const { data, error } = await updateSubscriptionRecord(id, payload);
