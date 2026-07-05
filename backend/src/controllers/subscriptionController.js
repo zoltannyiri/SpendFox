@@ -40,9 +40,27 @@ const createSubscription = async (req, res) => {
       billing_cycle,
       is_shared,
       user_id,
+      start_date,
       next_billing_date,
       is_active,
     } = req.body;
+
+    let calculatedNextBillingDate = next_billing_date;
+
+    if (!calculatedNextBillingDate && start_date) {
+      const startDate = new Date(start_date);
+      const nextDate = new Date(startDate);
+
+      if (billing_cycle === 'monthly') {
+        nextDate.setMonth(nextDate.getMonth() + 1);
+        calculatedNextBillingDate = nextDate.toISOString().split('T')[0];
+      } else if (billing_cycle === 'yearly') {
+        nextDate.setFullYear(nextDate.getFullYear() + 1);
+        calculatedNextBillingDate = nextDate.toISOString().split('T')[0];
+      } else {
+        calculatedNextBillingDate = null;
+      }
+    }
 
     const payload = {
       name,
@@ -51,7 +69,8 @@ const createSubscription = async (req, res) => {
       billing_cycle,
       is_shared,
       user_id,
-      next_billing_date,
+      next_billing_date: calculatedNextBillingDate,
+      start_date,
       is_active,
     };
 
@@ -92,6 +111,7 @@ const updateSubscription = async (req, res) => {
       billing_cycle,
       is_shared,
       user_id,
+      start_date,
       next_billing_date,
       is_active,
     } = req.body;
@@ -103,6 +123,7 @@ const updateSubscription = async (req, res) => {
       billing_cycle,
       is_shared,
       user_id,
+      start_date,
       next_billing_date,
       is_active,
     };
