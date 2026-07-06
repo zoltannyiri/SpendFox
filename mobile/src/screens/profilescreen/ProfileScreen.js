@@ -13,6 +13,7 @@ import axios from 'axios';
 import { MMKV } from 'react-native-mmkv';
 import CurvedHeader, { HeaderIconButton } from '../../components/layout/CurvedHeader';
 import BottomNavigation from '../../components/layout/BottomNavigation';
+import AnimatedScreen from '../../components/layout/AnimatedScreen';
 
 const storage = new MMKV();
 
@@ -60,14 +61,15 @@ export default function ProfileScreen() {
   const nextBilling = useMemo(() => getNextBilling(subscriptions), [subscriptions]);
 
   return (
-    <View className="flex-1 bg-[#f7f7f8]">
+    <View className="flex-1 bg-[#f3f5f8]">
       <ScrollView
         className="flex-1"
-        contentContainerClassName="pb-32"
+        contentContainerClassName="pb-36"
         showsVerticalScrollIndicator={false}
       >
         <CurvedHeader
           title="Profil"
+          subtitle="Fiók, összegzés és beállítások"
           left={
             <HeaderIconButton
               onPress={() =>
@@ -84,17 +86,17 @@ export default function ProfileScreen() {
           }
         />
 
-        <View className="-mt-16 px-5">
-          <View className="rounded-[28px] bg-white px-5 pb-5 pt-4 shadow-sm">
+        <AnimatedScreen className="-mt-16 px-5">
+          <View className="rounded-[30px] bg-white px-5 pb-6 pt-5" style={cardShadow}>
             <View className="flex-row items-start justify-between">
               {avatar ? (
                 <Image
                   source={{ uri: avatar }}
-                  className="h-24 w-24 rounded-full border-4 border-white bg-fox-cream"
+                  className="h-24 w-24 rounded-3xl bg-fox-cream"
                   resizeMode="cover"
                 />
               ) : (
-                <View className="h-24 w-24 items-center justify-center rounded-full border-4 border-white bg-fox-cream">
+                <View className="h-24 w-24 items-center justify-center rounded-3xl bg-fox-cream">
                   <Text className="text-4xl font-extrabold text-[#19386e]">
                     {getInitial(name)}
                   </Text>
@@ -102,10 +104,11 @@ export default function ProfileScreen() {
               )}
 
               <Pressable
-                className="mt-2 rounded-full bg-black px-4 py-2"
+                className="rounded-full bg-black px-4 py-2"
+                style={({ pressed }) => [pressed && { opacity: 0.82 }]}
                 onPress={() => navigation.navigate('ProfileSettingsForm')}
               >
-                <Text className="text-xs font-extrabold text-white">Szerkesztes</Text>
+                <Text className="text-xs font-extrabold text-white">Szerkesztés</Text>
               </Pressable>
             </View>
 
@@ -119,7 +122,7 @@ export default function ProfileScreen() {
             </View>
           </View>
 
-          <View className="mt-5 rounded-[28px] bg-[#0ca9f2] px-5 py-5">
+          <View className="mt-5 rounded-[30px] bg-[#0ca9f2] px-5 py-5" style={blueShadow}>
             <View className="flex-row items-start justify-between">
               <View className="flex-1 pr-5">
                 <Text className="text-sm font-bold text-white/80">Havi előfizetések</Text>
@@ -127,7 +130,7 @@ export default function ProfileScreen() {
                   {formatMoney(summary.monthlyTotal)}
                 </Text>
               </View>
-              <View className="h-14 w-14 items-center justify-center rounded-full bg-white/15">
+              <View className="h-14 w-14 items-center justify-center rounded-2xl bg-white/15">
                 <WalletIcon />
               </View>
             </View>
@@ -160,7 +163,7 @@ export default function ProfileScreen() {
               {loading ? <ActivityIndicator color="#0ca9f2" size="small" /> : null}
             </View>
 
-            <View className="overflow-hidden rounded-[28px] bg-white">
+            <View className="overflow-hidden rounded-[28px] bg-white" style={cardShadow}>
               <ActionRow
                 icon={<SubscriptionsIcon />}
                 label="Előfizetéseim"
@@ -188,12 +191,28 @@ export default function ProfileScreen() {
               />
             </View>
           </View>
-        </View>
+        </AnimatedScreen>
       </ScrollView>
       <BottomNavigation />
     </View>
   );
 }
+
+const cardShadow = {
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: 0.07,
+  shadowRadius: 18,
+  elevation: 4,
+};
+
+const blueShadow = {
+  shadowColor: '#0ca9f2',
+  shadowOffset: { width: 0, height: 12 },
+  shadowOpacity: 0.2,
+  shadowRadius: 20,
+  elevation: 5,
+};
 
 function getSubscriptionSummary(items) {
   return items.reduce(
@@ -237,7 +256,7 @@ function getNextBilling(items) {
   return items
     .filter((item) => item.is_active !== false)
     .map((item) => ({
-      name: item.name || 'Elofizetes',
+      name: item.name || 'Előfizetés',
       date: getNextBillingDate(item, today),
     }))
     .filter((item) => item.date)
@@ -322,6 +341,15 @@ function parseDateValue(value) {
     return new Date(value._seconds * 1000);
   }
 
+  if (typeof value === 'string') {
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (match) {
+      const [, year, month, day] = match;
+      return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+  }
+
   const date = new Date(value);
 
   return Number.isNaN(date.getTime()) ? null : date;
@@ -350,14 +378,18 @@ function formatMoney(value, currency = 'HUF') {
 
 function MetricCard({ icon, label, value, note }) {
   return (
-    <View className="mb-3 min-h-[128px] w-[48%] justify-between rounded-3xl bg-white p-4">
+    <View className="mb-3 min-h-[128px] w-[48%] justify-between rounded-3xl bg-white p-4" style={cardShadow}>
       <View className="h-10 w-10 items-center justify-center rounded-2xl bg-[#eef7ff]">
         {icon}
       </View>
       <View>
-        <Text className="text-xl font-extrabold text-black">{value}</Text>
+        <Text className="text-lg font-extrabold text-black" numberOfLines={1}>
+          {value}
+        </Text>
         <Text className="mt-1 text-xs font-extrabold text-neutral-900">{label}</Text>
-        <Text className="mt-1 text-xs font-semibold text-neutral-500">{note}</Text>
+        <Text className="mt-1 text-xs font-semibold text-neutral-500" numberOfLines={1}>
+          {note}
+        </Text>
       </View>
     </View>
   );
@@ -379,7 +411,7 @@ function ActionRow({ icon, label, description, onPress, destructive }) {
       style={({ pressed }) => [pressed && { backgroundColor: '#f4f4f5' }]}
       onPress={onPress}
     >
-      <View className="h-10 w-10 items-center justify-center rounded-full bg-[#f7f7f8]">
+      <View className="h-10 w-10 items-center justify-center rounded-2xl bg-[#eef7ff]">
         {icon}
       </View>
       <View className="ml-4 flex-1">
@@ -461,12 +493,7 @@ function WalletIcon() {
         strokeLinejoin="round"
         strokeWidth="1.8"
       />
-      <Path
-        d="M16 12h4v4h-4a2 2 0 0 1 0-4Z"
-        stroke="#fff"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
+      <Path d="M16 12h4v4h-4a2 2 0 0 1 0-4Z" stroke="#fff" strokeLinejoin="round" strokeWidth="1.8" />
       <Path d="M5 7.5 16 4v3.5" stroke="#fff" strokeLinecap="round" strokeWidth="1.8" />
     </SvgIcon>
   );
@@ -493,8 +520,8 @@ function SubscriptionsIcon() {
 function PlusIcon() {
   return (
     <SvgIcon>
-      <Circle cx="12" cy="12" r="8" stroke="#111" strokeWidth="1.8" />
-      <Path d="M12 8v8M8 12h8" stroke="#111" strokeLinecap="round" strokeWidth="1.8" />
+      <Circle cx="12" cy="12" r="8" stroke="#19386e" strokeWidth="1.8" />
+      <Path d="M12 8v8M8 12h8" stroke="#19386e" strokeLinecap="round" strokeWidth="1.8" />
     </SvgIcon>
   );
 }

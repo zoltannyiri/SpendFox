@@ -18,6 +18,8 @@ import { MMKV } from 'react-native-mmkv';
 import { Dropdown } from 'react-native-element-dropdown';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import BottomNavigation from '../../components/layout/BottomNavigation';
+import CurvedHeader, { HeaderIconButton } from '../../components/layout/CurvedHeader';
+import AnimatedScreen from '../../components/layout/AnimatedScreen';
 
 const storage = new MMKV();
 
@@ -46,9 +48,7 @@ export default function SubscriptionsFormScreen() {
     formatDateInput(editingSubscription?.start_date || editingSubscription?.next_billing_date || '')
   );
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
-  const [isActive, setIsActive] = useState(
-    editingSubscription?.is_active ?? true
-  );
+  const [isActive, setIsActive] = useState(editingSubscription?.is_active ?? true);
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState('');
 
@@ -137,228 +137,227 @@ export default function SubscriptionsFormScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-[#f7f7f8]"
+      className="flex-1 bg-[#f3f5f8]"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#f7f7f8" />
+      <StatusBar barStyle="light-content" backgroundColor="#19386e" />
 
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-5 pb-32 pt-16"
+        contentContainerClassName="pb-36"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View className="mb-7 flex-row items-center justify-between">
-          <Pressable
-            className="h-10 w-10 items-center justify-center rounded-full bg-white"
-            onPress={() => navigation.goBack()}
-          >
-            <BackIcon />
-          </Pressable>
+        <CurvedHeader
+          title={isEditMode ? 'Előfizetés szerkesztése' : 'Új előfizetés'}
+          subtitle="Szolgáltatás, ár és számlázási ciklus"
+          left={
+            <HeaderIconButton onPress={() => navigation.goBack()}>
+              <BackIcon />
+            </HeaderIconButton>
+          }
+          compact
+        />
 
-          <Text className="text-base font-extrabold text-black">
-            {isEditMode ? 'Előfizetés szerkesztése' : 'Új előfizetés'}
-          </Text>
-
-          <View className="h-10 w-10" />
-        </View>
-
-        <View className="rounded-2xl bg-[#0ca9f2] px-5 py-5">
-          <Text className="text-sm font-bold text-white/80">SpendFox</Text>
-          <Text className="mt-1 text-3xl font-extrabold text-white">
-            Kövess minden havi költséget
-          </Text>
-          <Text className="mt-3 text-sm font-semibold leading-5 text-white/80">
-            Add hozzá a szolgáltatást, árat, ciklust és kezdő napot.
-          </Text>
-        </View>
-
-        {!!errorText && (
-          <View className="mt-5 rounded-2xl bg-red-50 px-4 py-3">
-            <Text className="text-sm font-bold text-red-600">{errorText}</Text>
-          </View>
-        )}
-
-        <View className="mt-7">
-          <FieldLabel label="Név" />
-          <TextInput
-            className="h-14 rounded-2xl bg-white px-4 text-base font-semibold text-black"
-            placeholder="Netflix, Spotify, YouTube..."
-            placeholderTextColor="#9b9ba1"
-            value={name}
-            onChangeText={setName}
-            returnKeyType="next"
-          />
-
-          <View className="mt-5 flex-row">
-            <View className="mr-3 flex-1">
-              <FieldLabel label="Ár" />
-              <TextInput
-                className="h-14 rounded-2xl bg-white px-4 text-base font-semibold text-black"
-                placeholder="3990"
-                placeholderTextColor="#9b9ba1"
-                keyboardType="numeric"
-                value={price}
-                onChangeText={setPrice}
-                returnKeyType="done"
-              />
-            </View>
-
-            <View className="w-28">
-              <FieldLabel label="Deviza" />
-              <Dropdown
-                data={currencies.map((c) => ({ label: c.code, value: c.code }))}
-                labelField="label"
-                valueField="value"
-                value={currency}
-                onChange={(item) => setCurrency(item.value)}
-                style={styles.dropdown}
-                selectedTextStyle={styles.dropdownText}
-                itemTextStyle={styles.dropdownItemText}
-                placeholderStyle={styles.dropdownText}
-              />
-            </View>
+        <AnimatedScreen className="-mt-10 px-5">
+          <View className="rounded-[30px] bg-[#0ca9f2] px-5 py-5" style={blueShadow}>
+            <Text className="text-sm font-bold text-white/80">SpendFox</Text>
+            <Text className="mt-1 text-3xl font-extrabold text-white">
+              Kövess minden havi költséget
+            </Text>
+            <Text className="mt-3 text-sm font-semibold leading-5 text-white/80">
+              Add hozzá a szolgáltatást, árat, ciklust és kezdő napot.
+            </Text>
           </View>
 
-          <View className="mt-5">
-            <FieldLabel label="Számlázási ciklus" />
-            <View className="flex-row rounded-2xl bg-white p-1">
-              {BILLING_CYCLES.map((item) => {
-                const active = item.value === billingCycle;
+          {!!errorText && (
+            <View className="mt-5 rounded-2xl bg-red-50 px-4 py-3">
+              <Text className="text-sm font-bold text-red-600">{errorText}</Text>
+            </View>
+          )}
 
-                return (
-                  <Pressable
-                    key={item.value}
-                    className={`h-12 flex-1 items-center justify-center rounded-xl ${
-                      active ? 'bg-[#0ca9f2]' : 'bg-white'
-                    }`}
-                    onPress={() => setBillingCycle(item.value)}
-                  >
-                    <Text
-                      className={`text-sm font-extrabold ${
-                        active ? 'text-white' : 'text-neutral-500'
+          <View className="mt-7 rounded-[28px] bg-white p-4" style={cardShadow}>
+            <FieldLabel label="Név" />
+            <TextInput
+              className="h-14 rounded-2xl bg-[#f7f8fa] px-4 text-base font-semibold text-black"
+              placeholder="Netflix, Spotify, YouTube..."
+              placeholderTextColor="#9b9ba1"
+              value={name}
+              onChangeText={setName}
+              returnKeyType="next"
+            />
+
+            <View className="mt-5 flex-row">
+              <View className="mr-3 flex-1">
+                <FieldLabel label="Ár" />
+                <TextInput
+                  className="h-14 rounded-2xl bg-[#f7f8fa] px-4 text-base font-semibold text-black"
+                  placeholder="3990"
+                  placeholderTextColor="#9b9ba1"
+                  keyboardType="numeric"
+                  value={price}
+                  onChangeText={setPrice}
+                  returnKeyType="done"
+                />
+              </View>
+
+              <View className="w-28">
+                <FieldLabel label="Deviza" />
+                <Dropdown
+                  data={currencies.map((c) => ({ label: c.code, value: c.code }))}
+                  labelField="label"
+                  valueField="value"
+                  value={currency}
+                  onChange={(item) => setCurrency(item.value)}
+                  style={styles.dropdown}
+                  selectedTextStyle={styles.dropdownText}
+                  itemTextStyle={styles.dropdownItemText}
+                  placeholderStyle={styles.dropdownText}
+                />
+              </View>
+            </View>
+
+            <View className="mt-5">
+              <FieldLabel label="Számlázási ciklus" />
+              <View className="flex-row rounded-2xl bg-[#f7f8fa] p-1">
+                {BILLING_CYCLES.map((item) => {
+                  const active = item.value === billingCycle;
+
+                  return (
+                    <Pressable
+                      key={item.value}
+                      className={`h-12 flex-1 items-center justify-center rounded-xl ${
+                        active ? 'bg-[#0ca9f2]' : ''
                       }`}
+                      onPress={() => setBillingCycle(item.value)}
                     >
-                      {item.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+                      <Text
+                        className={`text-sm font-extrabold ${
+                          active ? 'text-white' : 'text-neutral-500'
+                        }`}
+                      >
+                        {item.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+
+            <View className="mt-5">
+              <FieldLabel label="Kezdő nap" />
+              <Pressable
+                className="h-14 justify-center rounded-2xl bg-[#f7f8fa] px-4"
+                onPress={() => setShowStartDatePicker(true)}
+              >
+                <Text className="text-base font-semibold text-black">
+                  {startDate || 'Válassz dátumot'}
+                </Text>
+              </Pressable>
+
+              {showStartDatePicker ? (
+                <View className="mt-2 overflow-hidden rounded-2xl bg-white">
+                  <DateTimePicker
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    mode="date"
+                    value={parseDateInput(startDate) || new Date()}
+                    onChange={(event, selectedDate) => {
+                      if (Platform.OS === 'android') {
+                        setShowStartDatePicker(false);
+                      }
+
+                      if (selectedDate) {
+                        setStartDate(formatDateInput(selectedDate));
+                      }
+                    }}
+                  />
+                  {Platform.OS === 'ios' ? (
+                    <Pressable
+                      className="h-12 items-center justify-center border-t border-neutral-100"
+                      onPress={() => setShowStartDatePicker(false)}
+                    >
+                      <Text className="text-sm font-extrabold text-[#0ca9f2]">Kész</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : null}
+            </View>
+
+            <View className="mt-5">
+              <FieldLabel label="Aktív előfizetés?" />
+              <View className="flex-row rounded-2xl bg-[#f7f8fa] p-1">
+                <SegmentButton label="Igen" active={isActive} onPress={() => setIsActive(true)} />
+                <SegmentButton label="Nem" active={!isActive} onPress={() => setIsActive(false)} />
+              </View>
             </View>
           </View>
 
-          <View className="mt-5">
-            <FieldLabel label="Kezdő nap" />
+          {isEditMode ? (
             <Pressable
-              className="h-14 justify-center rounded-2xl bg-white px-4"
-              onPress={() => setShowStartDatePicker(true)}
+              className={`mt-6 h-14 items-center justify-center rounded-2xl ${
+                saving ? 'bg-neutral-400' : 'bg-red-600'
+              }`}
+              disabled={saving}
+              onPress={handleDeleteSubscription}
             >
-              <Text className="text-base font-semibold text-black">
-                {startDate || 'Válassz dátumot'}
+              <Text className="text-base font-extrabold text-white">
+                {saving ? 'Mentés...' : 'Előfizetés törlése'}
               </Text>
             </Pressable>
+          ) : null}
 
-            {showStartDatePicker ? (
-              <View className="mt-2 overflow-hidden rounded-2xl bg-white">
-                <DateTimePicker
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  mode="date"
-                  value={parseDateInput(startDate) || new Date()}
-                  onChange={(event, selectedDate) => {
-                    if (Platform.OS === 'android') {
-                      setShowStartDatePicker(false);
-                    }
-
-                    if (selectedDate) {
-                      setStartDate(formatDateInput(selectedDate));
-                    }
-                  }}
-                />
-                {Platform.OS === 'ios' ? (
-                  <Pressable
-                    className="h-12 items-center justify-center border-t border-neutral-100"
-                    onPress={() => setShowStartDatePicker(false)}
-                  >
-                    <Text className="text-sm font-extrabold text-[#0ca9f2]">Kész</Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            ) : null}
-
-            <Text className="mt-2 text-xs font-semibold text-neutral-500">
-              A backend ebből számolja ki a következő fizetési napot.
-            </Text>
-          </View>
-
-          <View className="mt-5">
-            <FieldLabel label="Aktív előfizetés?" />
-            <View className="flex-row rounded-2xl bg-white p-1">
-              <Pressable
-                className={`h-12 flex-1 items-center justify-center rounded-xl ${
-                  isActive ? 'bg-[#0ca9f2]' : 'bg-white'
-                }`}
-                onPress={() => setIsActive(true)}
-              >
-                <Text
-                  className={`text-sm font-extrabold ${
-                    isActive ? 'text-white' : 'text-neutral-500'
-                  }`}
-                >
-                  Igen
-                </Text>
-              </Pressable>
-              <Pressable
-                className={`h-12 flex-1 items-center justify-center rounded-xl ${
-                  !isActive ? 'bg-[#0ca9f2]' : 'bg-white'
-                }`}
-                onPress={() => setIsActive(false)}
-              >
-                <Text
-                  className={`text-sm font-extrabold ${
-                    !isActive ? 'text-white' : 'text-neutral-500'
-                  }`}
-                >
-                  Nem
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
-
-        {isEditMode ? (
           <Pressable
-            className={`mt-8 h-14 items-center justify-center rounded-2xl ${
-              saving ? 'bg-neutral-400' : 'bg-red-600'
+            className={`mt-4 h-14 items-center justify-center rounded-2xl ${
+              saving ? 'bg-neutral-400' : 'bg-black'
             }`}
             disabled={saving}
-            onPress={handleDeleteSubscription}
+            onPress={handleSave}
           >
             <Text className="text-base font-extrabold text-white">
-              {saving ? 'Mentés...' : 'Előfizetés törlése'}
+              {saving ? 'Mentés...' : 'Előfizetés mentése'}
             </Text>
           </Pressable>
-        ) : null}
-
-        <Pressable
-          className={`mt-8 h-14 items-center justify-center rounded-2xl ${
-            saving ? 'bg-neutral-400' : 'bg-black'
-          }`}
-          disabled={saving}
-          onPress={handleSave}
-        >
-          <Text className="text-base font-extrabold text-white">
-            {saving ? 'Mentés...' : 'Előfizetés mentése'}
-          </Text>
-        </Pressable>
+        </AnimatedScreen>
       </ScrollView>
       <BottomNavigation />
     </KeyboardAvoidingView>
   );
 }
 
+const cardShadow = {
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: 0.07,
+  shadowRadius: 18,
+  elevation: 4,
+};
+
+const blueShadow = {
+  shadowColor: '#0ca9f2',
+  shadowOffset: { width: 0, height: 12 },
+  shadowOpacity: 0.2,
+  shadowRadius: 20,
+  elevation: 5,
+};
+
 function FieldLabel({ label }) {
   return (
     <Text className="mb-2 text-sm font-extrabold text-neutral-700">{label}</Text>
+  );
+}
+
+function SegmentButton({ label, active, onPress }) {
+  return (
+    <Pressable
+      className={`h-12 flex-1 items-center justify-center rounded-xl ${
+        active ? 'bg-[#0ca9f2]' : ''
+      }`}
+      onPress={onPress}
+    >
+      <Text className={`text-sm font-extrabold ${active ? 'text-white' : 'text-neutral-500'}`}>
+        {label}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -424,7 +423,7 @@ function BackIcon() {
 
 const styles = StyleSheet.create({
   dropdown: {
-    backgroundColor: '#fff',
+    backgroundColor: '#f7f8fa',
     borderRadius: 16,
     height: 56,
     paddingHorizontal: 12,

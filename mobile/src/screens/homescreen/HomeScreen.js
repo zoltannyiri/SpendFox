@@ -11,8 +11,9 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import axios from 'axios';
 import { MMKV } from 'react-native-mmkv';
-import CurvedHeader from '../../components/layout/CurvedHeader';
+import CurvedHeader, { HeaderIconButton } from '../../components/layout/CurvedHeader';
 import BottomNavigation from '../../components/layout/BottomNavigation';
+import AnimatedScreen from '../../components/layout/AnimatedScreen';
 
 const storage = new MMKV();
 
@@ -59,39 +60,36 @@ export default function HomeScreen() {
   const nextBilling = useMemo(() => getNextBilling(subscriptions), [subscriptions]);
 
   return (
-    <View className="flex-1 bg-[#f7f7f8]">
+    <View className="flex-1 bg-[#f3f5f8]">
       <ScrollView
         className="flex-1"
-        contentContainerClassName="pb-32"
+        contentContainerClassName="pb-36"
         showsVerticalScrollIndicator={false}
       >
         <CurvedHeader
           title="SpendFox"
+          subtitle="Előfizetések, tisztán és átláthatóan"
           right={
-            <Pressable
-              className="h-12 w-12 items-center justify-center rounded-2xl bg-white"
-              onPress={() => navigation.navigate('ProfileSettingsScreen')}
-            >
+            <HeaderIconButton onPress={() => navigation.navigate('ProfileSettingsScreen')}>
               <SettingsIcon />
-            </Pressable>
+            </HeaderIconButton>
           }
-        >
-          <Text className="mt-4 text-center text-sm font-semibold text-white/75">
-            Tartsd kézben az előfizetéseidet egy helyen.
-          </Text>
-        </CurvedHeader>
+        />
 
-        <View className="-mt-14 px-5">
-          <View className="rounded-[28px] bg-white px-5 py-5 shadow-sm">
+        <AnimatedScreen className="-mt-16 px-5">
+          <View
+            className="rounded-[30px] bg-white px-5 py-5"
+            style={cardShadow}
+          >
             <View className="flex-row items-center">
               {profileAvatar ? (
                 <Image
                   source={{ uri: profileAvatar }}
-                  className="h-20 w-20 rounded-full bg-fox-cream"
+                  className="h-20 w-20 rounded-3xl bg-fox-cream"
                   resizeMode="cover"
                 />
               ) : (
-                <View className="h-20 w-20 items-center justify-center rounded-full bg-fox-cream">
+                <View className="h-20 w-20 items-center justify-center rounded-3xl bg-fox-cream">
                   <Text className="text-3xl font-extrabold text-[#19386e]">
                     {getInitial(profileName)}
                   </Text>
@@ -102,7 +100,7 @@ export default function HomeScreen() {
                 <Text className="text-xs font-extrabold uppercase text-neutral-400">
                   Üdv újra
                 </Text>
-                <Text className="mt-1 text-2xl font-extrabold text-black">
+                <Text className="mt-1 text-2xl font-extrabold text-black" numberOfLines={1}>
                   {profileName || 'SpendFox user'}
                 </Text>
                 <Text className="mt-1 text-xs font-semibold text-neutral-500">
@@ -112,15 +110,18 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          <View className="mt-5 rounded-[28px] bg-[#0ca9f2] px-5 py-5">
+          <View className="mt-5 rounded-[30px] bg-[#0ca9f2] px-5 py-5" style={blueShadow}>
             <View className="flex-row items-start justify-between">
               <View className="flex-1 pr-4">
                 <Text className="text-sm font-bold text-white/80">Havi kiadás</Text>
                 <Text className="mt-1 text-4xl font-extrabold text-white">
                   {formatMoney(summary.monthlyTotal)}
                 </Text>
+                <Text className="mt-2 text-xs font-semibold text-white/70">
+                  Aktív előfizetések becsült havi összege.
+                </Text>
               </View>
-              <View className="h-14 w-14 items-center justify-center rounded-full bg-white/15">
+              <View className="h-14 w-14 items-center justify-center rounded-2xl bg-white/15">
                 <WalletIcon />
               </View>
             </View>
@@ -156,7 +157,7 @@ export default function HomeScreen() {
               {loading ? <ActivityIndicator color="#0ca9f2" size="small" /> : null}
             </View>
 
-            <View className="overflow-hidden rounded-[28px] bg-white">
+            <View className="overflow-hidden rounded-[28px] bg-white" style={cardShadow}>
               <ActionRow
                 icon={<PlusIcon />}
                 label="Új előfizetés"
@@ -177,13 +178,29 @@ export default function HomeScreen() {
               />
             </View>
           </View>
-        </View>
+        </AnimatedScreen>
       </ScrollView>
 
       <BottomNavigation />
     </View>
   );
 }
+
+const cardShadow = {
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: 0.07,
+  shadowRadius: 18,
+  elevation: 4,
+};
+
+const blueShadow = {
+  shadowColor: '#0ca9f2',
+  shadowOffset: { width: 0, height: 12 },
+  shadowOpacity: 0.2,
+  shadowRadius: 20,
+  elevation: 5,
+};
 
 function getSubscriptionSummary(items) {
   return items.reduce(
@@ -282,7 +299,7 @@ function SummaryPill({ label, value }) {
 
 function MetricCard({ icon, label, value, note }) {
   return (
-    <View className="mb-3 min-h-[128px] w-[48%] justify-between rounded-3xl bg-white p-4">
+    <View className="mb-3 min-h-[128px] w-[48%] justify-between rounded-3xl bg-white p-4" style={cardShadow}>
       <View className="h-10 w-10 items-center justify-center rounded-2xl bg-[#eef7ff]">
         {icon}
       </View>
@@ -306,7 +323,7 @@ function ActionRow({ icon, label, description, onPress }) {
       style={({ pressed }) => [pressed && { backgroundColor: '#f4f4f5' }]}
       onPress={onPress}
     >
-      <View className="h-10 w-10 items-center justify-center rounded-full bg-[#f7f7f8]">
+      <View className="h-10 w-10 items-center justify-center rounded-2xl bg-[#eef7ff]">
         {icon}
       </View>
       <View className="ml-4 flex-1">
@@ -372,12 +389,7 @@ function WalletIcon() {
         strokeLinejoin="round"
         strokeWidth="1.8"
       />
-      <Path
-        d="M16 12h4v4h-4a2 2 0 0 1 0-4Z"
-        stroke="#fff"
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
+      <Path d="M16 12h4v4h-4a2 2 0 0 1 0-4Z" stroke="#fff" strokeLinejoin="round" strokeWidth="1.8" />
       <Path d="M5 7.5 16 4v3.5" stroke="#fff" strokeLinecap="round" strokeWidth="1.8" />
     </SvgIcon>
   );
@@ -404,8 +416,8 @@ function CalendarIcon() {
 function PlusIcon() {
   return (
     <SvgIcon>
-      <Circle cx="12" cy="12" r="8" stroke="#111" strokeWidth="1.8" />
-      <Path d="M12 8v8M8 12h8" stroke="#111" strokeLinecap="round" strokeWidth="1.8" />
+      <Circle cx="12" cy="12" r="8" stroke="#19386e" strokeWidth="1.8" />
+      <Path d="M12 8v8M8 12h8" stroke="#19386e" strokeLinecap="round" strokeWidth="1.8" />
     </SvgIcon>
   );
 }

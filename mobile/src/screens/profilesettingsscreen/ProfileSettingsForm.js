@@ -18,6 +18,8 @@ import axios from 'axios';
 import { MMKV } from 'react-native-mmkv';
 import { launchImageLibrary } from 'react-native-image-picker';
 import BottomNavigation from '../../components/layout/BottomNavigation';
+import CurvedHeader, { HeaderIconButton } from '../../components/layout/CurvedHeader';
+import AnimatedScreen from '../../components/layout/AnimatedScreen';
 
 const storage = new MMKV();
 
@@ -67,7 +69,7 @@ export default function ProfileSettingsForm() {
       setErrorText('');
 
       if (!email.trim()) {
-        setErrorText('Az email megadasa kotelezo.');
+        setErrorText('Az email megadása kötelező.');
         return;
       }
 
@@ -88,7 +90,7 @@ export default function ProfileSettingsForm() {
       navigation.goBack();
     } catch (err) {
       console.log('Failed to update profile:', err?.response?.data || err?.message);
-      setErrorText(err?.response?.data?.error || 'Nem sikerult menteni a profilt.');
+      setErrorText(err?.response?.data?.error || 'Nem sikerült menteni a profilt.');
     } finally {
       setSaving(false);
     }
@@ -110,14 +112,14 @@ export default function ProfileSettingsForm() {
       }
 
       if (response.errorCode) {
-        setErrorText(response.errorMessage || 'Nem sikerult kivalasztani a kepet.');
+        setErrorText(response.errorMessage || 'Nem sikerült kiválasztani a képet.');
         return;
       }
 
       const asset = response.assets?.[0];
 
       if (!asset?.base64) {
-        setErrorText('A kivalasztott kep nem olvashato.');
+        setErrorText('A kiválasztott kép nem olvasható.');
         return;
       }
 
@@ -125,15 +127,15 @@ export default function ProfileSettingsForm() {
       setErrorText('');
     } catch (err) {
       console.log('Failed to pick avatar:', err?.message);
-      setErrorText('Nem sikerult kivalasztani a kepet.');
+      setErrorText('Nem sikerült kiválasztani a képet.');
     }
   };
 
   const handleClearAvatar = () => {
-    Alert.alert('Avatar torlese', 'Biztosan torolni szeretned az avatart?', [
-      { text: 'Megse', style: 'cancel' },
+    Alert.alert('Avatar törlése', 'Biztosan törölni szeretnéd az avatart?', [
+      { text: 'Mégse', style: 'cancel' },
       {
-        text: 'Torles',
+        text: 'Törlés',
         style: 'destructive',
         onPress: () => setAvatarUrl(''),
       },
@@ -142,162 +144,161 @@ export default function ProfileSettingsForm() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-[#f7f7f8]"
+      className="flex-1 bg-[#f3f5f8]"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#f7f7f8" />
+      <StatusBar barStyle="light-content" backgroundColor="#19386e" />
 
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-5 pb-32 pt-16"
+        contentContainerClassName="pb-36"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View className="mb-7 flex-row items-center justify-between">
-          <Pressable
-            className="h-10 w-10 items-center justify-center rounded-full bg-white"
-            onPress={() => navigation.goBack()}
-          >
-            <BackIcon />
-          </Pressable>
+        <CurvedHeader
+          title="Profil szerkesztése"
+          subtitle="Név, email és avatar"
+          left={
+            <HeaderIconButton onPress={() => navigation.goBack()}>
+              <BackIcon />
+            </HeaderIconButton>
+          }
+          compact
+        />
 
-          <Text className="text-base font-extrabold text-black">Profil szerkesztese</Text>
+        <AnimatedScreen className="-mt-10 px-5">
+          <View className="items-center rounded-[30px] bg-white px-5 py-7" style={cardShadow}>
+            {avatarUrl ? (
+              <Image
+                source={{ uri: avatarUrl }}
+                className="h-24 w-24 rounded-3xl bg-fox-cream"
+                resizeMode="cover"
+              />
+            ) : (
+              <View className="h-24 w-24 items-center justify-center rounded-3xl bg-fox-cream">
+                <Text className="text-3xl font-extrabold text-[#19386e]">
+                  {getInitial(fullName || email)}
+                </Text>
+              </View>
+            )}
 
-          <View className="h-10 w-10" />
-        </View>
+            <Text className="mt-4 text-xl font-extrabold text-black">
+              {fullName || 'SpendFox user'}
+            </Text>
+            <Text className="mt-1 text-sm font-semibold text-neutral-500">
+              {email || 'email@example.com'}
+            </Text>
 
-        <View className="items-center rounded-3xl bg-white px-5 py-7">
-          {avatarUrl ? (
-            <Image
-              source={{ uri: avatarUrl }}
-              className="h-24 w-24 rounded-full bg-fox-cream"
-              resizeMode="cover"
-            />
-          ) : (
-            <View className="h-24 w-24 items-center justify-center rounded-full bg-fox-cream">
-              <Text className="text-3xl font-extrabold text-[#19386e]">
-                {getInitial(fullName || email)}
-              </Text>
+            <View className="mt-5 flex-row">
+              <Pressable className="rounded-full bg-black px-4 py-3" onPress={handlePickAvatar}>
+                <Text className="text-xs font-extrabold text-white">Kép választása</Text>
+              </Pressable>
+
+              {!!avatarUrl && (
+                <Pressable
+                  className="ml-3 rounded-full bg-red-50 px-4 py-3"
+                  onPress={handleClearAvatar}
+                >
+                  <Text className="text-xs font-extrabold text-red-600">Törlés</Text>
+                </Pressable>
+              )}
+            </View>
+          </View>
+
+          {!!errorText && (
+            <View className="mt-5 rounded-2xl bg-red-50 px-4 py-3">
+              <Text className="text-sm font-bold text-red-600">{errorText}</Text>
             </View>
           )}
 
-          <Text className="mt-4 text-xl font-extrabold text-black">
-            {fullName || 'SpendFox user'}
-          </Text>
-          <Text className="mt-1 text-sm font-semibold text-neutral-500">
-            {email || 'email@example.com'}
-          </Text>
-
-          <View className="mt-5 flex-row">
-            <Pressable
-              className="rounded-full bg-black px-4 py-3"
-              onPress={handlePickAvatar}
-            >
-              <Text className="text-xs font-extrabold text-white">Kep valasztasa</Text>
-            </Pressable>
-
-            {!!avatarUrl && (
-              <Pressable
-                className="ml-3 rounded-full bg-red-50 px-4 py-3"
-                onPress={handleClearAvatar}
-              >
-                <Text className="text-xs font-extrabold text-red-600">Torles</Text>
-              </Pressable>
-            )}
-          </View>
-        </View>
-
-        {!!errorText && (
-          <View className="mt-5 rounded-2xl bg-red-50 px-4 py-3">
-            <Text className="text-sm font-bold text-red-600">{errorText}</Text>
-          </View>
-        )}
-
-        <View className="mt-7">
-          <FieldLabel label="Teljes nev" />
-          <TextInput
-            className="h-14 rounded-2xl bg-white px-4 text-base font-semibold text-black"
-            placeholder="Nyiri Zoltan"
-            placeholderTextColor="#9b9ba1"
-            value={fullName}
-            onChangeText={setFullName}
-            returnKeyType="next"
-          />
-
-          <View className="mt-5">
-            <FieldLabel label="Felhasznalonev" />
+          <View className="mt-7 rounded-[28px] bg-white p-4" style={cardShadow}>
+            <FieldLabel label="Teljes név" />
             <TextInput
-              className="h-14 rounded-2xl bg-white px-4 text-base font-semibold text-black"
-              placeholder="admin"
+              className="h-14 rounded-2xl bg-[#f7f8fa] px-4 text-base font-semibold text-black"
+              placeholder="Nyiri Zoltán"
               placeholderTextColor="#9b9ba1"
-              autoCapitalize="none"
-              autoCorrect={false}
-              value={username}
-              onChangeText={setUsername}
+              value={fullName}
+              onChangeText={setFullName}
               returnKeyType="next"
             />
+
+            <View className="mt-5">
+              <FieldLabel label="Felhasználónév" />
+              <TextInput
+                className="h-14 rounded-2xl bg-[#f7f8fa] px-4 text-base font-semibold text-black"
+                placeholder="admin"
+                placeholderTextColor="#9b9ba1"
+                autoCapitalize="none"
+                autoCorrect={false}
+                value={username}
+                onChangeText={setUsername}
+                returnKeyType="next"
+              />
+            </View>
+
+            <View className="mt-5">
+              <FieldLabel label="Email" />
+              <TextInput
+                className="h-14 rounded-2xl bg-[#f7f8fa] px-4 text-base font-semibold text-black"
+                placeholder="email@example.com"
+                placeholderTextColor="#9b9ba1"
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                textContentType="emailAddress"
+                value={email}
+                onChangeText={setEmail}
+                returnKeyType="next"
+              />
+            </View>
+
+            <View className="mt-5">
+              <FieldLabel label="Avatar URL" />
+              <TextInput
+                className="min-h-14 rounded-2xl bg-[#f7f8fa] px-4 py-4 text-base font-semibold text-black"
+                placeholder={
+                  isEmbeddedImage(avatarUrl)
+                    ? 'Helyi kép kiválasztva. Linkhez töröld vagy írj be URL-t.'
+                    : 'https://...'
+                }
+                placeholderTextColor="#9b9ba1"
+                autoCapitalize="none"
+                autoCorrect={false}
+                multiline
+                value={isEmbeddedImage(avatarUrl) ? '' : avatarUrl}
+                onChangeText={setAvatarUrl}
+                returnKeyType="done"
+              />
+            </View>
           </View>
 
-          <View className="mt-5">
-            <FieldLabel label="Email" />
-            <TextInput
-              className="h-14 rounded-2xl bg-white px-4 text-base font-semibold text-black"
-              placeholder="email@example.com"
-              placeholderTextColor="#9b9ba1"
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="email-address"
-              textContentType="emailAddress"
-              value={email}
-              onChangeText={setEmail}
-              returnKeyType="next"
-            />
-          </View>
-
-          <View className="mt-5">
-            <FieldLabel label="Avatar URL" />
-            <TextInput
-              className="min-h-14 rounded-2xl bg-white px-4 py-4 text-base font-semibold text-black"
-              placeholder={
-                isEmbeddedImage(avatarUrl)
-                  ? 'Helyi kep kivalasztva. Linkhez torold vagy irj be URL-t.'
-                  : 'https://...'
-              }
-              placeholderTextColor="#9b9ba1"
-              autoCapitalize="none"
-              autoCorrect={false}
-              multiline
-              value={isEmbeddedImage(avatarUrl) ? '' : avatarUrl}
-              onChangeText={setAvatarUrl}
-              returnKeyType="done"
-            />
-            {isEmbeddedImage(avatarUrl) && (
-              <Text className="mt-2 text-xs font-semibold text-neutral-500">
-                A kivalasztott kep el lesz mentve avatar kepkent. Ha linket szeretnel,
-                torold az avatart es illeszd be az URL-t.
-              </Text>
+          <Pressable
+            className={`mt-8 h-14 items-center justify-center rounded-2xl ${
+              saving ? 'bg-neutral-400' : 'bg-black'
+            }`}
+            disabled={saving}
+            onPress={handleSave}
+          >
+            {saving ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text className="text-base font-extrabold text-white">Profil mentése</Text>
             )}
-          </View>
-        </View>
-
-        <Pressable
-          className={`mt-8 h-14 items-center justify-center rounded-2xl ${
-            saving ? 'bg-neutral-400' : 'bg-black'
-          }`}
-          disabled={saving}
-          onPress={handleSave}
-        >
-          {saving ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text className="text-base font-extrabold text-white">Profil mentese</Text>
-          )}
-        </Pressable>
+          </Pressable>
+        </AnimatedScreen>
       </ScrollView>
       <BottomNavigation />
     </KeyboardAvoidingView>
   );
 }
+
+const cardShadow = {
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: 0.07,
+  shadowRadius: 18,
+  elevation: 4,
+};
 
 function FieldLabel({ label }) {
   return (

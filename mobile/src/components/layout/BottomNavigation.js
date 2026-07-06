@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
 
@@ -24,8 +24,11 @@ export default function BottomNavigation() {
   const route = useRoute();
 
   return (
-    <View className="absolute inset-x-0 bottom-0 border-t border-neutral-200 bg-white/95 px-4 pb-5 pt-2">
-      <View className="flex-row items-center justify-between">
+    <View className="absolute inset-x-0 bottom-0 px-4 pb-5">
+      <View
+        className="flex-row items-center justify-between rounded-[28px] bg-white px-3 py-2"
+        style={styles.container}
+      >
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const active = ROUTE_GROUPS[tab.route]?.includes(route.name);
@@ -34,8 +37,8 @@ export default function BottomNavigation() {
             return (
               <Pressable
                 key={tab.route}
-                className="h-14 w-14 items-center justify-center rounded-full bg-black"
-                style={({ pressed }) => [pressed && { opacity: 0.82 }]}
+                className="h-14 w-14 items-center justify-center rounded-2xl bg-black"
+                style={({ pressed }) => [pressed && { opacity: 0.84 }]}
                 onPress={() => navigation.navigate(tab.route)}
               >
                 <Icon active />
@@ -46,11 +49,10 @@ export default function BottomNavigation() {
           return (
             <Pressable
               key={tab.route}
-              className="h-12 min-w-[58px] items-center justify-center rounded-2xl"
-              style={({ pressed }) => [
-                active && { backgroundColor: '#eef7ff' },
-                pressed && { opacity: 0.82 },
-              ]}
+              className={`h-14 min-w-[58px] items-center justify-center rounded-2xl ${
+                active ? 'bg-[#eef7ff]' : ''
+              }`}
+              style={({ pressed }) => [pressed && { opacity: 0.82 }]}
               onPress={() => navigation.navigate(tab.route)}
             >
               <Icon active={active} />
@@ -68,6 +70,16 @@ export default function BottomNavigation() {
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.12,
+    shadowRadius: 22,
+  },
+});
 
 function SvgIcon({ children, size = 21 }) {
   return (

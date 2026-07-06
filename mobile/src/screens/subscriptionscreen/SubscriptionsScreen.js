@@ -12,6 +12,7 @@ import { MMKV } from 'react-native-mmkv';
 import { useFocusEffect } from '@react-navigation/native';
 import CurvedHeader, { HeaderIconButton } from '../../components/layout/CurvedHeader';
 import BottomNavigation from '../../components/layout/BottomNavigation';
+import AnimatedScreen from '../../components/layout/AnimatedScreen';
 
 const storage = new MMKV();
 
@@ -86,14 +87,15 @@ export default function SubscriptionsScreen({ navigation }) {
   );
 
   return (
-    <View className="flex-1 bg-[#f7f7f8]">
+    <View className="flex-1 bg-[#f3f5f8]">
       <ScrollView
         className="flex-1"
-        contentContainerClassName="pb-32"
+        contentContainerClassName="pb-36"
         showsVerticalScrollIndicator={false}
       >
         <CurvedHeader
           title="Előfizetéseim"
+          subtitle="Kiadások, dátumok és állapotok"
           left={
             <HeaderIconButton onPress={() => navigation.goBack()}>
               <BackIcon />
@@ -106,8 +108,8 @@ export default function SubscriptionsScreen({ navigation }) {
           }
         />
 
-        <View className="-mt-14 px-5">
-          <View className="rounded-[28px] bg-[#0ca9f2] px-5 py-5">
+        <AnimatedScreen className="-mt-16 px-5">
+          <View className="rounded-[30px] bg-[#0ca9f2] px-5 py-5" style={blueShadow}>
             <View className="flex-row items-start justify-between">
               <View className="flex-1 pr-4">
                 <Text className="text-sm font-bold text-white/80">
@@ -118,29 +120,23 @@ export default function SubscriptionsScreen({ navigation }) {
                 </Text>
               </View>
 
-              <View className="h-14 w-14 items-center justify-center rounded-full bg-white/15">
+              <View className="h-14 w-14 items-center justify-center rounded-2xl bg-white/15">
                 <WalletIcon />
               </View>
             </View>
 
-            <View className="mt-5">
-              <Text className="text-sm font-bold text-white/80">
-                Éves előfizetések összesen
-              </Text>
-              <Text className="mt-1 text-4xl font-extrabold text-white">
-                {formatMoney(totalYearly)}
-              </Text>
-            </View>
-
             <View className="mt-5 flex-row">
-              <SummaryPill label="Aktív" value={String(activeSubscriptions.length)} />
+              <SummaryPill label="Éves összesen" value={formatMoney(totalYearly)} />
               <View className="w-3" />
               <SummaryPill label="Következő" value={getNextBillingLabel(subscriptions)} />
             </View>
           </View>
 
           <View className="mt-7">
-            <Text className="mb-3 text-lg font-extrabold text-black">Lista</Text>
+            <View className="mb-3 flex-row items-center justify-between">
+              <Text className="text-lg font-extrabold text-black">Lista</Text>
+              {loading ? <ActivityIndicator color={COLORS.blue} size="small" /> : null}
+            </View>
 
             {loading ? (
               <View className="mt-16 items-center">
@@ -150,7 +146,7 @@ export default function SubscriptionsScreen({ navigation }) {
                 </Text>
               </View>
             ) : errorText ? (
-              <View className="mt-10 items-center rounded-2xl bg-white px-5 py-8">
+              <View className="mt-10 items-center rounded-[28px] bg-white px-5 py-8" style={cardShadow}>
                 <ErrorIcon />
                 <Text className="mt-4 text-center text-sm font-bold text-neutral-700">
                   {errorText}
@@ -163,14 +159,13 @@ export default function SubscriptionsScreen({ navigation }) {
                 </Pressable>
               </View>
             ) : subscriptions.length === 0 ? (
-              <View className="mt-10 items-center rounded-2xl bg-white px-5 py-8">
+              <View className="mt-10 items-center rounded-[28px] bg-white px-5 py-8" style={cardShadow}>
                 <EmptyIcon />
                 <Text className="mt-4 text-center text-base font-extrabold text-black">
                   Még nincs előfizetésed
                 </Text>
                 <Text className="mt-2 text-center text-sm font-semibold leading-5 text-neutral-500">
-                  Add hozzá az első szolgáltatást, hogy egy helyen lásd a havi
-                  kiadásaidat.
+                  Add hozzá az első szolgáltatást, hogy egy helyen lásd a havi kiadásaidat.
                 </Text>
                 <Pressable
                   className="mt-5 rounded-full bg-black px-5 py-3"
@@ -193,12 +188,28 @@ export default function SubscriptionsScreen({ navigation }) {
               ))
             )}
           </View>
-        </View>
+        </AnimatedScreen>
       </ScrollView>
       <BottomNavigation />
     </View>
   );
 }
+
+const cardShadow = {
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 8 },
+  shadowOpacity: 0.07,
+  shadowRadius: 16,
+  elevation: 4,
+};
+
+const blueShadow = {
+  shadowColor: '#0ca9f2',
+  shadowOffset: { width: 0, height: 12 },
+  shadowOpacity: 0.2,
+  shadowRadius: 20,
+  elevation: 5,
+};
 
 function SubscriptionCard({ subscription, onEdit }) {
   const name = subscription.name || 'Névtelen előfizetés';
@@ -210,20 +221,19 @@ function SubscriptionCard({ subscription, onEdit }) {
 
   return (
     <Pressable
-      className="mb-3 flex-row items-center rounded-2xl bg-white px-4 py-4"
-      style={({ pressed }) => [pressed && { opacity: 0.86 }]}
+      className="mb-3 flex-row items-center rounded-[26px] bg-white px-4 py-4"
+      style={({ pressed }) => [cardShadow, pressed && { opacity: 0.88 }]}
+      onPress={onEdit}
     >
-      <View className="h-12 w-12 items-center justify-center rounded-full bg-fox-cream">
+      <View className="h-12 w-12 items-center justify-center rounded-2xl bg-[#eef7ff]">
         <SubscriptionIcon />
       </View>
 
       <View className="ml-4 flex-1">
-        <Text className="text-base font-extrabold text-black">{name}</Text>
-        <Text className="mt-1 text-xs font-semibold text-neutral-500">
-          {billingCycle}
-        </Text>
+        <Text className="text-base font-extrabold text-black" numberOfLines={1}>{name}</Text>
+        <Text className="mt-1 text-xs font-semibold text-neutral-500">{billingCycle}</Text>
         {!!nextBilling && (
-          <Text className="mt-1 text-xs font-semibold text-neutral-500">
+          <Text className="mt-1 text-xs font-semibold text-neutral-500" numberOfLines={1}>
             {nextBilling}
           </Text>
         )}
@@ -236,12 +246,7 @@ function SubscriptionCard({ subscription, onEdit }) {
         {subscription.is_shared ? (
           <Text className="mt-1 text-xs font-bold text-[#0ca9f2]">Megosztott</Text>
         ) : null}
-        <Pressable
-          className="mt-2 rounded-full bg-black px-3 py-1.5"
-          onPress={onEdit}
-        >
-          <Text className="text-xs font-extrabold text-white">Módosít</Text>
-        </Pressable>
+        <Text className="mt-2 text-xs font-extrabold text-neutral-400">Módosít</Text>
       </View>
     </Pressable>
   );
@@ -343,6 +348,15 @@ function parseDateValue(value) {
     return new Date(value._seconds * 1000);
   }
 
+  if (typeof value === 'string') {
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (match) {
+      const [, year, month, day] = match;
+      return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+  }
+
   const date = new Date(value);
 
   return Number.isNaN(date.getTime()) ? null : date;
@@ -420,12 +434,7 @@ function WalletIcon() {
         strokeLinejoin="round"
         strokeWidth="1.8"
       />
-      <Path
-        d="M16 12h4v4h-4a2 2 0 0 1 0-4Z"
-        stroke={COLORS.white}
-        strokeLinejoin="round"
-        strokeWidth="1.8"
-      />
+      <Path d="M16 12h4v4h-4a2 2 0 0 1 0-4Z" stroke={COLORS.white} strokeLinejoin="round" strokeWidth="1.8" />
       <Path d="M5 7.5 16 4v3.5" stroke={COLORS.white} strokeLinecap="round" strokeWidth="1.8" />
     </SvgIcon>
   );
@@ -443,12 +452,7 @@ function SubscriptionIcon() {
         stroke={COLORS.navy}
         strokeWidth="1.8"
       />
-      <Path
-        d="M8 10h8M8 14h5"
-        stroke={COLORS.navy}
-        strokeLinecap="round"
-        strokeWidth="1.8"
-      />
+      <Path d="M8 10h8M8 14h5" stroke={COLORS.navy} strokeLinecap="round" strokeWidth="1.8" />
     </SvgIcon>
   );
 }
@@ -457,10 +461,7 @@ function EmptyIcon() {
   return (
     <Svg width={80} height={80} viewBox="0 0 80 80" fill="none">
       <Circle cx="40" cy="40" r="40" fill="#fff7e6" />
-      <Path
-        d="M24 34h32v18a5 5 0 0 1-5 5H29a5 5 0 0 1-5-5V34Z"
-        fill={COLORS.blue}
-      />
+      <Path d="M24 34h32v18a5 5 0 0 1-5 5H29a5 5 0 0 1-5-5V34Z" fill={COLORS.blue} />
       <Path d="M30 34c0-7 4-11 10-11s10 4 10 11" stroke={COLORS.navy} strokeWidth="4" />
       <Circle cx="32" cy="43" r="2.5" fill={COLORS.white} />
       <Circle cx="48" cy="43" r="2.5" fill={COLORS.white} />
@@ -473,12 +474,7 @@ function ErrorIcon() {
   return (
     <Svg width={58} height={58} viewBox="0 0 58 58" fill="none">
       <Circle cx="29" cy="29" r="29" fill="#fee2e2" />
-      <Path
-        d="M22 22l14 14M36 22 22 36"
-        stroke="#dc2626"
-        strokeLinecap="round"
-        strokeWidth="3"
-      />
+      <Path d="M22 22l14 14M36 22 22 36" stroke="#dc2626" strokeLinecap="round" strokeWidth="3" />
     </Svg>
   );
 }

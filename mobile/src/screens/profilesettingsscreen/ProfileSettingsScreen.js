@@ -15,6 +15,8 @@ import axios from 'axios';
 import { MMKV } from 'react-native-mmkv';
 import { requestAndRegisterPushToken } from '../../services/push/PushTokenService';
 import BottomNavigation from '../../components/layout/BottomNavigation';
+import CurvedHeader, { HeaderIconButton } from '../../components/layout/CurvedHeader';
+import AnimatedScreen from '../../components/layout/AnimatedScreen';
 
 const storage = new MMKV();
 const REMINDER_DAYS = [1, 2, 3, 5, 7];
@@ -136,127 +138,138 @@ export default function ProfileSettingsScreen() {
   };
 
   return (
-    <View className="flex-1 bg-[#f7f7f8]">
-      <StatusBar barStyle="dark-content" backgroundColor="#f7f7f8" />
+    <View className="flex-1 bg-[#f3f5f8]">
+      <StatusBar barStyle="light-content" backgroundColor="#19386e" />
 
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-5 pb-32 pt-16"
+        contentContainerClassName="pb-36"
         showsVerticalScrollIndicator={false}
       >
-        <View className="mb-7 flex-row items-center justify-between">
-          <Pressable
-            className="h-10 w-10 items-center justify-center rounded-full bg-white"
-            onPress={() => navigation.goBack()}
-          >
-            <BackIcon />
-          </Pressable>
+        <CurvedHeader
+          title="Profil beállítások"
+          subtitle="Értesítések és fiókbeállítások"
+          left={
+            <HeaderIconButton onPress={() => navigation.goBack()}>
+              <BackIcon />
+            </HeaderIconButton>
+          }
+          right={
+            <HeaderIconButton>
+              <MoreIcon />
+            </HeaderIconButton>
+          }
+        />
 
-          <Text className="text-base font-extrabold text-black">Profil beállítások</Text>
+        <AnimatedScreen className="-mt-16 px-5">
+          <View className="items-center rounded-[30px] bg-white px-5 py-7" style={cardShadow}>
+            {profileAvatar ? (
+              <Image
+                source={{ uri: profileAvatar }}
+                className="h-24 w-24 rounded-3xl bg-fox-cream"
+                resizeMode="cover"
+              />
+            ) : (
+              <View className="h-24 w-24 items-center justify-center rounded-3xl bg-fox-cream">
+                <Text className="text-3xl font-extrabold text-[#19386e]">
+                  {getInitial(profileName)}
+                </Text>
+              </View>
+            )}
 
-          <Pressable className="h-10 w-10 items-center justify-center rounded-full bg-white">
-            <MoreIcon />
-          </Pressable>
-        </View>
-
-        <View className="items-center rounded-3xl bg-white px-5 py-7">
-          {profileAvatar ? (
-            <Image
-              source={{ uri: profileAvatar }}
-              className="h-24 w-24 rounded-full bg-fox-cream"
-              resizeMode="cover"
-            />
-          ) : (
-            <View className="h-24 w-24 items-center justify-center rounded-full bg-fox-cream">
-              <Text className="text-3xl font-extrabold text-[#19386e]">
-                {getInitial(profileName)}
+            <Text className="mt-4 text-2xl font-extrabold text-black">
+              {profileName || 'SpendFox user'}
+            </Text>
+            {!!profileEmail && (
+              <Text className="mt-1 text-sm font-semibold text-neutral-500">
+                {profileEmail}
               </Text>
-            </View>
-          )}
+            )}
 
-          <Text className="mt-4 text-2xl font-extrabold text-black">
-            {profileName || 'SpendFox user'}
-          </Text>
-          {!!profileEmail && (
-            <Text className="mt-1 text-sm font-semibold text-neutral-500">
-              {profileEmail}
-            </Text>
-          )}
+            <Pressable
+              className="mt-5 rounded-full bg-black px-5 py-3"
+              style={({ pressed }) => [pressed && { opacity: 0.82 }]}
+              onPress={() => navigation.navigate('ProfileSettingsForm')}
+            >
+              <Text className="text-sm font-extrabold text-white">Profil szerkesztése</Text>
+            </Pressable>
+          </View>
 
-          <Pressable
-            className="mt-5 rounded-full bg-black px-5 py-3"
-            onPress={() => navigation.navigate('ProfileSettingsForm')}
-          >
-            <Text className="text-sm font-extrabold text-white">Profil szerkesztése</Text>
-          </Pressable>
-        </View>
-
-        <Section title="Értesítések">
-          <SettingSwitchRow
-            icon={<BellIcon />}
-            label="Push értesítések"
-            description="Előfizetés emlékeztetők a telefonodra"
-            disabled={saving}
-            value={notificationSettings.push_enabled}
-            onValueChange={handlePushChange}
-          />
-          <SettingSwitchRow
-            icon={<MailIcon />}
-            label="Email értesítések"
-            description="Előfizetés emlékeztetők emailben"
-            disabled={saving}
-            value={notificationSettings.email_enabled}
-            onValueChange={handleEmailChange}
-          />
-          {(notificationSettings.push_enabled || notificationSettings.email_enabled) && (
-            <ReminderDaysSelector
-              value={notificationSettings.days_before}
-              onChange={handleReminderDaysChange}
+          <Section title="Értesítések">
+            <SettingSwitchRow
+              icon={<BellIcon />}
+              label="Push értesítések"
+              description="Előfizetés emlékeztetők a telefonodra"
               disabled={saving}
+              value={notificationSettings.push_enabled}
+              onValueChange={handlePushChange}
             />
-          )}
+            <SettingSwitchRow
+              icon={<MailIcon />}
+              label="Email értesítések"
+              description="Előfizetés emlékeztetők emailben"
+              disabled={saving}
+              value={notificationSettings.email_enabled}
+              onValueChange={handleEmailChange}
+            />
+            {(notificationSettings.push_enabled || notificationSettings.email_enabled) && (
+              <ReminderDaysSelector
+                value={notificationSettings.days_before}
+                onChange={handleReminderDaysChange}
+                disabled={saving}
+              />
+            )}
+            <Pressable
+              className={`mx-4 mb-4 h-12 items-center justify-center rounded-2xl ${
+                saving ? 'bg-neutral-300' : 'bg-black'
+              }`}
+              disabled={saving}
+              onPress={handleDelayedPushTest}
+            >
+              <Text className="text-sm font-extrabold text-white">
+                Teszt push 10 másodperc múlva
+              </Text>
+            </Pressable>
+          </Section>
+
+          <Section title="Fiók">
+            <SettingActionRow
+              icon={<ShieldIcon />}
+              label="Adatvédelem"
+              description="Fiók és adatkezelési beállítások"
+            />
+            <SettingActionRow
+              icon={<HelpIcon />}
+              label="Segítség"
+              description="Kapcsolat, hibajelentés és támogatás"
+            />
+            <SettingActionRow
+              icon={<DocumentIcon />}
+              label="Feltételek és adatvédelem"
+              description="Jogi információk és szabályzatok"
+            />
+          </Section>
+
           <Pressable
-            className={`mx-4 mb-4 h-12 items-center justify-center rounded-2xl ${
-              saving ? 'bg-neutral-300' : 'bg-black'
-            }`}
-            disabled={saving}
-            onPress={handleDelayedPushTest}
+            className="mt-6 h-14 items-center justify-center rounded-2xl bg-red-50"
+            onPress={() => window.App?.logout?.()}
           >
-            <Text className="text-sm font-extrabold text-white">
-              Teszt push 10 másodperc múlva
-            </Text>
+            <Text className="text-base font-extrabold text-red-600">Kijelentkezés</Text>
           </Pressable>
-        </Section>
-
-        <Section title="Fiók">
-          <SettingActionRow
-            icon={<ShieldIcon />}
-            label="Adatvédelem"
-            description="Fiók és adatkezelési beállítások"
-          />
-          <SettingActionRow
-            icon={<HelpIcon />}
-            label="Segítség"
-            description="Kapcsolat, hibajelentés és támogatás"
-          />
-          <SettingActionRow
-            icon={<DocumentIcon />}
-            label="Feltételek és adatvédelem"
-            description="Jogi információk és szabályzatok"
-          />
-        </Section>
-
-        <Pressable
-          className="mt-6 h-14 items-center justify-center rounded-2xl bg-red-50"
-          onPress={() => window.App?.logout?.()}
-        >
-          <Text className="text-base font-extrabold text-red-600">Kijelentkezés</Text>
-        </Pressable>
+        </AnimatedScreen>
       </ScrollView>
       <BottomNavigation />
     </View>
   );
 }
+
+const cardShadow = {
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 10 },
+  shadowOpacity: 0.07,
+  shadowRadius: 18,
+  elevation: 4,
+};
 
 function Section({ title, children }) {
   return (
@@ -264,7 +277,9 @@ function Section({ title, children }) {
       <Text className="mb-3 text-xs font-extrabold uppercase tracking-wide text-neutral-400">
         {title}
       </Text>
-      <View className="overflow-hidden rounded-3xl bg-white">{children}</View>
+      <View className="overflow-hidden rounded-[28px] bg-white" style={cardShadow}>
+        {children}
+      </View>
     </View>
   );
 }
@@ -347,7 +362,7 @@ function SettingActionRow({ icon, label, description, onPress }) {
 
 function IconWrap({ children }) {
   return (
-    <View className="h-10 w-10 items-center justify-center rounded-full bg-[#f7f7f8]">
+    <View className="h-10 w-10 items-center justify-center rounded-2xl bg-[#eef7ff]">
       {children}
     </View>
   );
