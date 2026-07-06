@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Image,
   Pressable,
   ScrollView,
@@ -12,34 +13,40 @@ import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import axios from 'axios';
 import { MMKV } from 'react-native-mmkv';
+import { requestAndRegisterPushToken } from '../../services/push/PushTokenService';
+import BottomNavigation from '../../components/layout/BottomNavigation';
 
 const storage = new MMKV();
+const REMINDER_DAYS = [1, 2, 3, 5, 7];
+
+const DEFAULT_NOTIFICATION_SETTINGS = {
+  email_enabled: false,
+  push_enabled: false,
+  days_before: 3,
+};
 
 export default function ProfileSettingsScreen() {
   const navigation = useNavigation();
-  const [profileName, setProfileName] = useState('');
-  const [profileAvatar, setProfileAvatar] = useState('');
-  const [profileEmail, setProfileEmail] = useState('');
-  const [form, setForm] = useState({
-    emailNotifications: true,
-    pushNotifications: false,
-  });
+  const [profile, setProfileState] = useState(() => getStoredUser());
+  const [notificationSettings, setNotificationSettings] = useState(() => ({
+    ...DEFAULT_NOTIFICATION_SETTINGS,
+    ...(getStoredUser()?.notification_settings || {}),
+  }));
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    const storedUser = getStoredUser();
-
-    if (storedUser) {
-      setProfile(storedUser);
-    }
-
     const loadProfile = async () => {
       try {
         const response = await axios.get('/profile');
-        const profile = response.data?.data;
+        const freshProfile = response.data?.data;
 
-        if (profile) {
-          storage.set('appUser', JSON.stringify(profile));
-          setProfile(profile);
+        if (freshProfile) {
+          saveProfileLocally(freshProfile);
+          setProfileState(freshProfile);
+          setNotificationSettings({
+            ...DEFAULT_NOTIFICATION_SETTINGS,
+            ...(freshProfile.notification_settings || {}),
+          });
         }
       } catch (err) {
         console.log('Failed to load profile:', err?.response?.data || err?.message);
@@ -49,10 +56,83 @@ export default function ProfileSettingsScreen() {
     loadProfile();
   }, []);
 
-  const setProfile = (profile) => {
-    setProfileName(getUserName(profile));
-    setProfileAvatar(getUserAvatar(profile));
-    setProfileEmail(profile?.email || '');
+  const profileName = getUserName(profile);
+  const profileAvatar = getUserAvatar(profile);
+  const profileEmail = profile?.email || '';
+
+  const saveNotificationSettings = async (nextSettings) => {
+    try {
+      setSaving(true);
+      setNotificationSettings(nextSettings);
+
+      const response = await axios.patch('/profile', {
+        notification_settings: nextSettings,
+      });
+      const freshProfile = response.data?.data;
+
+      if (freshProfile) {
+        saveProfileLocally(freshProfile);
+        setProfileState(freshProfile);
+      }
+    } catch (err) {
+      console.log('Failed to save notification settings:', err?.response?.data || err?.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handlePushChange = async (pushEnabled) => {
+    if (pushEnabled) {
+      const token = await requestAndRegisterPushToken();
+
+      if (!token) {
+        return;
+      }
+    }
+
+    await saveNotificationSettings({
+      ...notificationSettings,
+      push_enabled: pushEnabled,
+    });
+  };
+
+  const handleEmailChange = async (emailEnabled) => {
+    await saveNotificationSettings({
+      ...notificationSettings,
+      email_enabled: emailEnabled,
+    });
+  };
+
+  const handleReminderDaysChange = async (daysBefore) => {
+    await saveNotificationSettings({
+      ...notificationSettings,
+      days_before: daysBefore,
+    });
+  };
+
+  const handleDelayedPushTest = async () => {
+    try {
+      setSaving(true);
+
+      const token = await requestAndRegisterPushToken();
+
+      if (!token) {
+        Alert.alert('Push teszt', 'Nem sikerült engedélyezni vagy regisztrálni a push tokent.');
+        return;
+      }
+
+      await axios.post('/push/test-delayed', {
+        title: 'SpendFox teszt',
+        body: 'Ha ezt látod, működik a push értesítés.',
+      });
+
+      Alert.alert('Push teszt', 'Oké, 10 másodperc múlva küldöm az értesítést.');
+    } catch (err) {
+      console.log('Failed to schedule push test:', err?.response?.data || err?.message);
+      Alert.alert('Push teszt', 'Nem sikerült elindítani a teszt értesítést.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -61,7 +141,7 @@ export default function ProfileSettingsScreen() {
 
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-5 pb-10 pt-16"
+        contentContainerClassName="px-5 pb-32 pt-16"
         showsVerticalScrollIndicator={false}
       >
         <View className="mb-7 flex-row items-center justify-between">
@@ -113,30 +193,46 @@ export default function ProfileSettingsScreen() {
 
         <Section title="Értesítések">
           <SettingSwitchRow
-            icon={<MailIcon />}
-            label="Email értesítések"
-            description="Fontos fiók és promóciós értesítések"
-            value={form.emailNotifications}
-            onValueChange={(emailNotifications) =>
-              setForm((current) => ({ ...current, emailNotifications }))
-            }
+            icon={<BellIcon />}
+            label="Push értesítések"
+            description="Előfizetés emlékeztetők a telefonodra"
+            disabled={saving}
+            value={notificationSettings.push_enabled}
+            onValueChange={handlePushChange}
           />
           <SettingSwitchRow
-            icon={<BellIcon />}
-            label="App értesítések"
-            description="Emlékeztetők es havi összegzések"
-            value={form.pushNotifications}
-            onValueChange={(pushNotifications) =>
-              setForm((current) => ({ ...current, pushNotifications }))
-            }
+            icon={<MailIcon />}
+            label="Email értesítések"
+            description="Előfizetés emlékeztetők emailben"
+            disabled={saving}
+            value={notificationSettings.email_enabled}
+            onValueChange={handleEmailChange}
           />
+          {(notificationSettings.push_enabled || notificationSettings.email_enabled) && (
+            <ReminderDaysSelector
+              value={notificationSettings.days_before}
+              onChange={handleReminderDaysChange}
+              disabled={saving}
+            />
+          )}
+          <Pressable
+            className={`mx-4 mb-4 h-12 items-center justify-center rounded-2xl ${
+              saving ? 'bg-neutral-300' : 'bg-black'
+            }`}
+            disabled={saving}
+            onPress={handleDelayedPushTest}
+          >
+            <Text className="text-sm font-extrabold text-white">
+              Teszt push 10 másodperc múlva
+            </Text>
+          </Pressable>
         </Section>
 
         <Section title="Fiók">
           <SettingActionRow
             icon={<ShieldIcon />}
             label="Adatvédelem"
-            description="Fiók es adatkezelési beállítások"
+            description="Fiók és adatkezelési beállítások"
           />
           <SettingActionRow
             icon={<HelpIcon />}
@@ -146,7 +242,7 @@ export default function ProfileSettingsScreen() {
           <SettingActionRow
             icon={<DocumentIcon />}
             label="Feltételek és adatvédelem"
-            description="Jogi információk es szabályzatok"
+            description="Jogi információk és szabályzatok"
           />
         </Section>
 
@@ -157,6 +253,7 @@ export default function ProfileSettingsScreen() {
           <Text className="text-base font-extrabold text-red-600">Kijelentkezés</Text>
         </Pressable>
       </ScrollView>
+      <BottomNavigation />
     </View>
   );
 }
@@ -172,7 +269,7 @@ function Section({ title, children }) {
   );
 }
 
-function SettingSwitchRow({ icon, label, description, value, onValueChange }) {
+function SettingSwitchRow({ icon, label, description, value, onValueChange, disabled }) {
   return (
     <View className="flex-row items-center border-b border-neutral-100 px-4 py-4 last:border-b-0">
       <IconWrap>{icon}</IconWrap>
@@ -183,12 +280,48 @@ function SettingSwitchRow({ icon, label, description, value, onValueChange }) {
         </Text>
       </View>
       <Switch
+        disabled={disabled}
         trackColor={{ false: '#e5e5e7', true: '#9ce9ed' }}
         thumbColor={value ? '#11d8d8' : '#ffffff'}
         ios_backgroundColor="#e5e5e7"
         onValueChange={onValueChange}
         value={value}
       />
+    </View>
+  );
+}
+
+function ReminderDaysSelector({ value, onChange, disabled }) {
+  return (
+    <View className="border-t border-neutral-100 px-4 py-4">
+      <Text className="text-sm font-extrabold text-black">Mikor küldjünk emlékeztetőt?</Text>
+      <Text className="mt-1 text-xs font-semibold text-neutral-500">
+        Az értesítés délelőtt 10:00-kor megy ki.
+      </Text>
+      <View className="mt-3 flex-row flex-wrap">
+        {REMINDER_DAYS.map((days) => {
+          const active = days === value;
+
+          return (
+            <Pressable
+              key={days}
+              className={`mb-2 mr-2 rounded-full px-4 py-2 ${
+                active ? 'bg-[#0ca9f2]' : 'bg-[#f7f7f8]'
+              }`}
+              disabled={disabled}
+              onPress={() => onChange(days)}
+            >
+              <Text
+                className={`text-sm font-extrabold ${
+                  active ? 'text-white' : 'text-neutral-700'
+                }`}
+              >
+                {days} nappal előtte
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -231,6 +364,10 @@ function getStoredUser() {
   }
 }
 
+function saveProfileLocally(profile) {
+  storage.set('appUser', JSON.stringify(profile));
+}
+
 function getUserName(user) {
   return user?.full_name || user?.user_metadata?.full_name || user?.email || '';
 }
@@ -257,9 +394,9 @@ function BackIcon() {
       <Path
         d="M15 5 8 12l7 7"
         stroke="#111"
-        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
+        strokeWidth="2"
       />
     </SvgIcon>
   );

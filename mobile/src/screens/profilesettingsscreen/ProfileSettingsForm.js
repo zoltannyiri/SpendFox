@@ -17,6 +17,7 @@ import Svg, { Path } from 'react-native-svg';
 import axios from 'axios';
 import { MMKV } from 'react-native-mmkv';
 import { launchImageLibrary } from 'react-native-image-picker';
+import BottomNavigation from '../../components/layout/BottomNavigation';
 
 const storage = new MMKV();
 
@@ -148,7 +149,7 @@ export default function ProfileSettingsForm() {
 
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-5 pb-10 pt-16"
+        contentContainerClassName="px-5 pb-32 pt-16"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -293,6 +294,7 @@ export default function ProfileSettingsForm() {
           )}
         </Pressable>
       </ScrollView>
+      <BottomNavigation />
     </KeyboardAvoidingView>
   );
 }

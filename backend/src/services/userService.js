@@ -108,6 +108,7 @@ const updateUserByUid = async (uid, payload) => {
         full_name: payload.full_name,
         username: payload.username,
         avatar_url: payload.avatar_url,
+        notification_settings: payload.notification_settings,
         updated_at: admin.firestore.FieldValue.serverTimestamp(),
       }).filter(([, value]) => value !== undefined)
     );

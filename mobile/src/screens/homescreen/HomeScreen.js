@@ -1,140 +1,320 @@
-import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import Svg, { Circle, Path } from 'react-native-svg';
+import React, { useCallback, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import axios from 'axios';
-import { Image } from 'react-native';
 import { MMKV } from 'react-native-mmkv';
 import CurvedHeader from '../../components/layout/CurvedHeader';
+import BottomNavigation from '../../components/layout/BottomNavigation';
 
 const storage = new MMKV();
 
-const MENU_ITEMS = [
-  { label: 'Profil beállítások', icon: SettingsIcon, onPress: ({navigation}) => navigation.navigate('ProfileScreen') },
-  { label: 'Előfizetéseim', icon: ErrorIcon, onPress: ({navigation}) => navigation.navigate('Subscriptions') },
-  { label: 'Profil szerkesztése', icon: EditIcon, onPress: ({navigation}) => navigation.navigate('ProfileSettingsScreen') },
-  { label: 'Kijelentkezés', icon: LogoutIcon, action: () => window.App?.logout?.() },
-  // { label: 'Súgó', icon: HelpIcon },
-];
-
-
 export default function HomeScreen() {
   const navigation = useNavigation();
-  const [profileName, setProfileName] = useState('');
-  const [profileAvatar, setProfileAvatar] = useState('');
+  const [profile, setProfile] = useState(() => getStoredUser());
+  const [subscriptions, setSubscriptions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const storedUser = getStoredUser();
+  const loadDashboard = useCallback(async () => {
+    try {
+      setLoading(true);
 
-    if (storedUser) {
-      setProfileName(getUserName(storedUser));
-      setProfileAvatar(getUserAvatar(storedUser));
-    }
+      const profileResponse = await axios.get('/profile');
+      const freshProfile = profileResponse.data?.data;
 
-    const loadProfile = async () => {
-      try {
-        const response = await axios.get('/profile');
-        const profile = response.data?.data;
-
-        if (profile) {
-          storage.set('appUser', JSON.stringify(profile));
-          setProfileName(getUserName(profile));
-          setProfileAvatar(getUserAvatar(profile));
-        }
-      } catch (err) {
-        console.log('Failed to load profile:', err?.response?.data || err?.message);
+      if (freshProfile) {
+        storage.set('appUser', JSON.stringify(freshProfile));
+        setProfile(freshProfile);
       }
-    };
 
-    loadProfile();
+      const userId = freshProfile?.id || getStoredUser()?.id;
+      const subscriptionsResponse = await axios.get('/subscriptions', {
+        params: userId ? { userId } : undefined,
+      });
+
+      setSubscriptions(subscriptionsResponse.data?.data || []);
+    } catch (err) {
+      console.log('Failed to load home dashboard:', err?.response?.data || err?.message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadDashboard();
+    }, [loadDashboard])
+  );
+
+  const profileName = getUserName(profile);
+  const profileAvatar = getUserAvatar(profile);
+  const summary = useMemo(() => getSubscriptionSummary(subscriptions), [subscriptions]);
+  const nextBilling = useMemo(() => getNextBilling(subscriptions), [subscriptions]);
 
   return (
     <View className="flex-1 bg-[#f7f7f8]">
       <ScrollView
         className="flex-1"
-        contentContainerClassName="pb-28"
+        contentContainerClassName="pb-32"
         showsVerticalScrollIndicator={false}
       >
         <CurvedHeader
           title="SpendFox"
           right={
-            <View className="flex-row rounded-2xl bg-white p-1">
-              <IconButton>
-                <SunIcon />
-              </IconButton>
-              <IconButton>
-                <MoonIcon />
-              </IconButton>
-            </View>
+            <Pressable
+              className="h-12 w-12 items-center justify-center rounded-2xl bg-white"
+              onPress={() => navigation.navigate('ProfileSettingsScreen')}
+            >
+              <SettingsIcon />
+            </Pressable>
           }
-        />
+        >
+          <Text className="mt-4 text-center text-sm font-semibold text-white/75">
+            Tartsd kézben az előfizetéseidet egy helyen.
+          </Text>
+        </CurvedHeader>
 
         <View className="-mt-14 px-5">
-        <View className="rounded-[28px] bg-white px-5 py-5 shadow-sm">
-          <View className="flex-row items-center">
-            {profileAvatar ? (
-              <Image
-                source={{ uri: profileAvatar }}
-                className="h-20 w-20 rounded-full bg-fox-cream"
-                resizeMode="cover"
-              />
-            ) : (
-              <View className="h-20 w-20 rounded-full bg-fox-cream" />
-            )}
-            <View className="ml-4 flex-1">
-              <Text className="text-xl font-extrabold text-black">
-                {profileName || 'SpendFox user'}
-              </Text>
-              <Text className="mt-1 text-xs font-semibold text-neutral-500">
-                Kövessük együtt az előfizetéseidet.
-              </Text>
+          <View className="rounded-[28px] bg-white px-5 py-5 shadow-sm">
+            <View className="flex-row items-center">
+              {profileAvatar ? (
+                <Image
+                  source={{ uri: profileAvatar }}
+                  className="h-20 w-20 rounded-full bg-fox-cream"
+                  resizeMode="cover"
+                />
+              ) : (
+                <View className="h-20 w-20 items-center justify-center rounded-full bg-fox-cream">
+                  <Text className="text-3xl font-extrabold text-[#19386e]">
+                    {getInitial(profileName)}
+                  </Text>
+                </View>
+              )}
+
+              <View className="ml-4 flex-1">
+                <Text className="text-xs font-extrabold uppercase text-neutral-400">
+                  Üdv újra
+                </Text>
+                <Text className="mt-1 text-2xl font-extrabold text-black">
+                  {profileName || 'SpendFox user'}
+                </Text>
+                <Text className="mt-1 text-xs font-semibold text-neutral-500">
+                  {summary.activeCount} aktív előfizetésed van.
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
 
-        <Pressable
-          className="mt-9 flex-row items-center justify-between rounded-2xl bg-[#0ca9f2] px-5 py-5"
-          style={({ pressed }) => [pressed && { opacity: 0.9 }]}
-        >
-          <View className="max-w-[72%]">
-            <Text className="text-lg font-extrabold text-white">Subscribe card</Text>
-            {/* <Text className="mt-1 text-xs font-semibold leading-4 text-white/80">
-              Start your journey to becoming a better you.
-            </Text> */}
-          </View>
-          <View className="h-14 w-14 items-center justify-center rounded-full bg-white/15">
-            <SparkIcon />
-          </View>
-        </Pressable>
-
-        <View className="mt-6">
-          {MENU_ITEMS.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <Pressable
-                key={item.label}
-                className="mb-1 flex-row items-center rounded-2xl py-3"
-                style={({ pressed }) => [pressed && { backgroundColor: '#eeeeef' }]}
-                onPress={() => (item.action || item.onPress)?.({ navigation })}
-              >
-                <View className="h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm">
-                  <Icon />
-                </View>
-                <Text className="ml-4 flex-1 text-sm font-extrabold text-neutral-900">
-                  {item.label}
+          <View className="mt-5 rounded-[28px] bg-[#0ca9f2] px-5 py-5">
+            <View className="flex-row items-start justify-between">
+              <View className="flex-1 pr-4">
+                <Text className="text-sm font-bold text-white/80">Havi kiadás</Text>
+                <Text className="mt-1 text-4xl font-extrabold text-white">
+                  {formatMoney(summary.monthlyTotal)}
                 </Text>
-                <ChevronIcon />
-              </Pressable>
-            );
-          })}
-        </View>
+              </View>
+              <View className="h-14 w-14 items-center justify-center rounded-full bg-white/15">
+                <WalletIcon />
+              </View>
+            </View>
+
+            <View className="mt-5 flex-row">
+              <SummaryPill label="Éves becslés" value={formatMoney(summary.yearlyTotal)} />
+              <View className="w-3" />
+              <SummaryPill
+                label="Következő"
+                value={nextBilling ? formatDateOnly(nextBilling.date) : '-'}
+              />
+            </View>
+          </View>
+
+          <View className="mt-5 flex-row flex-wrap justify-between">
+            <MetricCard
+              icon={<SubscriptionsIcon />}
+              label="Összes"
+              value={String(subscriptions.length)}
+              note={`${summary.inactiveCount} inaktív`}
+            />
+            <MetricCard
+              icon={<CalendarIcon />}
+              label="Következő fizetés"
+              value={nextBilling?.name || '-'}
+              note={nextBilling ? formatDateOnly(nextBilling.date) : 'Nincs dátum'}
+            />
+          </View>
+
+          <View className="mt-6">
+            <View className="mb-3 flex-row items-center justify-between">
+              <Text className="text-lg font-extrabold text-black">Gyors műveletek</Text>
+              {loading ? <ActivityIndicator color="#0ca9f2" size="small" /> : null}
+            </View>
+
+            <View className="overflow-hidden rounded-[28px] bg-white">
+              <ActionRow
+                icon={<PlusIcon />}
+                label="Új előfizetés"
+                description="Szolgáltatás, ár és ciklus hozzáadása"
+                onPress={() => navigation.navigate('SubscriptionsForm')}
+              />
+              <ActionRow
+                icon={<SubscriptionsIcon />}
+                label="Előfizetéseim"
+                description="Lista, módosítás és törlés"
+                onPress={() => navigation.navigate('Subscriptions')}
+              />
+              <ActionRow
+                icon={<ProfileIcon />}
+                label="Profil"
+                description="Összegzés és fiókadatok"
+                onPress={() => navigation.navigate('ProfileScreen')}
+              />
+            </View>
+          </View>
         </View>
       </ScrollView>
 
-      <BottomBar />
+      <BottomNavigation />
     </View>
+  );
+}
+
+function getSubscriptionSummary(items) {
+  return items.reduce(
+    (summary, item) => {
+      const price = Number(item.price) || 0;
+      const isActive = item.is_active !== false;
+
+      if (!isActive) {
+        return {
+          ...summary,
+          inactiveCount: summary.inactiveCount + 1,
+        };
+      }
+
+      const monthlyPrice =
+        item.billing_cycle === 'yearly'
+          ? price / 12
+          : item.billing_cycle === 'weekly'
+            ? price * 4
+            : price;
+
+      return {
+        activeCount: summary.activeCount + 1,
+        inactiveCount: summary.inactiveCount,
+        monthlyTotal: summary.monthlyTotal + monthlyPrice,
+        yearlyTotal: summary.yearlyTotal + monthlyPrice * 12,
+      };
+    },
+    {
+      activeCount: 0,
+      inactiveCount: 0,
+      monthlyTotal: 0,
+      yearlyTotal: 0,
+    }
+  );
+}
+
+function getNextBilling(items) {
+  return items
+    .filter((item) => item.is_active !== false)
+    .map((item) => ({
+      name: item.name || 'Előfizetés',
+      date: parseDateValue(item.next_billing_date || item.start_date),
+    }))
+    .filter((item) => item.date)
+    .sort((a, b) => a.date.getTime() - b.date.getTime())[0];
+}
+
+function parseDateValue(value) {
+  if (!value) {
+    return null;
+  }
+
+  if (typeof value === 'object' && typeof value._seconds === 'number') {
+    return new Date(value._seconds * 1000);
+  }
+
+  if (typeof value === 'string') {
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (match) {
+      const [, year, month, day] = match;
+      return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatDateOnly(date) {
+  return date.toLocaleDateString('hu-HU', {
+    day: '2-digit',
+    month: 'short',
+  });
+}
+
+function formatMoney(value, currency = 'HUF') {
+  const amount = Number(value) || 0;
+
+  if (currency === 'HUF') {
+    return `${Math.round(amount).toLocaleString('hu-HU')} Ft`;
+  }
+
+  return `${amount.toLocaleString('hu-HU')} ${currency}`;
+}
+
+function SummaryPill({ label, value }) {
+  return (
+    <View className="flex-1 rounded-2xl bg-white/15 px-4 py-3">
+      <Text className="text-xs font-bold text-white/75">{label}</Text>
+      <Text className="mt-1 text-lg font-extrabold text-white">{value}</Text>
+    </View>
+  );
+}
+
+function MetricCard({ icon, label, value, note }) {
+  return (
+    <View className="mb-3 min-h-[128px] w-[48%] justify-between rounded-3xl bg-white p-4">
+      <View className="h-10 w-10 items-center justify-center rounded-2xl bg-[#eef7ff]">
+        {icon}
+      </View>
+      <View>
+        <Text className="text-lg font-extrabold text-black" numberOfLines={1}>
+          {value}
+        </Text>
+        <Text className="mt-1 text-xs font-extrabold text-neutral-900">{label}</Text>
+        <Text className="mt-1 text-xs font-semibold text-neutral-500" numberOfLines={1}>
+          {note}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+function ActionRow({ icon, label, description, onPress }) {
+  return (
+    <Pressable
+      className="flex-row items-center border-b border-neutral-100 px-4 py-4 last:border-b-0"
+      style={({ pressed }) => [pressed && { backgroundColor: '#f4f4f5' }]}
+      onPress={onPress}
+    >
+      <View className="h-10 w-10 items-center justify-center rounded-full bg-[#f7f7f8]">
+        {icon}
+      </View>
+      <View className="ml-4 flex-1">
+        <Text className="text-sm font-extrabold text-black">{label}</Text>
+        <Text className="mt-1 text-xs font-semibold text-neutral-500">{description}</Text>
+      </View>
+      <ChevronIcon />
+    </Pressable>
   );
 }
 
@@ -157,48 +337,11 @@ function getUserAvatar(user) {
   return user?.avatar_url || user?.user_metadata?.avatar_url || '';
 }
 
-function IconButton({ children }) {
-  return (
-    <Pressable className="h-8 w-8 items-center justify-center rounded-full">
-      {children}
-    </Pressable>
-  );
+function getInitial(value) {
+  return value?.trim()?.charAt(0)?.toUpperCase() || 'S';
 }
 
-function BottomBar() {
-  const navigation = useNavigation();
-  return (
-    <View className="absolute inset-x-0 bottom-0 border-t border-neutral-200 bg-white/95 px-6 pb-5 pt-3">
-      <View className="flex-row items-center justify-between">
-        <TabIcon active>
-          <HomeIcon />
-        </TabIcon>
-        <TabIcon>
-          <DocumentIcon />
-        </TabIcon>
-        <Pressable className="h-12 w-12 items-center justify-center rounded-full bg-black" onPress={() => navigation.navigate('Subscriptions')}>
-          <Text className="text-2xl leading-7 text-white">+</Text>
-        </Pressable>
-        <TabIcon onPress={() => navigation.navigate('ProfileScreen')}>
-          <ProfileIcon />
-        </TabIcon>
-        <TabIcon>
-          <MenuIcon />
-        </TabIcon>
-      </View>
-    </View>
-  );
-}
-
-function TabIcon({ children, onPress }) {
-  return (
-    <Pressable className="h-10 w-10 items-center justify-center" onPress={onPress}>
-      {children}
-    </Pressable>
-  );
-}
-
-function SvgIcon({ children, size = 20 }) {
+function SvgIcon({ children, size = 22 }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       {children}
@@ -206,89 +349,63 @@ function SvgIcon({ children, size = 20 }) {
   );
 }
 
-function SunIcon() {
-  return (
-    <SvgIcon size={16}>
-      <Circle cx="12" cy="12" r="3" stroke="#111" strokeWidth="1.8" />
-      <Path d="M12 2.5V5M12 19v2.5M4.6 4.6l1.8 1.8M17.6 17.6l1.8 1.8M2.5 12H5M19 12h2.5M4.6 19.4l1.8-1.8M17.6 6.4l1.8-1.8" stroke="#111" strokeWidth="1.8" strokeLinecap="round" />
-    </SvgIcon>
-  );
-}
-
-function MoonIcon() {
-  return (
-    <SvgIcon size={16}>
-      <Path d="M19 14.6A7 7 0 0 1 9.4 5a7.8 7.8 0 1 0 9.6 9.6Z" stroke="#111" strokeWidth="1.8" strokeLinejoin="round" />
-    </SvgIcon>
-  );
-}
-
-function SparkIcon() {
-  return (
-    <SvgIcon size={30}>
-      <Path d="M12 2l1.7 6.3L20 10l-6.3 1.7L12 18l-1.7-6.3L4 10l6.3-1.7L12 2Z" stroke="#fff" strokeWidth="1.8" strokeLinejoin="round" />
-      <Path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15Z" stroke="#fff" strokeWidth="1.6" strokeLinejoin="round" />
-    </SvgIcon>
-  );
-}
-
 function SettingsIcon() {
   return (
-    <SvgIcon>
-      <Path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z" stroke="#111" strokeWidth="1.7" />
-      <Path d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-4l-.3 3a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.3 3h4l.3-3a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5c.1-.3.1-.7.1-1Z" stroke="#111" strokeWidth="1.4" strokeLinejoin="round" />
+    <SvgIcon size={19}>
+      <Circle cx="12" cy="12" r="3" stroke="#111" strokeWidth="1.8" />
+      <Path
+        d="M19 12a7 7 0 0 0-.1-1l2-1.5-2-3.4-2.4 1a7 7 0 0 0-1.7-1L14.5 3h-5l-.3 3a7 7 0 0 0-1.7 1l-2.4-1-2 3.4 2 1.5a7 7 0 0 0 0 2l-2 1.5 2 3.4 2.4-1a7 7 0 0 0 1.7 1l.3 3h5l.3-3a7 7 0 0 0 1.7-1l2.4 1 2-3.4-2-1.5c.1-.3.1-.7.1-1Z"
+        stroke="#111"
+        strokeLinejoin="round"
+        strokeWidth="1.3"
+      />
     </SvgIcon>
   );
 }
 
-function ErrorIcon() {
+function WalletIcon() {
   return (
-    <SvgIcon>
-      <Circle cx="12" cy="12" r="8" stroke="#111" strokeWidth="1.7" />
-      <Path d="M9 9l6 6M15 9l-6 6" stroke="#111" strokeWidth="1.7" strokeLinecap="round" />
+    <SvgIcon size={30}>
+      <Path
+        d="M4 7.5h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z"
+        stroke="#fff"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <Path
+        d="M16 12h4v4h-4a2 2 0 0 1 0-4Z"
+        stroke="#fff"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
+      <Path d="M5 7.5 16 4v3.5" stroke="#fff" strokeLinecap="round" strokeWidth="1.8" />
     </SvgIcon>
   );
 }
 
-function EditIcon() {
+function SubscriptionsIcon() {
   return (
     <SvgIcon>
-      <Path d="M5 18.5l4.2-1 9-9a2.1 2.1 0 0 0-3-3l-9 9L5 18.5Z" stroke="#111" strokeWidth="1.7" strokeLinejoin="round" />
-      <Path d="M13.8 6.7l3.5 3.5" stroke="#111" strokeWidth="1.7" strokeLinecap="round" />
+      <Rect x="4" y="5" width="16" height="14" rx="3" stroke="#19386e" strokeWidth="1.8" />
+      <Path d="M8 10h8M8 14h5" stroke="#19386e" strokeLinecap="round" strokeWidth="1.8" />
     </SvgIcon>
   );
 }
 
-function LogoutIcon() {
+function CalendarIcon() {
   return (
     <SvgIcon>
-      <Path d="M10 5H6v14h4" stroke="#111" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-      <Path d="M14 8l4 4-4 4M18 12H9" stroke="#111" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      <Rect x="4" y="5" width="16" height="15" rx="3" stroke="#19386e" strokeWidth="1.8" />
+      <Path d="M8 3v4M16 3v4M4 10h16" stroke="#19386e" strokeLinecap="round" strokeWidth="1.8" />
     </SvgIcon>
   );
 }
 
-function ChevronIcon() {
-  return (
-    <SvgIcon size={16}>
-      <Path d="M9 5l5 7-5 7" stroke="#111" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </SvgIcon>
-  );
-}
-
-function HomeIcon() {
+function PlusIcon() {
   return (
     <SvgIcon>
-      <Path d="M4 11.5 12 4l8 7.5V20h-5v-5H9v5H4v-8.5Z" stroke="#8c8c92" strokeWidth="1.8" strokeLinejoin="round" />
-    </SvgIcon>
-  );
-}
-
-function DocumentIcon() {
-  return (
-    <SvgIcon>
-      <Path d="M7 4h7l3 3v13H7V4Z" stroke="#8c8c92" strokeWidth="1.8" strokeLinejoin="round" />
-      <Path d="M14 4v4h4" stroke="#8c8c92" strokeWidth="1.8" strokeLinejoin="round" />
+      <Circle cx="12" cy="12" r="8" stroke="#111" strokeWidth="1.8" />
+      <Path d="M12 8v8M8 12h8" stroke="#111" strokeLinecap="round" strokeWidth="1.8" />
     </SvgIcon>
   );
 }
@@ -296,16 +413,27 @@ function DocumentIcon() {
 function ProfileIcon() {
   return (
     <SvgIcon>
-      <Circle cx="12" cy="8" r="3" stroke="#111" strokeWidth="1.8" />
-      <Path d="M6 20c.9-4 3-6 6-6s5.1 2 6 6" stroke="#111" strokeWidth="1.8" strokeLinecap="round" />
+      <Circle cx="12" cy="8" r="3" stroke="#19386e" strokeWidth="1.8" />
+      <Path
+        d="M6 20c.9-4 3-6 6-6s5.1 2 6 6"
+        stroke="#19386e"
+        strokeLinecap="round"
+        strokeWidth="1.8"
+      />
     </SvgIcon>
   );
 }
 
-function MenuIcon() {
+function ChevronIcon() {
   return (
-    <SvgIcon>
-      <Path d="M5 7h14M5 12h14M5 17h14" stroke="#111" strokeWidth="1.8" strokeLinecap="round" />
+    <SvgIcon size={16}>
+      <Path
+        d="M9 5l5 7-5 7"
+        stroke="#111"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
     </SvgIcon>
   );
 }

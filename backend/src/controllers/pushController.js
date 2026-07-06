@@ -43,7 +43,40 @@ const sendTest = async (req, res) => {
   }
 };
 
+const sendDelayedTest = async (req, res) => {
+  try {
+    const { uid } = req.auth;
+    const { title, body, data } = req.body;
+
+    setTimeout(async () => {
+      try {
+        await sendPushToUser({
+          uid,
+          title: title || 'SpendFox teszt',
+          body: body || 'Ez egy 10 másodperccel késleltetett teszt értesítés.',
+          data: {
+            type: 'push_test_delayed',
+            ...(data || {}),
+          },
+        });
+      } catch (err) {
+        console.log('[push] delayed test failed:', err?.message || err);
+      }
+    }, 10 * 1000);
+
+    return res.json({
+      data: {
+        scheduled: true,
+        delay_seconds: 10,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Unexpected error' });
+  }
+};
+
 module.exports = {
   register,
   sendTest,
+  sendDelayedTest,
 };

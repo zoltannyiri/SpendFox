@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import axios from 'axios';
 import { MMKV } from 'react-native-mmkv';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NativeBaseProvider } from 'native-base';
@@ -22,12 +22,10 @@ import SubscriptionsScreen from './src/screens/subscriptionscreen/SubscriptionsS
 import SubscriptionsFormScreen from './src/screens/subscriptionscreen/SubscriptionsFormScreen';
 import ProfileSettingsScreen from './src/screens/profilesettingsscreen/ProfileSettingsScreen';
 import ProfileSettingsForm from './src/screens/profilesettingsscreen/ProfileSettingsForm';
-import {
-  requestAndRegisterPushToken,
-  setupPushListeners,
-} from './src/services/push/PushTokenService';
+import { setupPushListeners } from './src/services/push/PushTokenService';
 
 const Stack = createNativeStackNavigator();
+const navigationRef = createNavigationContainerRef();
 const storage = new MMKV();
 const API_BASE = process.env.REACT_APP_API_HOST ?? 'http://192.168.0.2:5000/api';
 let refreshRequest = null;
@@ -152,6 +150,10 @@ class App extends Component {
 
   componentDidMount() {
     this.unsubscribePushListeners = setupPushListeners();
+    this.backSubscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      this.handleHardwareBack
+    );
 
     if (!storage.getString('language') || storage.getString('language') === undefined) {
       if (deviceLanguage?.substring(0, 2) === 'hu') {
@@ -161,14 +163,32 @@ class App extends Component {
       }
     }
 
-    if (this.state.userToken) {
-      requestAndRegisterPushToken();
-    }
   }
 
   componentWillUnmount() {
     this.unsubscribePushListeners?.();
+    this.backSubscription?.remove?.();
   }
+
+  handleHardwareBack = () => {
+    if (!navigationRef.isReady()) {
+      return false;
+    }
+
+    const routeName = navigationRef.getCurrentRoute()?.name;
+
+    if (navigationRef.canGoBack()) {
+      navigationRef.goBack();
+      return true;
+    }
+
+    if (routeName && routeName !== 'HomeScreen') {
+      navigationRef.navigate('HomeScreen');
+      return true;
+    }
+
+    return true;
+  };
 
   loginSuccess = (token, user, session) => {
     storage.set('userToken', token);
@@ -186,7 +206,6 @@ class App extends Component {
     }
 
     this.setState({ userToken: token });
-    requestAndRegisterPushToken();
   };
 
   alert = (response, button = 'Ok') => {
@@ -229,7 +248,7 @@ class App extends Component {
       <GestureHandlerRootView style={styles.root}>
         <NativeBaseProvider>
           <StatusBar barStyle="light-content" backgroundColor="#19386e" />
-          <NavigationContainer>
+          <NavigationContainer ref={navigationRef}>
             <Stack.Navigator
               screenOptions={() => ({
                 headerShown: true,

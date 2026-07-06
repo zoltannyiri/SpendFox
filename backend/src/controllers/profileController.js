@@ -18,13 +18,14 @@ const getProfile = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const { uid } = req.auth;
-    const { email, full_name, username, avatar_url } = req.body;
+    const { email, full_name, username, avatar_url, notification_settings } = req.body;
 
     const payload = {
       email,
       full_name,
       username,
       avatar_url,
+      notification_settings,
     };
 
     const { data, error } = await updateUserByUid(uid, payload);

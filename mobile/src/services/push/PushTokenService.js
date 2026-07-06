@@ -31,7 +31,7 @@ export function setupPushListeners() {
     const title = remoteMessage?.notification?.title ?? 'SpendFox';
     const body =
       remoteMessage?.notification?.body ??
-      'Uj ertesites erkezett a SpendFoxtol.';
+      'Új értesítés érkezett a SpendFoxtól.';
 
     Alert.alert(title, body);
   });

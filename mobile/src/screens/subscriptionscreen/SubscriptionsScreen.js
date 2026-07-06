@@ -11,6 +11,7 @@ import axios from 'axios';
 import { MMKV } from 'react-native-mmkv';
 import { useFocusEffect } from '@react-navigation/native';
 import CurvedHeader, { HeaderIconButton } from '../../components/layout/CurvedHeader';
+import BottomNavigation from '../../components/layout/BottomNavigation';
 
 const storage = new MMKV();
 
@@ -88,7 +89,7 @@ export default function SubscriptionsScreen({ navigation }) {
     <View className="flex-1 bg-[#f7f7f8]">
       <ScrollView
         className="flex-1"
-        contentContainerClassName="pb-10"
+        contentContainerClassName="pb-32"
         showsVerticalScrollIndicator={false}
       >
         <CurvedHeader
@@ -194,6 +195,7 @@ export default function SubscriptionsScreen({ navigation }) {
           </View>
         </View>
       </ScrollView>
+      <BottomNavigation />
     </View>
   );
 }

@@ -17,6 +17,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { MMKV } from 'react-native-mmkv';
 import { Dropdown } from 'react-native-element-dropdown';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import BottomNavigation from '../../components/layout/BottomNavigation';
 
 const storage = new MMKV();
 
@@ -143,7 +144,7 @@ export default function SubscriptionsFormScreen() {
 
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-5 pb-10 pt-16"
+        contentContainerClassName="px-5 pb-32 pt-16"
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
@@ -350,6 +351,7 @@ export default function SubscriptionsFormScreen() {
           </Text>
         </Pressable>
       </ScrollView>
+      <BottomNavigation />
     </KeyboardAvoidingView>
   );
 }
