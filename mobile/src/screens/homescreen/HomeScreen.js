@@ -1,19 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StatusBar, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Svg, { Circle, Path } from 'react-native-svg';
 import axios from 'axios';
 import { Image } from 'react-native';
 import { MMKV } from 'react-native-mmkv';
+import CurvedHeader from '../../components/layout/CurvedHeader';
 
 const storage = new MMKV();
 
 const MENU_ITEMS = [
-  { label: 'Profil beállítások', icon: SettingsIcon },
+  { label: 'Profil beállítások', icon: SettingsIcon, onPress: ({navigation}) => navigation.navigate('ProfileScreen') },
   { label: 'Előfizetéseim', icon: ErrorIcon, onPress: ({navigation}) => navigation.navigate('Subscriptions') },
   { label: 'Profil szerkesztése', icon: EditIcon, onPress: ({navigation}) => navigation.navigate('ProfileSettingsScreen') },
   { label: 'Kijelentkezés', icon: LogoutIcon, action: () => window.App?.logout?.() },
-  { label: 'Súgó', icon: HelpIcon },
+  // { label: 'Súgó', icon: HelpIcon },
 ];
 
 
@@ -50,39 +51,46 @@ export default function HomeScreen() {
 
   return (
     <View className="flex-1 bg-[#f7f7f8]">
-      <StatusBar barStyle="dark-content" backgroundColor="#f7f7f8" />
-
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-5 pb-28 pt-16"
+        contentContainerClassName="pb-28"
         showsVerticalScrollIndicator={false}
       >
-        <View className="mb-9 flex-row items-center justify-between">
-          <Text className="text-base font-extrabold text-black">{profileName}</Text>
-          <View className="flex-row rounded-full bg-white p-1 shadow-sm">
-            <IconButton>
-              <SunIcon />
-            </IconButton>
-            <IconButton>
-              <MoonIcon />
-            </IconButton>
-          </View>
-        </View>
+        <CurvedHeader
+          title="SpendFox"
+          right={
+            <View className="flex-row rounded-2xl bg-white p-1">
+              <IconButton>
+                <SunIcon />
+              </IconButton>
+              <IconButton>
+                <MoonIcon />
+              </IconButton>
+            </View>
+          }
+        />
 
-        <View className="items-center">
-          {profileAvatar ? (
-            <Image
-              source={{ uri: profileAvatar }}
-              className="h-20 w-20 rounded-full bg-fox-cream"
-              resizeMode="cover"
-            />
-          ) : (
-            <View className="h-20 w-20 rounded-full bg-fox-cream" />
-          )}
-          <Text className="mt-3 text-xl font-extrabold text-black">{profileName}</Text>
-          {/* <Text className="mt-0.5 text-xs font-semibold text-neutral-500">
-            Budapest, Hungary
-          </Text> */}
+        <View className="-mt-14 px-5">
+        <View className="rounded-[28px] bg-white px-5 py-5 shadow-sm">
+          <View className="flex-row items-center">
+            {profileAvatar ? (
+              <Image
+                source={{ uri: profileAvatar }}
+                className="h-20 w-20 rounded-full bg-fox-cream"
+                resizeMode="cover"
+              />
+            ) : (
+              <View className="h-20 w-20 rounded-full bg-fox-cream" />
+            )}
+            <View className="ml-4 flex-1">
+              <Text className="text-xl font-extrabold text-black">
+                {profileName || 'SpendFox user'}
+              </Text>
+              <Text className="mt-1 text-xs font-semibold text-neutral-500">
+                Kövessük együtt az előfizetéseidet.
+              </Text>
+            </View>
+          </View>
         </View>
 
         <Pressable
@@ -91,9 +99,9 @@ export default function HomeScreen() {
         >
           <View className="max-w-[72%]">
             <Text className="text-lg font-extrabold text-white">Subscribe card</Text>
-            <Text className="mt-1 text-xs font-semibold leading-4 text-white/80">
+            {/* <Text className="mt-1 text-xs font-semibold leading-4 text-white/80">
               Start your journey to becoming a better you.
-            </Text>
+            </Text> */}
           </View>
           <View className="h-14 w-14 items-center justify-center rounded-full bg-white/15">
             <SparkIcon />
@@ -121,6 +129,7 @@ export default function HomeScreen() {
               </Pressable>
             );
           })}
+        </View>
         </View>
       </ScrollView>
 
@@ -170,7 +179,7 @@ function BottomBar() {
         <Pressable className="h-12 w-12 items-center justify-center rounded-full bg-black" onPress={() => navigation.navigate('Subscriptions')}>
           <Text className="text-2xl leading-7 text-white">+</Text>
         </Pressable>
-        <TabIcon label="Profile">
+        <TabIcon onPress={() => navigation.navigate('ProfileScreen')}>
           <ProfileIcon />
         </TabIcon>
         <TabIcon>
@@ -181,8 +190,12 @@ function BottomBar() {
   );
 }
 
-function TabIcon({ children }) {
-  return <Pressable className="h-10 w-10 items-center justify-center">{children}</Pressable>;
+function TabIcon({ children, onPress }) {
+  return (
+    <Pressable className="h-10 w-10 items-center justify-center" onPress={onPress}>
+      {children}
+    </Pressable>
+  );
 }
 
 function SvgIcon({ children, size = 20 }) {
@@ -251,16 +264,6 @@ function LogoutIcon() {
     <SvgIcon>
       <Path d="M10 5H6v14h4" stroke="#111" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
       <Path d="M14 8l4 4-4 4M18 12H9" stroke="#111" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-    </SvgIcon>
-  );
-}
-
-function HelpIcon() {
-  return (
-    <SvgIcon>
-      <Circle cx="12" cy="12" r="8" stroke="#111" strokeWidth="1.7" />
-      <Path d="M9.8 9.2a2.4 2.4 0 0 1 4.6 1c0 1.7-2.4 1.8-2.4 3.4" stroke="#111" strokeWidth="1.7" strokeLinecap="round" />
-      <Circle cx="12" cy="17" r="1" fill="#111" />
     </SvgIcon>
   );
 }

@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Pressable,
   ScrollView,
-  StatusBar,
   Text,
   View,
 } from 'react-native';
@@ -11,6 +10,7 @@ import Svg, { Circle, Path, Rect } from 'react-native-svg';
 import axios from 'axios';
 import { MMKV } from 'react-native-mmkv';
 import { useFocusEffect } from '@react-navigation/native';
+import CurvedHeader, { HeaderIconButton } from '../../components/layout/CurvedHeader';
 
 const storage = new MMKV();
 
@@ -26,15 +26,15 @@ export default function SubscriptionsScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [errorText, setErrorText] = useState('');
 
+  const activeSubscriptions = useMemo(
+    () => subscriptions.filter((item) => item.is_active !== false),
+    [subscriptions]
+  );
+
   const totalMonthly = useMemo(
     () =>
-      subscriptions.reduce((sum, item) => {
-        // if (item.billing_cycle === 'yearly') return;
+      activeSubscriptions.reduce((sum, item) => {
         const price = Number(item.price) || 0;
-        
-        if (item.is_active === false) {
-          return sum;
-        }
 
         if (item.billing_cycle === 'yearly') {
           return sum;
@@ -42,27 +42,21 @@ export default function SubscriptionsScreen({ navigation }) {
 
         return sum + price;
       }, 0),
-    [subscriptions]
+    [activeSubscriptions]
   );
 
   const totalYearly = useMemo(
     () =>
-      subscriptions.reduce((sum, item) => {
+      activeSubscriptions.reduce((sum, item) => {
         const price = Number(item.price) || 0;
-        if (item.is_active === false) {
-          return sum;
-        }
+
         if (item.billing_cycle === 'monthly') {
           return sum + price * 12;
         }
 
-        // if (item.billing_cycle === 'yearly') {
-        //   return sum + price / 12;
-        // }
-
         return sum + price;
       }, 0),
-    [subscriptions]
+    [activeSubscriptions]
   );
 
   const loadSubscriptions = useCallback(async () => {
@@ -78,6 +72,7 @@ export default function SubscriptionsScreen({ navigation }) {
       setSubscriptions(response.data?.data || []);
     } catch (err) {
       console.log('Failed to load subscriptions:', err?.response?.data || err?.message);
+      setErrorText('Nem sikerült betölteni az előfizetéseket.');
     } finally {
       setLoading(false);
     }
@@ -91,111 +86,112 @@ export default function SubscriptionsScreen({ navigation }) {
 
   return (
     <View className="flex-1 bg-[#f7f7f8]">
-      <StatusBar barStyle="dark-content" backgroundColor="#f7f7f8" />
-
       <ScrollView
         className="flex-1"
-        contentContainerClassName="px-5 pb-10 pt-16" 
+        contentContainerClassName="pb-10"
         showsVerticalScrollIndicator={false}
       >
-        <View className="mb-7 flex-row items-center justify-between">
-          <Pressable
-            className="h-10 w-10 items-center justify-center rounded-full bg-white"
-            onPress={() => navigation.goBack()}
-          >
-            <BackIcon />
-          </Pressable>
+        <CurvedHeader
+          title="Előfizetéseim"
+          left={
+            <HeaderIconButton onPress={() => navigation.goBack()}>
+              <BackIcon />
+            </HeaderIconButton>
+          }
+          right={
+            <HeaderIconButton dark onPress={() => navigation.navigate('SubscriptionsForm')}>
+              <Text className="text-2xl leading-7 text-white">+</Text>
+            </HeaderIconButton>
+          }
+        />
 
-          <Text className="text-base font-extrabold text-black">Előfizetéseim</Text>
+        <View className="-mt-14 px-5">
+          <View className="rounded-[28px] bg-[#0ca9f2] px-5 py-5">
+            <View className="flex-row items-start justify-between">
+              <View className="flex-1 pr-4">
+                <Text className="text-sm font-bold text-white/80">
+                  Havi előfizetések összesen
+                </Text>
+                <Text className="mt-1 text-4xl font-extrabold text-white">
+                  {formatMoney(totalMonthly)}
+                </Text>
+              </View>
 
-          <Pressable className="h-10 w-10 items-center justify-center rounded-full bg-black" 
-            onPress={() => navigation.navigate('SubscriptionsForm')}>
-            <Text className="text-2xl leading-7 text-white">+</Text>
-          </Pressable>
-        </View>
+              <View className="h-14 w-14 items-center justify-center rounded-full bg-white/15">
+                <WalletIcon />
+              </View>
+            </View>
 
-        <View className="rounded-2xl bg-[#0ca9f2] px-5 py-5">
-          <View className="flex-row items-start justify-between">
-            <View>
-              <Text className="text-sm font-bold text-white/80">Havi előfizetések összesen</Text>
+            <View className="mt-5">
+              <Text className="text-sm font-bold text-white/80">
+                Éves előfizetések összesen
+              </Text>
               <Text className="mt-1 text-4xl font-extrabold text-white">
-                {formatMoney(totalMonthly)}
+                {formatMoney(totalYearly)}
               </Text>
             </View>
 
-            <View className="h-14 w-14 items-center justify-center rounded-full bg-white/15">
-              <WalletIcon />
+            <View className="mt-5 flex-row">
+              <SummaryPill label="Aktív" value={String(activeSubscriptions.length)} />
+              <View className="w-3" />
+              <SummaryPill label="Következő" value={getNextBillingLabel(subscriptions)} />
             </View>
           </View>
-          
 
-          <View className="mt-5">
-            <Text className="text-sm font-bold text-white/80">Éves előfizetések összesen</Text>
-            <Text className="mt-1 text-4xl font-extrabold text-white">
-              {formatMoney(totalYearly)}
-            </Text>
+          <View className="mt-7">
+            <Text className="mb-3 text-lg font-extrabold text-black">Lista</Text>
+
+            {loading ? (
+              <View className="mt-16 items-center">
+                <ActivityIndicator color={COLORS.blue} size="large" />
+                <Text className="mt-3 text-sm font-semibold text-neutral-500">
+                  Betöltés...
+                </Text>
+              </View>
+            ) : errorText ? (
+              <View className="mt-10 items-center rounded-2xl bg-white px-5 py-8">
+                <ErrorIcon />
+                <Text className="mt-4 text-center text-sm font-bold text-neutral-700">
+                  {errorText}
+                </Text>
+                <Pressable
+                  className="mt-5 rounded-full bg-black px-5 py-3"
+                  onPress={loadSubscriptions}
+                >
+                  <Text className="text-sm font-extrabold text-white">Újrapróbálom</Text>
+                </Pressable>
+              </View>
+            ) : subscriptions.length === 0 ? (
+              <View className="mt-10 items-center rounded-2xl bg-white px-5 py-8">
+                <EmptyIcon />
+                <Text className="mt-4 text-center text-base font-extrabold text-black">
+                  Még nincs előfizetésed
+                </Text>
+                <Text className="mt-2 text-center text-sm font-semibold leading-5 text-neutral-500">
+                  Add hozzá az első szolgáltatást, hogy egy helyen lásd a havi
+                  kiadásaidat.
+                </Text>
+                <Pressable
+                  className="mt-5 rounded-full bg-black px-5 py-3"
+                  onPress={() => navigation.navigate('SubscriptionsForm')}
+                >
+                  <Text className="text-sm font-extrabold text-white">Hozzáadás</Text>
+                </Pressable>
+              </View>
+            ) : (
+              subscriptions.map((item) => (
+                <SubscriptionCard
+                  key={String(item.id)}
+                  subscription={item}
+                  onEdit={() =>
+                    navigation.navigate('SubscriptionsForm', {
+                      subscription: item,
+                    })
+                  }
+                />
+              ))
+            )}
           </View>
-
-          <View className="mt-5 flex-row">
-            <SummaryPill label="Aktív" value={String(subscriptions.length)} />
-            <View className="w-3" />
-            <SummaryPill label="Következő" value={getNextBillingLabel(subscriptions)} />
-          </View>
-        </View>
-
-        <View className="mt-7">
-          <Text className="mb-3 text-lg font-extrabold text-black">Lista</Text>
-
-          {loading ? (
-            <View className="mt-16 items-center">
-              <ActivityIndicator color={COLORS.blue} size="large" />
-              <Text className="mt-3 text-sm font-semibold text-neutral-500">
-                Betöltés...
-              </Text>
-            </View>
-          ) : errorText ? (
-            <View className="mt-10 items-center rounded-2xl bg-white px-5 py-8">
-              <ErrorIcon />
-              <Text className="mt-4 text-center text-sm font-bold text-neutral-700">
-                {errorText}
-              </Text>
-              <Pressable
-                className="mt-5 rounded-full bg-black px-5 py-3"
-                onPress={loadSubscriptions}
-              >
-                <Text className="text-sm font-extrabold text-white">Újrapróbálom</Text>
-              </Pressable>
-            </View>
-          ) : subscriptions.length === 0 ? (
-            <View className="mt-10 items-center rounded-2xl bg-white px-5 py-8">
-              <EmptyIcon />
-              <Text className="mt-4 text-center text-base font-extrabold text-black">
-                Még nincs előfizetésed
-              </Text>
-              <Text className="mt-2 text-center text-sm font-semibold leading-5 text-neutral-500">
-                Add hozzá az első szolgáltatást, hogy egy helyen lássd a havi
-                kiadásaidat.
-              </Text>
-              <Pressable
-                className="mt-5 rounded-full bg-black px-5 py-3"
-                onPress={() => navigation.navigate('SubscriptionsForm')}
-              >
-                <Text className="text-sm font-extrabold text-white">Hozzáadás</Text>
-              </Pressable>
-            </View>
-          ) : (
-            subscriptions.map((item) => (
-              <SubscriptionCard
-                key={String(item.id)}
-                subscription={item}
-                onEdit={() =>
-                  navigation.navigate('SubscriptionsForm', {
-                    subscription: item,
-                  })
-                }
-              />
-            ))
-          )}
         </View>
       </ScrollView>
     </View>
@@ -207,7 +203,7 @@ function SubscriptionCard({ subscription, onEdit }) {
   const currency = subscription.currency || 'HUF';
   const billingCycle = getBillingCycleLabel(subscription.billing_cycle);
   const nextBilling = subscription.next_billing_date
-    ? `Következő előfizetés: ${subscription.next_billing_date}`
+    ? `Következő fizetés: ${formatDateOnly(parseDateValue(subscription.next_billing_date))}`
     : '';
 
   return (
@@ -224,9 +220,11 @@ function SubscriptionCard({ subscription, onEdit }) {
         <Text className="mt-1 text-xs font-semibold text-neutral-500">
           {billingCycle}
         </Text>
-        <Text className="mt-1 text-xs font-semibold text-neutral-500">
-          {nextBilling}
-        </Text>
+        {!!nextBilling && (
+          <Text className="mt-1 text-xs font-semibold text-neutral-500">
+            {nextBilling}
+          </Text>
+        )}
       </View>
 
       <View className="items-end">
@@ -290,7 +288,7 @@ function getNextBillingLabel(items) {
 }
 
 function getNextBillingDate(item, today) {
-  const billingDate = parseDateValue(item.next_billing_date);
+  const billingDate = parseDateValue(item.next_billing_date || item.start_date);
 
   if (!billingDate) {
     return null;
@@ -353,6 +351,10 @@ function startOfDay(date) {
 }
 
 function formatDateOnly(date) {
+  if (!date) {
+    return '-';
+  }
+
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
@@ -399,9 +401,9 @@ function BackIcon() {
       <Path
         d="M15 5 8 12l7 7"
         stroke={COLORS.black}
-        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
+        strokeWidth="2"
       />
     </SvgIcon>
   );
@@ -413,21 +415,16 @@ function WalletIcon() {
       <Path
         d="M4 7.5h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-9a2 2 0 0 1 2-2Z"
         stroke={COLORS.white}
-        strokeWidth="1.8"
         strokeLinejoin="round"
+        strokeWidth="1.8"
       />
       <Path
         d="M16 12h4v4h-4a2 2 0 0 1 0-4Z"
         stroke={COLORS.white}
-        strokeWidth="1.8"
         strokeLinejoin="round"
-      />
-      <Path
-        d="M5 7.5 16 4v3.5"
-        stroke={COLORS.white}
         strokeWidth="1.8"
-        strokeLinecap="round"
       />
+      <Path d="M5 7.5 16 4v3.5" stroke={COLORS.white} strokeLinecap="round" strokeWidth="1.8" />
     </SvgIcon>
   );
 }
@@ -447,8 +444,8 @@ function SubscriptionIcon() {
       <Path
         d="M8 10h8M8 14h5"
         stroke={COLORS.navy}
-        strokeWidth="1.8"
         strokeLinecap="round"
+        strokeWidth="1.8"
       />
     </SvgIcon>
   );
@@ -465,7 +462,7 @@ function EmptyIcon() {
       <Path d="M30 34c0-7 4-11 10-11s10 4 10 11" stroke={COLORS.navy} strokeWidth="4" />
       <Circle cx="32" cy="43" r="2.5" fill={COLORS.white} />
       <Circle cx="48" cy="43" r="2.5" fill={COLORS.white} />
-      <Path d="M34 50c4 4 8 4 12 0" stroke={COLORS.white} strokeWidth="3" strokeLinecap="round" />
+      <Path d="M34 50c4 4 8 4 12 0" stroke={COLORS.white} strokeLinecap="round" strokeWidth="3" />
     </Svg>
   );
 }
@@ -477,8 +474,8 @@ function ErrorIcon() {
       <Path
         d="M22 22l14 14M36 22 22 36"
         stroke="#dc2626"
-        strokeWidth="3"
         strokeLinecap="round"
+        strokeWidth="3"
       />
     </Svg>
   );

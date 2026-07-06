@@ -7,8 +7,6 @@ import {
   Platform,
   StatusBar,
   StyleSheet,
-  Text,
-  View,
 } from 'react-native';
 import axios from 'axios';
 import { MMKV } from 'react-native-mmkv';
@@ -19,6 +17,7 @@ import { NativeBaseProvider } from 'native-base';
 import LoginScreen from './src/screens/loginscreen/LoginScreen';
 import RegisterScreen from './src/screens/registerscreen/RegisterScreen';
 import HomeScreen from './src/screens/homescreen/HomeScreen';
+import ProfileScreen from './src/screens/profilescreen/ProfileScreen';
 import SubscriptionsScreen from './src/screens/subscriptionscreen/SubscriptionsScreen';
 import SubscriptionsFormScreen from './src/screens/subscriptionscreen/SubscriptionsFormScreen';
 import ProfileSettingsScreen from './src/screens/profilesettingsscreen/ProfileSettingsScreen';
@@ -141,12 +140,6 @@ const deviceLanguage =
     : NativeModules.I18nManager?.localeIdentifier;
 
 const HeaderLeft = () => null;
-
-const ProfileScreen = () => (
-  <View style={styles.container}>
-    <Text style={styles.title}>Profile</Text>
-  </View>
-);
 
 class App extends Component {
   constructor(props) {
@@ -286,6 +279,7 @@ class App extends Component {
                     component={ProfileScreen}
                     options={{
                       title: 'Profil',
+                      headerShown: false,
                     }}
                   />
                   <Stack.Screen
@@ -293,6 +287,7 @@ class App extends Component {
                     component={SubscriptionsScreen}
                     options={{
                       title: 'Előfizetéseim',
+                      headerShown: false,
                     }}
                   />
                   <Stack.Screen
@@ -300,6 +295,7 @@ class App extends Component {
                     component={SubscriptionsFormScreen}
                     options={{
                       title: 'Előfizetés hozzáadása',
+                      headerShown: false,
                     }}
                   />
                   <Stack.Screen
@@ -307,6 +303,7 @@ class App extends Component {
                     component={ProfileSettingsScreen}
                     options={{
                       title: 'Profil szerkesztése',
+                      headerShown: false,
                     }}
                   />
                   <Stack.Screen
@@ -314,6 +311,7 @@ class App extends Component {
                     component={ProfileSettingsForm}
                     options={{
                       title: 'Profil szerkesztése',
+                      headerShown: false,
                     }}
                   />
                 </>
@@ -329,30 +327,6 @@ class App extends Component {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-  },
-  container: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  title: {
-    color: '#19386e',
-    fontSize: 28,
-    fontWeight: '700',
-    marginBottom: 24,
-  },
-  button: {
-    backgroundColor: '#11d8d8',
-    borderRadius: 6,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-  },
-  buttonText: {
-    color: '#19386e',
-    fontSize: 16,
-    fontWeight: '700',
   },
 });
 

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -15,7 +16,7 @@ import axios from 'axios';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { MMKV } from 'react-native-mmkv';
 import { Dropdown } from 'react-native-element-dropdown';
-import { Alert } from 'react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 const storage = new MMKV();
 
@@ -40,6 +41,10 @@ export default function SubscriptionsFormScreen() {
   const [billingCycle, setBillingCycle] = useState(
     editingSubscription?.billing_cycle || 'monthly'
   );
+  const [startDate, setStartDate] = useState(
+    formatDateInput(editingSubscription?.start_date || editingSubscription?.next_billing_date || '')
+  );
+  const [showStartDatePicker, setShowStartDatePicker] = useState(false);
   const [isActive, setIsActive] = useState(
     editingSubscription?.is_active ?? true
   );
@@ -53,7 +58,6 @@ export default function SubscriptionsFormScreen() {
         const items = response.data?.data || [];
 
         setCurrencies(items);
-
         setCurrency((currentCurrency) => currentCurrency || items[0]?.code || 'HUF');
       } catch (err) {
         console.log('Failed to load currency:', err?.response?.data || err?.message);
@@ -85,7 +89,7 @@ export default function SubscriptionsFormScreen() {
       navigation.goBack();
     } catch (err) {
       console.log('Failed to delete subscription:', err?.response?.data || err?.message);
-      setErrorText('Nem sikerult törölni az előfizetést.');
+      setErrorText('Nem sikerült törölni az előfizetést.');
     } finally {
       setSaving(false);
     }
@@ -96,13 +100,20 @@ export default function SubscriptionsFormScreen() {
       setSaving(true);
       setErrorText('');
 
-      const user = JSON.parse(storage.getString('appUser') || '{}');
+      const normalizedStartDate = startDate.trim();
 
+      if (!normalizedStartDate) {
+        setErrorText('Add meg a kezdő napot.');
+        return;
+      }
+
+      const user = JSON.parse(storage.getString('appUser') || '{}');
       const payload = {
         name: name.trim(),
         price: Number(price),
         currency,
         billing_cycle: billingCycle,
+        start_date: normalizedStartDate,
         is_shared: editingSubscription?.is_shared || false,
         is_active: isActive,
         user_id: user.id,
@@ -117,7 +128,7 @@ export default function SubscriptionsFormScreen() {
       navigation.goBack();
     } catch (err) {
       console.log('Failed to save subscription:', err?.response?.data || err?.message);
-      setErrorText('Nem sikerult menteni az elofizetest.');
+      setErrorText('Nem sikerült menteni az előfizetést.');
     } finally {
       setSaving(false);
     }
@@ -144,11 +155,9 @@ export default function SubscriptionsFormScreen() {
             <BackIcon />
           </Pressable>
 
-          {isEditMode ? (
-            <Text className="text-base font-extrabold text-black">Előfizetés szerkesztése</Text>
-          ) : (
-            <Text className="text-base font-extrabold text-black">Új előfizetés</Text>
-          )}
+          <Text className="text-base font-extrabold text-black">
+            {isEditMode ? 'Előfizetés szerkesztése' : 'Új előfizetés'}
+          </Text>
 
           <View className="h-10 w-10" />
         </View>
@@ -159,7 +168,7 @@ export default function SubscriptionsFormScreen() {
             Kövess minden havi költséget
           </Text>
           <Text className="mt-3 text-sm font-semibold leading-5 text-white/80">
-            Add hozzá a szolgáltatást, árát és fizetési ciklust.
+            Add hozzá a szolgáltatást, árat, ciklust és kezdő napot.
           </Text>
         </View>
 
@@ -196,9 +205,6 @@ export default function SubscriptionsFormScreen() {
 
             <View className="w-28">
               <FieldLabel label="Deviza" />
-              {/* <View className="h-14 justify-center rounded-2xl bg-white px-3">
-                <Text className="text-base font-extrabold text-black">{currency}</Text>
-              </View> */}
               <Dropdown
                 data={currencies.map((c) => ({ label: c.code, value: c.code }))}
                 labelField="label"
@@ -212,32 +218,6 @@ export default function SubscriptionsFormScreen() {
               />
             </View>
           </View>
-
-          {/* {currencies.length > 0 && (
-            <View className="mt-3 flex-row flex-wrap">
-              {currencies.map((item) => {
-                const active = item.code === currency;
-
-                return (
-                  <Pressable
-                    key={item.code}
-                    className={`mb-2 mr-2 rounded-full px-4 py-2 ${
-                      active ? 'bg-black' : 'bg-white'
-                    }`}
-                    onPress={() => setCurrency(item.code)}
-                  >
-                    <Text
-                      className={`text-sm font-extrabold ${
-                        active ? 'text-white' : 'text-neutral-700'
-                      }`}
-                    >
-                      {item.code}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          )} */}
 
           <View className="mt-5">
             <FieldLabel label="Számlázási ciklus" />
@@ -267,15 +247,56 @@ export default function SubscriptionsFormScreen() {
           </View>
 
           <View className="mt-5">
+            <FieldLabel label="Kezdő nap" />
+            <Pressable
+              className="h-14 justify-center rounded-2xl bg-white px-4"
+              onPress={() => setShowStartDatePicker(true)}
+            >
+              <Text className="text-base font-semibold text-black">
+                {startDate || 'Válassz dátumot'}
+              </Text>
+            </Pressable>
+
+            {showStartDatePicker ? (
+              <View className="mt-2 overflow-hidden rounded-2xl bg-white">
+                <DateTimePicker
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  mode="date"
+                  value={parseDateInput(startDate) || new Date()}
+                  onChange={(event, selectedDate) => {
+                    if (Platform.OS === 'android') {
+                      setShowStartDatePicker(false);
+                    }
+
+                    if (selectedDate) {
+                      setStartDate(formatDateInput(selectedDate));
+                    }
+                  }}
+                />
+                {Platform.OS === 'ios' ? (
+                  <Pressable
+                    className="h-12 items-center justify-center border-t border-neutral-100"
+                    onPress={() => setShowStartDatePicker(false)}
+                  >
+                    <Text className="text-sm font-extrabold text-[#0ca9f2]">Kész</Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            ) : null}
+
+            <Text className="mt-2 text-xs font-semibold text-neutral-500">
+              A backend ebből számolja ki a következő fizetési napot.
+            </Text>
+          </View>
+
+          <View className="mt-5">
             <FieldLabel label="Aktív előfizetés?" />
             <View className="flex-row rounded-2xl bg-white p-1">
               <Pressable
                 className={`h-12 flex-1 items-center justify-center rounded-xl ${
                   isActive ? 'bg-[#0ca9f2]' : 'bg-white'
                 }`}
-                onPress={() => 
-                  setIsActive(true)
-                }
+                onPress={() => setIsActive(true)}
               >
                 <Text
                   className={`text-sm font-extrabold ${
@@ -289,9 +310,7 @@ export default function SubscriptionsFormScreen() {
                 className={`h-12 flex-1 items-center justify-center rounded-xl ${
                   !isActive ? 'bg-[#0ca9f2]' : 'bg-white'
                 }`}
-                onPress={() =>
-                  setIsActive(false)
-                }
+                onPress={() => setIsActive(false)}
               >
                 <Text
                   className={`text-sm font-extrabold ${
@@ -304,6 +323,7 @@ export default function SubscriptionsFormScreen() {
             </View>
           </View>
         </View>
+
         {isEditMode ? (
           <Pressable
             className={`mt-8 h-14 items-center justify-center rounded-2xl ${
@@ -318,7 +338,6 @@ export default function SubscriptionsFormScreen() {
           </Pressable>
         ) : null}
 
-
         <Pressable
           className={`mt-8 h-14 items-center justify-center rounded-2xl ${
             saving ? 'bg-neutral-400' : 'bg-black'
@@ -327,7 +346,7 @@ export default function SubscriptionsFormScreen() {
           onPress={handleSave}
         >
           <Text className="text-base font-extrabold text-white">
-            {saving ? 'Mentes...' : 'Előfizetés mentése'}
+            {saving ? 'Mentés...' : 'Előfizetés mentése'}
           </Text>
         </Pressable>
       </ScrollView>
@@ -341,15 +360,61 @@ function FieldLabel({ label }) {
   );
 }
 
+function formatDateInput(value) {
+  if (!value) {
+    return '';
+  }
+
+  const date = parseDateInput(value);
+
+  if (!date) {
+    return String(value);
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function parseDateInput(value) {
+  if (!value) {
+    return null;
+  }
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? null : value;
+  }
+
+  if (typeof value === 'object' && typeof value._seconds === 'number') {
+    return new Date(value._seconds * 1000);
+  }
+
+  if (typeof value === 'string') {
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (match) {
+      const [, year, month, day] = match;
+
+      return new Date(Number(year), Number(month) - 1, Number(day));
+    }
+  }
+
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function BackIcon() {
   return (
     <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
       <Path
         d="M15 5 8 12l7 7"
         stroke="#111"
-        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
+        strokeWidth="2"
       />
     </Svg>
   );
