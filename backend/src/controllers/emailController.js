@@ -5,14 +5,17 @@ const { buildSubscriptionEmail } = require('../templates/notifications/subscript
 const sendTest = async (req, res) => {
   try {
     const { uid } = req.auth;
-    const { to, subject, text, html } = req.body;
+    const { subject, text, html } = req.body;
     const { data: user, error: userError } = await getUserByUid(uid);
 
     if (userError) {
       return res.status(404).json({ error: userError.message });
     }
 
-    const recipient = to || user.email;
+    if (!user.email) {
+      return res.status(400).json({ error: 'User email is required' });
+    }
+
     const fallbackEmail = buildSubscriptionEmail({
       user,
       subscription: {
@@ -25,7 +28,7 @@ const sendTest = async (req, res) => {
     });
 
     const { data, error } = await sendEmail({
-      to: recipient,
+      to: user.email,
       subject: subject || fallbackEmail.subject,
       text: text || fallbackEmail.text,
       html: html || fallbackEmail.html,

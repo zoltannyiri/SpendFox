@@ -137,6 +137,25 @@ export default function ProfileSettingsScreen() {
     }
   };
 
+  const handleEmailTest = async () => {
+    try {
+      setSaving(true);
+
+
+      await axios.post('/email/test', {
+        title: 'SpendFox teszt',
+        body: 'Ha ezt látod, működik az email küldő.',
+      });
+
+      Alert.alert('Email teszt', 'Email elküldve.');
+    } catch (err) {
+      console.log('Failed to schedule email test:', err?.response?.data || err?.message);
+      Alert.alert('Email teszt', 'Nem sikerült elindítani a teszt emailt.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <View className="flex-1 bg-[#f3f5f8]">
       <StatusBar barStyle="light-content" backgroundColor="#19386e" />
@@ -228,6 +247,17 @@ export default function ProfileSettingsScreen() {
             >
               <Text className="text-sm font-extrabold text-white">
                 Teszt push 10 másodperc múlva
+              </Text>
+            </Pressable>
+            <Pressable
+              className={`mx-4 mb-4 h-12 items-center justify-center rounded-2xl ${
+                saving ? 'bg-neutral-300' : 'bg-black'
+              }`}
+              disabled={saving}
+              onPress={handleEmailTest}
+            >
+              <Text className="text-sm font-extrabold text-white">
+                Teszt email küldés
               </Text>
             </Pressable>
           </Section>
