@@ -17,6 +17,17 @@ import AnimatedScreen from '../../components/layout/AnimatedScreen';
 
 const storage = new MMKV();
 
+const CATEGORY_META = {
+  streaming: { label: 'Streaming', color: '#0ca9f2' },
+  work: { label: 'Munka', color: '#111111' },
+  'ai-tool': { label: 'AI tool', color: '#7c3aed' },
+  hosting: { label: 'Tárhely', color: '#f97316' },
+  mobile: { label: 'Mobil', color: '#10b981' },
+  bank: { label: 'Bank', color: '#64748b' },
+  gaming: { label: 'Játék', color: '#ef4444' },
+  other: { label: 'Egyéb', color: '#f59e0b' },
+};
+
 export default function HomeScreen() {
   const navigation = useNavigation();
   const [profile, setProfile] = useState(() => getStoredUser());
@@ -136,6 +147,11 @@ export default function HomeScreen() {
             </View>
           </View>
 
+          <DashboardCategoryBreakdown
+            categories={summary.categoryTotals}
+            total={summary.monthlyTotal}
+          />
+
           <View className="mt-5 flex-row flex-wrap justify-between">
             <MetricCard
               icon={<SubscriptionsIcon />}
@@ -221,12 +237,18 @@ function getSubscriptionSummary(items) {
           : item.billing_cycle === 'weekly'
             ? price * 4
             : price;
+      const categoryCode = item.category || 'other';
+      const categoryTotal = summary.categoryTotals[categoryCode] || 0;
 
       return {
         activeCount: summary.activeCount + 1,
         inactiveCount: summary.inactiveCount,
         monthlyTotal: summary.monthlyTotal + monthlyPrice,
         yearlyTotal: summary.yearlyTotal + monthlyPrice * 12,
+        categoryTotals: {
+          ...summary.categoryTotals,
+          [categoryCode]: categoryTotal + monthlyPrice,
+        },
       };
     },
     {
@@ -234,6 +256,7 @@ function getSubscriptionSummary(items) {
       inactiveCount: 0,
       monthlyTotal: 0,
       yearlyTotal: 0,
+      categoryTotals: {},
     }
   );
 }
@@ -286,6 +309,71 @@ function formatMoney(value, currency = 'HUF') {
   }
 
   return `${amount.toLocaleString('hu-HU')} ${currency}`;
+}
+
+function DashboardCategoryBreakdown({ categories, total }) {
+  const rows = Object.entries(categories || {})
+    .map(([code, value]) => ({
+      code,
+      value,
+      meta: CATEGORY_META[code] || {
+        label: code,
+        color: '#64748b',
+      },
+    }))
+    .filter((item) => item.value > 0)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 6);
+
+  if (rows.length === 0) {
+    return null;
+  }
+
+  return (
+    <View className="mt-5 rounded-[30px] bg-white p-5" style={cardShadow}>
+      <View className="mb-5 flex-row items-start justify-between">
+        <View className="flex-1 pr-4">
+          <Text className="text-lg font-extrabold text-black">Kategóriák</Text>
+          <Text className="mt-1 text-xs font-semibold text-neutral-500">
+            Becsült havi költés kategóriánként
+          </Text>
+        </View>
+        <Text className="text-sm font-extrabold text-[#0ca9f2]">
+          {formatMoney(total)}
+        </Text>
+      </View>
+
+      {rows.map((item) => {
+        const percentage = total > 0 ? Math.round((item.value / total) * 100) : 0;
+
+        return (
+          <View key={item.code} className="mb-4 last:mb-0">
+            <View className="mb-2 flex-row items-center justify-between">
+              <View className="flex-row items-center">
+                <View
+                  className="mr-2 h-3 w-3 rounded-full"
+                  style={{ backgroundColor: item.meta.color }}
+                />
+                <Text className="text-sm font-extrabold text-black">{item.meta.label}</Text>
+              </View>
+              <Text className="text-xs font-bold text-neutral-500">
+                {formatMoney(item.value)} · {percentage}%
+              </Text>
+            </View>
+            <View className="h-3 overflow-hidden rounded-full bg-neutral-100">
+              <View
+                className="h-3 rounded-full"
+                style={{
+                  width: `${Math.max(percentage, 4)}%`,
+                  backgroundColor: item.meta.color,
+                }}
+              />
+            </View>
+          </View>
+        );
+      })}
+    </View>
+  );
 }
 
 function getPriceInHuf(item) {

@@ -36,6 +36,7 @@ export default function SubscriptionsFormScreen() {
   const isEditMode = Boolean(editingSubscription?.id);
 
   const [currencies, setCurrencies] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [name, setName] = useState(editingSubscription?.name || '');
   const [price, setPrice] = useState(
     editingSubscription?.price === undefined ? '' : String(editingSubscription.price)
@@ -44,6 +45,7 @@ export default function SubscriptionsFormScreen() {
   const [billingCycle, setBillingCycle] = useState(
     editingSubscription?.billing_cycle || 'monthly'
   );
+  const [category, setCategory] = useState(editingSubscription?.category || 'other');
   const [startDate, setStartDate] = useState(
     formatDateInput(editingSubscription?.start_date || editingSubscription?.next_billing_date || '')
   );
@@ -53,19 +55,25 @@ export default function SubscriptionsFormScreen() {
   const [errorText, setErrorText] = useState('');
 
   useEffect(() => {
-    const loadCurrency = async () => {
+    const loadDictionaries = async () => {
       try {
-        const response = await axios.get('/dictionary/currency');
-        const items = response.data?.data || [];
+        const [currencyResponse, categoryResponse] = await Promise.all([
+          axios.get('/dictionary/currency'),
+          axios.get('/dictionary/subscription-category'),
+        ]);
+        const currencyItems = currencyResponse.data?.data || [];
+        const categoryItems = categoryResponse.data?.data || [];
 
-        setCurrencies(items);
-        setCurrency((currentCurrency) => currentCurrency || items[0]?.code || 'HUF');
+        setCurrencies(currencyItems);
+        setCategories(categoryItems);
+        setCurrency((currentCurrency) => currentCurrency || currencyItems[0]?.code || 'HUF');
+        setCategory((currentCategory) => currentCategory || categoryItems[0]?.code || 'other');
       } catch (err) {
-        console.log('Failed to load currency:', err?.response?.data || err?.message);
+        console.log('Failed to load dictionaries:', err?.response?.data || err?.message);
       }
     };
 
-    loadCurrency();
+    loadDictionaries();
   }, []);
 
   const handleDeleteSubscription = () => {
@@ -113,6 +121,7 @@ export default function SubscriptionsFormScreen() {
         name: name.trim(),
         price: Number(price),
         currency,
+        category,
         billing_cycle: billingCycle,
         start_date: normalizedStartDate,
         is_shared: editingSubscription?.is_shared || false,
@@ -215,6 +224,25 @@ export default function SubscriptionsFormScreen() {
                   placeholderStyle={styles.dropdownText}
                 />
               </View>
+            </View>
+
+            <View className="mt-5">
+              <FieldLabel label="Kategória" />
+              <Dropdown
+                data={categories.map((item) => ({
+                  label: item.name || item.code,
+                  value: item.code,
+                }))}
+                labelField="label"
+                valueField="value"
+                value={category}
+                onChange={(item) => setCategory(item.value)}
+                style={styles.dropdown}
+                selectedTextStyle={styles.dropdownText}
+                itemTextStyle={styles.dropdownItemText}
+                placeholder="Válassz kategóriát"
+                placeholderStyle={styles.dropdownText}
+              />
             </View>
 
             <View className="mt-5">

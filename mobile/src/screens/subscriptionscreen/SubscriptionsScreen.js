@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   Pressable,
   ScrollView,
   Text,
@@ -26,6 +27,10 @@ const COLORS = {
 export default function SubscriptionsScreen({ navigation }) {
   const [subscriptions, setSubscriptions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [nextCursor, setNextCursor] = useState(null);
+  const [hasMore, setHasMore] = useState(false);
+  const [summary, setSummary] = useState(null);
   const [errorText, setErrorText] = useState('');
 
   const activeSubscriptions = useMemo(
@@ -33,7 +38,7 @@ export default function SubscriptionsScreen({ navigation }) {
     [subscriptions]
   );
 
-  const totalMonthly = useMemo(
+  const loadedTotalMonthly = useMemo(
     () =>
       activeSubscriptions.reduce((sum, item) => {
         const price = getPriceInHuf(item);
@@ -51,7 +56,7 @@ export default function SubscriptionsScreen({ navigation }) {
     [activeSubscriptions]
   );
 
-  const totalYearly = useMemo(
+  const loadedTotalYearly = useMemo(
     () =>
       activeSubscriptions.reduce((sum, item) => {
         const price = getPriceInHuf(item);
@@ -69,24 +74,69 @@ export default function SubscriptionsScreen({ navigation }) {
     [activeSubscriptions]
   );
 
-  const loadSubscriptions = useCallback(async () => {
+  const totalMonthly = summary?.monthlyTotal ?? loadedTotalMonthly;
+  const totalYearly = summary?.yearlyTotal ?? loadedTotalYearly;
+
+  const loadSubscriptions = useCallback(async ({ cursor = null, append = false } = {}) => {
     try {
-      setLoading(true);
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
       setErrorText('');
 
       const userId = await getStoredUserId();
       const response = await axios.get('/subscriptions', {
-        params: userId ? { userId } : undefined,
+        params: {
+          ...(userId ? { userId } : {}),
+          limit: 6,
+          ...(cursor ? { cursor } : {}),
+          includeSummary: append ? 'false' : 'true',
+        },
       });
 
-      setSubscriptions(response.data?.data || []);
+      const nextItems = response.data?.data || [];
+
+      setSubscriptions((currentItems) =>
+        append ? [...currentItems, ...nextItems] : nextItems
+      );
+      setNextCursor(response.data?.pagination?.nextCursor || null);
+      setHasMore(Boolean(response.data?.pagination?.hasMore));
+
+      if (!append && response.data?.summary) {
+        setSummary(response.data.summary);
+      }
     } catch (err) {
       console.log('Failed to load subscriptions:', err?.response?.data || err?.message);
       setErrorText('Nem sikerült betölteni az előfizetéseket.');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, []);
+
+  const loadMoreSubscriptions = useCallback(() => {
+    if (!hasMore || !nextCursor || loading || loadingMore) {
+      return;
+    }
+
+    loadSubscriptions({ cursor: nextCursor, append: true });
+  }, [hasMore, loadSubscriptions, loading, loadingMore, nextCursor]);
+
+  const handleListScroll = useCallback(
+    ({ nativeEvent }) => {
+      const paddingToBottom = 160;
+      const isCloseToBottom =
+        nativeEvent.layoutMeasurement.height + nativeEvent.contentOffset.y >=
+        nativeEvent.contentSize.height - paddingToBottom;
+
+      if (isCloseToBottom) {
+        loadMoreSubscriptions();
+      }
+    },
+    [loadMoreSubscriptions]
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -99,6 +149,8 @@ export default function SubscriptionsScreen({ navigation }) {
       <ScrollView
         className="flex-1"
         contentContainerClassName="pb-36"
+        onScroll={handleListScroll}
+        scrollEventThrottle={400}
         showsVerticalScrollIndicator={false}
       >
         <CurvedHeader
@@ -183,17 +235,25 @@ export default function SubscriptionsScreen({ navigation }) {
                 </Pressable>
               </View>
             ) : (
-              subscriptions.map((item) => (
-                <SubscriptionCard
-                  key={String(item.id)}
-                  subscription={item}
-                  onEdit={() =>
-                    navigation.navigate('SubscriptionsForm', {
-                      subscription: item,
-                    })
-                  }
-                />
-              ))
+              <>
+                {subscriptions.map((item) => (
+                  <SubscriptionCard
+                    key={String(item.id)}
+                    subscription={item}
+                    onEdit={() =>
+                      navigation.navigate('SubscriptionsForm', {
+                        subscription: item,
+                      })
+                    }
+                  />
+                ))}
+
+                {loadingMore ? (
+                  <View className="items-center py-5">
+                    <ActivityIndicator color={COLORS.blue} size="small" />
+                  </View>
+                ) : null}
+              </>
             )}
           </View>
         </AnimatedScreen>
@@ -223,7 +283,9 @@ function SubscriptionCard({ subscription, onEdit }) {
   const name = subscription.name || 'Névtelen előfizetés';
   const currency = subscription.currency || 'HUF';
   const priceHuf = getPriceInHuf(subscription);
+  const categoryLabel = getCategoryLabel(subscription.category);
   const billingCycle = getBillingCycleLabel(subscription.billing_cycle);
+  const logoUrl = subscription.logo_url;
   const nextBilling = subscription.next_billing_date
     ? `Következő fizetés: ${formatDateOnly(parseDateValue(subscription.next_billing_date))}`
     : '';
@@ -234,13 +296,12 @@ function SubscriptionCard({ subscription, onEdit }) {
       style={({ pressed }) => [cardShadow, pressed && { opacity: 0.88 }]}
       onPress={onEdit}
     >
-      <View className="h-12 w-12 items-center justify-center rounded-2xl bg-[#eef7ff]">
-        <SubscriptionIcon />
-      </View>
+      <SubscriptionLogo logoUrl={logoUrl} />
 
       <View className="ml-4 flex-1">
         <Text className="text-base font-extrabold text-black" numberOfLines={1}>{name}</Text>
         <Text className="mt-1 text-xs font-semibold text-neutral-500">{billingCycle}</Text>
+        <Text className="mt-1 text-xs font-bold text-[#0ca9f2]">{categoryLabel}</Text>
         {!!nextBilling && (
           <Text className="mt-1 text-xs font-semibold text-neutral-500" numberOfLines={1}>
             {nextBilling}
@@ -271,6 +332,25 @@ function SummaryPill({ label, value }) {
     <View className="flex-1 rounded-2xl bg-white/15 px-4 py-3">
       <Text className="text-xs font-bold text-white/75">{label}</Text>
       <Text className="mt-1 text-lg font-extrabold text-white">{value}</Text>
+    </View>
+  );
+}
+
+function SubscriptionLogo({ logoUrl }) {
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <View className="h-12 w-12 items-center justify-center overflow-hidden rounded-2xl bg-[#eef7ff]">
+      {logoUrl && !failed ? (
+        <Image
+          source={{ uri: logoUrl }}
+          className="h-full w-full"
+          resizeMode="contain"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <SubscriptionIcon />
+      )}
     </View>
   );
 }
@@ -309,6 +389,21 @@ function getBillingCycleLabel(value) {
   }
 
   return 'Havi';
+}
+
+function getCategoryLabel(value) {
+  const categories = {
+    streaming: 'Streaming',
+    work: 'Munka',
+    'ai-tool': 'AI tool',
+    hosting: 'Tárhely',
+    mobile: 'Mobil',
+    bank: 'Bank',
+    gaming: 'Játék',
+    other: 'Egyéb',
+  };
+
+  return categories[value] || 'Egyéb';
 }
 
 function getNextBillingLabel(items) {

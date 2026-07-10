@@ -1,6 +1,7 @@
 const {listSubscriptions, getSubscriptionById, createSubscription: createSubscriptionRecord, 
     deleteSubscription: deleteSubscriptionRecord, updateSubscription: updateSubscriptionRecord} = require('../services/subscriptionService');
 const { convertPriceToHuf } = require('../services/exchangeRateService');
+const { resolveBrandLogoUrl } = require('../services/brandLogoService');
 
 const formatDateOnly = (date) => {
   const year = date.getFullYear();
@@ -87,14 +88,22 @@ const buildPriceConversionFields = async (price, currency) => {
 
 const getSubscriptions = async (req, res) => {
   try {
-    const { userId } = req.query;
-    const { data, error } = await listSubscriptions(userId);
+    const { userId, limit, cursor, includeSummary } = req.query;
+    const { data, error, pagination, summary } = await listSubscriptions(userId, {
+      limit,
+      cursor,
+      includeSummary: includeSummary === 'true',
+    });
 
     if (error) {
       return res.status(500).json({ error: error.message });
     }
 
-    return res.json({ data });
+    return res.json({
+      data,
+      ...(pagination ? { pagination } : {}),
+      ...(summary ? { summary } : {}),
+    });
   } catch (err) {
     return res.status(500).json({ error: 'Unexpected error' });
   }
@@ -127,6 +136,7 @@ const createSubscription = async (req, res) => {
       start_date,
       next_billing_date,
       is_active,
+      category,
     } = req.body;
 
     if (!start_date) {
@@ -152,6 +162,8 @@ const createSubscription = async (req, res) => {
       next_billing_date: calculatedNextBillingDate || null,
       start_date,
       is_active,
+      category,
+      logo_url: resolveBrandLogoUrl(name),
     };
 
     const { data, error } = await createSubscriptionRecord(payload);
@@ -194,6 +206,7 @@ const updateSubscription = async (req, res) => {
       start_date,
       next_billing_date,
       is_active,
+      category,
     } = req.body;
 
     const { data: currentSubscription, error: getError } = await getSubscriptionById(id);
@@ -211,6 +224,7 @@ const updateSubscription = async (req, res) => {
     const resolvedBillingCycle = billing_cycle ?? currentSubscription.billing_cycle;
     const resolvedPrice = price ?? currentSubscription.price;
     const resolvedCurrency = currency ?? currentSubscription.currency;
+    const resolvedName = name ?? currentSubscription.name;
     const calculatedNextBillingDate =
       resolvedStartDate && resolvedBillingCycle
         ? calculateNextBillingDate(resolvedStartDate, resolvedBillingCycle)
@@ -232,6 +246,8 @@ const updateSubscription = async (req, res) => {
       start_date,
       next_billing_date: calculatedNextBillingDate,
       is_active,
+      category,
+      logo_url: resolveBrandLogoUrl(resolvedName),
     };
 
     const { data, error } = await updateSubscriptionRecord(id, payload);

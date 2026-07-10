@@ -1,6 +1,19 @@
 const { db } = require('./firestoreClient');
 
-const allowedDictionaries = ['currency', 'country', 'billing-cycle'];
+const allowedDictionaries = ['currency', 'country', 'billing-cycle', 'subscription-category'];
+
+const fallbackDictionaryItems = {
+  'subscription-category': [
+    { code: 'streaming', name: 'Streaming' },
+    { code: 'work', name: 'Munka' },
+    { code: 'ai-tool', name: 'AI tool' },
+    { code: 'hosting', name: 'Tárhely' },
+    { code: 'mobile', name: 'Mobil' },
+    { code: 'bank', name: 'Bank' },
+    { code: 'gaming', name: 'Játék' },
+    { code: 'other', name: 'Egyéb' },
+  ],
+};
 
 const toServiceError = (err) => ({
   message: err.message || 'Firestore operation failed',
@@ -27,7 +40,10 @@ const listDictionaryItems = async (type) => {
       .filter((doc) => doc.id !== '_schema')
       .map(snapshotToDictionaryItem);
 
-    return { data, error: null };
+    return {
+      data: data.length > 0 ? data : fallbackDictionaryItems[type] || [],
+      error: null,
+    };
   } catch (err) {
     return { data: null, error: toServiceError(err) };
   }

@@ -1,6 +1,7 @@
 const { admin, db } = require('./firestoreClient');
 const { getNextId } = require('./counterService');
 const { convertPriceToHuf } = require('./exchangeRateService');
+const { resolveBrandLogoUrl } = require('./brandLogoService');
 
 const subscriptionsCollection = db.collection('subscriptions');
 
@@ -29,12 +30,18 @@ const snapshotToSubscription = (doc) => ({
   ...doc.data(),
 });
 
+const resolveSubscriptionLogoUrl = (subscription) =>
+  subscription.logo_url || resolveBrandLogoUrl(subscription.name);
+
 const enrichSubscriptionWithHufPrice = async (subscription) => {
   if (
     subscription.price_huf !== undefined &&
     subscription.exchange_rate_to_huf !== undefined
   ) {
-    return subscription;
+    return {
+      ...subscription,
+      logo_url: resolveSubscriptionLogoUrl(subscription),
+    };
   }
 
   try {
@@ -46,6 +53,7 @@ const enrichSubscriptionWithHufPrice = async (subscription) => {
     return {
       ...subscription,
       ...conversion,
+      logo_url: resolveSubscriptionLogoUrl(subscription),
     };
   } catch (err) {
     console.log('[exchange] failed to enrich subscription', {
@@ -59,6 +67,7 @@ const enrichSubscriptionWithHufPrice = async (subscription) => {
       price_huf: subscription.currency === 'HUF' ? Number(subscription.price) || 0 : null,
       exchange_rate_to_huf: subscription.currency === 'HUF' ? 1 : null,
       exchange_rate_date: null,
+      logo_url: resolveSubscriptionLogoUrl(subscription),
     };
   }
 };
@@ -79,9 +88,64 @@ const toServiceError = (err) => ({
   message: err.message || 'Firestore operation failed',
 });
 
-const listSubscriptions = async (userId) => {
+const toPositiveInteger = (value, fallback) => {
+  const numericValue = Number(value);
+
+  if (Number.isInteger(numericValue) && numericValue > 0) {
+    return numericValue;
+  }
+
+  return fallback;
+};
+
+const getPriceInHuf = (subscription) => {
+  const convertedPrice = Number(subscription.price_huf);
+
+  if (!Number.isNaN(convertedPrice)) {
+    return convertedPrice;
+  }
+
+  if ((subscription.currency || 'HUF') === 'HUF') {
+    return Number(subscription.price) || 0;
+  }
+
+  return 0;
+};
+
+const buildSubscriptionsSummary = (subscriptions) =>
+  subscriptions.reduce(
+    (summary, subscription) => {
+      if (subscription.is_active === false) {
+        return summary;
+      }
+
+      const price = getPriceInHuf(subscription);
+      const monthlyPrice =
+        subscription.billing_cycle === 'yearly'
+          ? price / 12
+          : subscription.billing_cycle === 'weekly'
+            ? price * 4
+            : price;
+
+      return {
+        monthlyTotal: summary.monthlyTotal + monthlyPrice,
+        yearlyTotal: summary.yearlyTotal + monthlyPrice * 12,
+        activeCount: summary.activeCount + 1,
+      };
+    },
+    {
+      monthlyTotal: 0,
+      yearlyTotal: 0,
+      activeCount: 0,
+    }
+  );
+
+const listSubscriptions = async (userId, options = {}) => {
   try {
     let query = subscriptionsCollection;
+    const limit = toPositiveInteger(options.limit, null);
+    const cursor = Math.max(Number(options.cursor) || 0, 0);
+    const includeSummary = options.includeSummary === true;
 
     if (userId) {
       query = query.where('user_id', '==', toNumericId(userId));
@@ -101,7 +165,24 @@ const listSubscriptions = async (userId) => {
       );
     }
 
-    return { data, error: null };
+    const pageData = limit ? data.slice(cursor, cursor + limit) : data;
+    const nextCursor = limit && cursor + pageData.length < data.length
+      ? String(cursor + pageData.length)
+      : null;
+
+    return {
+      data: pageData,
+      error: null,
+      pagination: limit
+        ? {
+            limit,
+            nextCursor,
+            hasMore: Boolean(nextCursor),
+            total: data.length,
+          }
+        : undefined,
+      summary: includeSummary ? buildSubscriptionsSummary(data) : undefined,
+    };
   } catch (err) {
     return { data: null, error: toServiceError(err) };
   }
