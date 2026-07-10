@@ -1,5 +1,6 @@
 const {listSubscriptions, getSubscriptionById, createSubscription: createSubscriptionRecord, 
     deleteSubscription: deleteSubscriptionRecord, updateSubscription: updateSubscriptionRecord} = require('../services/subscriptionService');
+const { convertPriceToHuf } = require('../services/exchangeRateService');
 
 const formatDateOnly = (date) => {
   const year = date.getFullYear();
@@ -72,6 +73,18 @@ const calculateNextBillingDate = (startDateValue, billingCycle) => {
   return nextDate ? formatDateOnly(nextDate) : undefined;
 };
 
+const buildPriceConversionFields = async (price, currency) => {
+  try {
+    return await convertPriceToHuf(price, currency);
+  } catch (err) {
+    return {
+      error: {
+        message: err.message || 'Exchange rate conversion failed',
+      },
+    };
+  }
+};
+
 const getSubscriptions = async (req, res) => {
   try {
     const { userId } = req.query;
@@ -122,11 +135,17 @@ const createSubscription = async (req, res) => {
 
     const calculatedNextBillingDate =
       next_billing_date || calculateNextBillingDate(start_date, billing_cycle);
+    const conversion = await buildPriceConversionFields(price, currency);
+
+    if (conversion.error) {
+      return res.status(502).json({ error: conversion.error.message });
+    }
 
     const payload = {
       name,
       price,
       currency,
+      ...conversion,
       billing_cycle,
       is_shared,
       user_id,
@@ -190,15 +209,23 @@ const updateSubscription = async (req, res) => {
     const resolvedStartDate =
       start_date ?? currentSubscription.start_date ?? currentSubscription.next_billing_date;
     const resolvedBillingCycle = billing_cycle ?? currentSubscription.billing_cycle;
+    const resolvedPrice = price ?? currentSubscription.price;
+    const resolvedCurrency = currency ?? currentSubscription.currency;
     const calculatedNextBillingDate =
       resolvedStartDate && resolvedBillingCycle
         ? calculateNextBillingDate(resolvedStartDate, resolvedBillingCycle)
         : next_billing_date;
+    const conversion = await buildPriceConversionFields(resolvedPrice, resolvedCurrency);
+
+    if (conversion.error) {
+      return res.status(502).json({ error: conversion.error.message });
+    }
 
     const payload = {
       name,
       price,
       currency,
+      ...conversion,
       billing_cycle,
       is_shared,
       user_id,

@@ -217,7 +217,7 @@ const blueShadow = {
 function getSubscriptionSummary(items) {
   return items.reduce(
     (summary, item) => {
-      const price = Number(item.price) || 0;
+      const price = getPriceInHuf(item);
       const isActive = item.is_active !== false;
 
       if (!isActive) {
@@ -374,6 +374,20 @@ function formatMoney(value, currency = 'HUF') {
   }
 
   return `${amount.toLocaleString('hu-HU')} ${currency}`;
+}
+
+function getPriceInHuf(item) {
+  const convertedPrice = Number(item.price_huf);
+
+  if (!Number.isNaN(convertedPrice)) {
+    return convertedPrice;
+  }
+
+  if ((item.currency || 'HUF') === 'HUF') {
+    return Number(item.price) || 0;
+  }
+
+  return 0;
 }
 
 function MetricCard({ icon, label, value, note }) {

@@ -36,10 +36,14 @@ export default function SubscriptionsScreen({ navigation }) {
   const totalMonthly = useMemo(
     () =>
       activeSubscriptions.reduce((sum, item) => {
-        const price = Number(item.price) || 0;
+        const price = getPriceInHuf(item);
 
         if (item.billing_cycle === 'yearly') {
-          return sum;
+          return sum + price / 12;
+        }
+
+        if (item.billing_cycle === 'weekly') {
+          return sum + price * 4;
         }
 
         return sum + price;
@@ -50,10 +54,14 @@ export default function SubscriptionsScreen({ navigation }) {
   const totalYearly = useMemo(
     () =>
       activeSubscriptions.reduce((sum, item) => {
-        const price = Number(item.price) || 0;
+        const price = getPriceInHuf(item);
 
         if (item.billing_cycle === 'monthly') {
           return sum + price * 12;
+        }
+
+        if (item.billing_cycle === 'weekly') {
+          return sum + price * 52;
         }
 
         return sum + price;
@@ -214,6 +222,7 @@ const blueShadow = {
 function SubscriptionCard({ subscription, onEdit }) {
   const name = subscription.name || 'Névtelen előfizetés';
   const currency = subscription.currency || 'HUF';
+  const priceHuf = getPriceInHuf(subscription);
   const billingCycle = getBillingCycleLabel(subscription.billing_cycle);
   const nextBilling = subscription.next_billing_date
     ? `Következő fizetés: ${formatDateOnly(parseDateValue(subscription.next_billing_date))}`
@@ -243,6 +252,11 @@ function SubscriptionCard({ subscription, onEdit }) {
         <Text className="text-base font-extrabold text-black">
           {formatMoney(subscription.price, currency)}
         </Text>
+        {currency !== 'HUF' && priceHuf > 0 ? (
+          <Text className="mt-1 text-xs font-bold text-neutral-500">
+            {formatMoney(priceHuf)}
+          </Text>
+        ) : null}
         {subscription.is_shared ? (
           <Text className="mt-1 text-xs font-bold text-[#0ca9f2]">Megosztott</Text>
         ) : null}
@@ -269,6 +283,20 @@ function formatMoney(value, currency = 'HUF') {
   }
 
   return `${amount.toLocaleString('hu-HU')} ${currency}`;
+}
+
+function getPriceInHuf(item) {
+  const convertedPrice = Number(item.price_huf);
+
+  if (!Number.isNaN(convertedPrice)) {
+    return convertedPrice;
+  }
+
+  if ((item.currency || 'HUF') === 'HUF') {
+    return Number(item.price) || 0;
+  }
+
+  return 0;
 }
 
 function getBillingCycleLabel(value) {

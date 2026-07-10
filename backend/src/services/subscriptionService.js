@@ -1,5 +1,6 @@
 const { admin, db } = require('./firestoreClient');
 const { getNextId } = require('./counterService');
+const { convertPriceToHuf } = require('./exchangeRateService');
 
 const subscriptionsCollection = db.collection('subscriptions');
 
@@ -28,6 +29,40 @@ const snapshotToSubscription = (doc) => ({
   ...doc.data(),
 });
 
+const enrichSubscriptionWithHufPrice = async (subscription) => {
+  if (
+    subscription.price_huf !== undefined &&
+    subscription.exchange_rate_to_huf !== undefined
+  ) {
+    return subscription;
+  }
+
+  try {
+    const conversion = await convertPriceToHuf(
+      subscription.price,
+      subscription.currency
+    );
+
+    return {
+      ...subscription,
+      ...conversion,
+    };
+  } catch (err) {
+    console.log('[exchange] failed to enrich subscription', {
+      id: subscription.id,
+      currency: subscription.currency,
+      error: err.message,
+    });
+
+    return {
+      ...subscription,
+      price_huf: subscription.currency === 'HUF' ? Number(subscription.price) || 0 : null,
+      exchange_rate_to_huf: subscription.currency === 'HUF' ? 1 : null,
+      exchange_rate_date: null,
+    };
+  }
+};
+
 const getTimestampMillis = (value) => {
   if (!value) {
     return 0;
@@ -55,9 +90,10 @@ const listSubscriptions = async (userId) => {
     }
 
     const snapshot = await query.get();
-    const data = snapshot.docs
+    const data = await Promise.all(snapshot.docs
       .filter((doc) => doc.id !== '_schema')
-      .map(snapshotToSubscription);
+      .map(snapshotToSubscription)
+      .map(enrichSubscriptionWithHufPrice));
 
     if (userId) {
       data.sort(
