@@ -4,6 +4,8 @@ const { convertPriceToHuf } = require('./exchangeRateService');
 const { resolveBrandLogoUrl } = require('./brandLogoService');
 
 const subscriptionsCollection = db.collection('subscriptions');
+const exchangeRefreshCollection = db.collection('exchange_rate_refreshes');
+const TARGET_CURRENCY = 'HUF';
 
 const cleanPayload = (payload) =>
   Object.fromEntries(
@@ -98,6 +100,44 @@ const toPositiveInteger = (value, fallback) => {
   return fallback;
 };
 
+const normalizeText = (value) =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim();
+
+const filterSubscriptions = (subscriptions, options) => {
+  const search = normalizeText(options.search);
+  const status = options.status || 'all';
+  const category = options.category || 'all';
+  const billingCycle = options.billingCycle || 'all';
+
+  return subscriptions.filter((subscription) => {
+    if (search && !normalizeText(subscription.name).includes(search)) {
+      return false;
+    }
+
+    if (status === 'active' && subscription.is_active === false) {
+      return false;
+    }
+
+    if (status === 'inactive' && subscription.is_active !== false) {
+      return false;
+    }
+
+    if (category !== 'all' && (subscription.category || 'other') !== category) {
+      return false;
+    }
+
+    if (billingCycle !== 'all' && subscription.billing_cycle !== billingCycle) {
+      return false;
+    }
+
+    return true;
+  });
+};
+
 const getPriceInHuf = (subscription) => {
   const convertedPrice = Number(subscription.price_huf);
 
@@ -111,6 +151,8 @@ const getPriceInHuf = (subscription) => {
 
   return 0;
 };
+
+const getTodayKey = () => new Date().toISOString().slice(0, 10);
 
 const buildSubscriptionsSummary = (subscriptions) =>
   subscriptions.reduce(
@@ -165,8 +207,11 @@ const listSubscriptions = async (userId, options = {}) => {
       );
     }
 
-    const pageData = limit ? data.slice(cursor, cursor + limit) : data;
-    const nextCursor = limit && cursor + pageData.length < data.length
+    const filteredData = filterSubscriptions(data, options);
+    const pageData = limit
+      ? filteredData.slice(cursor, cursor + limit)
+      : filteredData;
+    const nextCursor = limit && cursor + pageData.length < filteredData.length
       ? String(cursor + pageData.length)
       : null;
 
@@ -178,10 +223,120 @@ const listSubscriptions = async (userId, options = {}) => {
             limit,
             nextCursor,
             hasMore: Boolean(nextCursor),
-            total: data.length,
+            total: filteredData.length,
           }
         : undefined,
-      summary: includeSummary ? buildSubscriptionsSummary(data) : undefined,
+      summary: includeSummary ? buildSubscriptionsSummary(filteredData) : undefined,
+    };
+  } catch (err) {
+    return { data: null, error: toServiceError(err) };
+  }
+};
+
+const refreshUserExchangeRates = async (userId, options = {}) => {
+  try {
+    const normalizedUserId = toNumericId(userId);
+    const todayKey = getTodayKey();
+    const refreshRef = exchangeRefreshCollection.doc(String(normalizedUserId));
+    const refreshDoc = await refreshRef.get();
+    const refreshData = refreshDoc.exists ? refreshDoc.data() : null;
+
+    if (!options.force && refreshData?.last_refresh_date === todayKey) {
+      return {
+        data: {
+          skipped: true,
+          refreshed: 0,
+          failed: 0,
+          last_refresh_date: todayKey,
+        },
+        error: null,
+      };
+    }
+
+    const snapshot = await subscriptionsCollection
+      .where('user_id', '==', normalizedUserId)
+      .get();
+
+    let refreshed = 0;
+    let failed = 0;
+    let batch = db.batch();
+    let batchOperationCount = 0;
+    const commitBatchIfNeeded = async () => {
+      if (batchOperationCount < 450) {
+        return;
+      }
+
+      await batch.commit();
+      batch = db.batch();
+      batchOperationCount = 0;
+    };
+
+    for (const doc of snapshot.docs) {
+      if (doc.id === '_schema') {
+        continue;
+      }
+
+      const subscription = snapshotToSubscription(doc);
+      const currency = String(subscription.currency || TARGET_CURRENCY).toUpperCase();
+
+      if (currency === TARGET_CURRENCY) {
+        batch.update(doc.ref, {
+          price_huf: Number(subscription.price) || 0,
+          exchange_rate_to_huf: 1,
+          exchange_rate_date: todayKey,
+          updated_at: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        batchOperationCount += 1;
+        refreshed += 1;
+        await commitBatchIfNeeded();
+        continue;
+      }
+
+      try {
+        const conversion = await convertPriceToHuf(subscription.price, currency);
+
+        batch.update(doc.ref, {
+          ...conversion,
+          updated_at: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        batchOperationCount += 1;
+        refreshed += 1;
+        await commitBatchIfNeeded();
+      } catch (err) {
+        failed += 1;
+        console.log('[exchange] failed to refresh subscription rate', {
+          id: subscription.id,
+          currency,
+          error: err.message,
+        });
+      }
+    }
+
+    batch.set(
+      refreshRef,
+      {
+        user_id: normalizedUserId,
+        last_refresh_date: todayKey,
+        refreshed,
+        failed,
+        updated_at: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+    batchOperationCount += 1;
+
+    if (batchOperationCount > 0) {
+      await batch.commit();
+    }
+
+    return {
+      data: {
+        skipped: false,
+        refreshed,
+        failed,
+        last_refresh_date: todayKey,
+      },
+      error: null,
     };
   } catch (err) {
     return { data: null, error: toServiceError(err) };
@@ -257,4 +412,5 @@ module.exports = {
   createSubscription,
   deleteSubscription,
   updateSubscription,
+  refreshUserExchangeRates,
 };

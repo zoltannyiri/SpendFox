@@ -1,10 +1,11 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
   Pressable,
   ScrollView,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import Svg, { Circle, Path, Rect } from 'react-native-svg';
@@ -24,14 +25,53 @@ const COLORS = {
   white: '#ffffff',
 };
 
+const FALLBACK_CATEGORIES = [
+  { code: 'streaming', name: 'Streaming' },
+  { code: 'work', name: 'Munka' },
+  { code: 'ai-tool', name: 'AI tool' },
+  { code: 'hosting', name: 'Tárhely' },
+  { code: 'mobile', name: 'Mobil' },
+  { code: 'bank', name: 'Bank' },
+  { code: 'gaming', name: 'Játék' },
+  { code: 'other', name: 'Egyéb' },
+];
+
+const STATUS_OPTIONS = [
+  { value: 'all', label: 'Mind' },
+  { value: 'active', label: 'Aktív' },
+  { value: 'inactive', label: 'Inaktív' },
+];
+
+const BILLING_CYCLE_OPTIONS = [
+  { value: 'all', label: 'Minden ciklus' },
+  { value: 'monthly', label: 'Havi' },
+  { value: 'yearly', label: 'Éves' },
+  { value: 'weekly', label: 'Heti' },
+];
+
 export default function SubscriptionsScreen({ navigation }) {
   const [subscriptions, setSubscriptions] = useState([]);
+  const [categories, setCategories] = useState(FALLBACK_CATEGORIES);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [nextCursor, setNextCursor] = useState(null);
   const [hasMore, setHasMore] = useState(false);
   const [summary, setSummary] = useState(null);
   const [errorText, setErrorText] = useState('');
+  const [searchText, setSearchText] = useState('');
+  const [debouncedSearchText, setDebouncedSearchText] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [categoryFilter, setCategoryFilter] = useState('all');
+  const [billingCycleFilter, setBillingCycleFilter] = useState('all');
+  const [selectedSubscriptionId, setSelectedSubscriptionId] = useState(null);
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      setDebouncedSearchText(searchText.trim());
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchText]);
 
   const activeSubscriptions = useMemo(
     () => subscriptions.filter((item) => item.is_active !== false),
@@ -76,6 +116,31 @@ export default function SubscriptionsScreen({ navigation }) {
 
   const totalMonthly = summary?.monthlyTotal ?? loadedTotalMonthly;
   const totalYearly = summary?.yearlyTotal ?? loadedTotalYearly;
+  const categoryOptions = useMemo(
+    () => [
+      { code: 'all', name: 'Minden kategória' },
+      ...categories,
+    ],
+    [categories]
+  );
+
+  const loadCategories = useCallback(async () => {
+    try {
+      const response = await axios.get('/dictionary/subscription-category');
+      const nextCategories = (response.data?.data || [])
+        .map((item) => ({
+          code: item.code || item.id,
+          name: item.name || item.label || item.code || item.id,
+        }))
+        .filter((item) => item.code && item.name);
+
+      if (nextCategories.length > 0) {
+        setCategories(nextCategories);
+      }
+    } catch (err) {
+      console.log('Failed to load subscription categories:', err?.response?.data || err?.message);
+    }
+  }, []);
 
   const loadSubscriptions = useCallback(async ({ cursor = null, append = false } = {}) => {
     try {
@@ -83,6 +148,7 @@ export default function SubscriptionsScreen({ navigation }) {
         setLoadingMore(true);
       } else {
         setLoading(true);
+        setSelectedSubscriptionId(null);
       }
       setErrorText('');
 
@@ -93,6 +159,10 @@ export default function SubscriptionsScreen({ navigation }) {
           limit: 6,
           ...(cursor ? { cursor } : {}),
           includeSummary: append ? 'false' : 'true',
+          ...(debouncedSearchText ? { search: debouncedSearchText } : {}),
+          ...(statusFilter !== 'all' ? { status: statusFilter } : {}),
+          ...(categoryFilter !== 'all' ? { category: categoryFilter } : {}),
+          ...(billingCycleFilter !== 'all' ? { billingCycle: billingCycleFilter } : {}),
         },
       });
 
@@ -114,7 +184,7 @@ export default function SubscriptionsScreen({ navigation }) {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, []);
+  }, [billingCycleFilter, categoryFilter, debouncedSearchText, statusFilter]);
 
   const loadMoreSubscriptions = useCallback(() => {
     if (!hasMore || !nextCursor || loading || loadingMore) {
@@ -137,6 +207,10 @@ export default function SubscriptionsScreen({ navigation }) {
     },
     [loadMoreSubscriptions]
   );
+
+  useEffect(() => {
+    loadCategories();
+  }, [loadCategories]);
 
   useFocusEffect(
     useCallback(() => {
@@ -192,6 +266,18 @@ export default function SubscriptionsScreen({ navigation }) {
             </View>
           </View>
 
+          <FilterPanel
+            searchText={searchText}
+            onSearchTextChange={setSearchText}
+            statusFilter={statusFilter}
+            onStatusFilterChange={setStatusFilter}
+            categoryFilter={categoryFilter}
+            onCategoryFilterChange={setCategoryFilter}
+            billingCycleFilter={billingCycleFilter}
+            onBillingCycleFilterChange={setBillingCycleFilter}
+            categoryOptions={categoryOptions}
+          />
+
           <View className="mt-7">
             <View className="mb-3 flex-row items-center justify-between">
               <Text className="text-lg font-extrabold text-black">Lista</Text>
@@ -222,10 +308,10 @@ export default function SubscriptionsScreen({ navigation }) {
               <View className="mt-10 items-center rounded-[28px] bg-white px-5 py-8" style={cardShadow}>
                 <EmptyIcon />
                 <Text className="mt-4 text-center text-base font-extrabold text-black">
-                  Még nincs előfizetésed
+                  Nincs találat
                 </Text>
                 <Text className="mt-2 text-center text-sm font-semibold leading-5 text-neutral-500">
-                  Add hozzá az első szolgáltatást, hogy egy helyen lásd a havi kiadásaidat.
+                  Próbálj más keresést vagy szűrőt, esetleg adj hozzá új előfizetést.
                 </Text>
                 <Pressable
                   className="mt-5 rounded-full bg-black px-5 py-3"
@@ -237,15 +323,28 @@ export default function SubscriptionsScreen({ navigation }) {
             ) : (
               <>
                 {subscriptions.map((item) => (
-                  <SubscriptionCard
-                    key={String(item.id)}
-                    subscription={item}
-                    onEdit={() =>
-                      navigation.navigate('SubscriptionsForm', {
-                        subscription: item,
-                      })
-                    }
-                  />
+                  <React.Fragment key={String(item.id)}>
+                    <SubscriptionCard
+                      subscription={item}
+                      isOpen={String(selectedSubscriptionId) === String(item.id)}
+                      onOpenDetails={() =>
+                        setSelectedSubscriptionId((currentId) =>
+                          String(currentId) === String(item.id) ? null : item.id
+                        )
+                      }
+                    />
+                    {String(selectedSubscriptionId) === String(item.id) ? (
+                      <SubscriptionDetailCard
+                        subscription={item}
+                        onClose={() => setSelectedSubscriptionId(null)}
+                        onEdit={() =>
+                          navigation.navigate('SubscriptionsForm', {
+                            subscription: item,
+                          })
+                        }
+                      />
+                    ) : null}
+                  </React.Fragment>
                 ))}
 
                 {loadingMore ? (
@@ -279,7 +378,167 @@ const blueShadow = {
   elevation: 5,
 };
 
-function SubscriptionCard({ subscription, onEdit }) {
+function FilterPanel({
+  searchText,
+  onSearchTextChange,
+  statusFilter,
+  onStatusFilterChange,
+  categoryFilter,
+  onCategoryFilterChange,
+  billingCycleFilter,
+  onBillingCycleFilterChange,
+  categoryOptions,
+}) {
+  return (
+    <View className="mt-5 rounded-[28px] bg-white p-4" style={cardShadow}>
+      <Text className="text-sm font-extrabold text-black">Keresés és szűrés</Text>
+      <TextInput
+        className="mt-3 rounded-2xl bg-[#f3f5f8] px-4 py-3 text-sm font-semibold text-black"
+        placeholder="Keresés név alapján"
+        placeholderTextColor="#9ca3af"
+        value={searchText}
+        onChangeText={onSearchTextChange}
+      />
+
+      <View className="mt-4 flex-row rounded-2xl bg-[#f3f5f8] p-1">
+        {STATUS_OPTIONS.map((option) => (
+          <FilterSegment
+            key={option.value}
+            active={statusFilter === option.value}
+            label={option.label}
+            onPress={() => onStatusFilterChange(option.value)}
+          />
+        ))}
+      </View>
+
+      <ScrollView
+        className="mt-4"
+        horizontal
+        showsHorizontalScrollIndicator={false}
+      >
+        {categoryOptions.map((option) => (
+          <FilterChip
+            key={option.code}
+            active={categoryFilter === option.code}
+            label={option.name}
+            onPress={() => onCategoryFilterChange(option.code)}
+          />
+        ))}
+      </ScrollView>
+
+      <ScrollView
+        className="mt-3"
+        horizontal
+        showsHorizontalScrollIndicator={false}
+      >
+        {BILLING_CYCLE_OPTIONS.map((option) => (
+          <FilterChip
+            key={option.value}
+            active={billingCycleFilter === option.value}
+            label={option.label}
+            onPress={() => onBillingCycleFilterChange(option.value)}
+          />
+        ))}
+      </ScrollView>
+    </View>
+  );
+}
+
+function FilterSegment({ active, label, onPress }) {
+  return (
+    <Pressable
+      className={`flex-1 rounded-xl px-3 py-3 ${active ? 'bg-white' : ''}`}
+      onPress={onPress}
+    >
+      <Text
+        className={`text-center text-xs font-extrabold ${
+          active ? 'text-[#0ca9f2]' : 'text-neutral-500'
+        }`}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function FilterChip({ active, label, onPress }) {
+  return (
+    <Pressable
+      className={`mr-2 rounded-full px-4 py-2 ${
+        active ? 'bg-[#0ca9f2]' : 'bg-[#f3f5f8]'
+      }`}
+      onPress={onPress}
+    >
+      <Text className={`text-xs font-extrabold ${active ? 'text-white' : 'text-neutral-600'}`}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function SubscriptionDetailCard({ subscription, onClose, onEdit }) {
+  const currency = subscription.currency || 'HUF';
+  const annualPrice = getAnnualPriceInHuf(subscription);
+  const nextBillingDate = getNextBillingDate(subscription, startOfDay(new Date()));
+  const categoryLabel = getCategoryLabel(subscription.category);
+  const rate = Number(subscription.exchange_rate_to_huf);
+  const hasRate = currency !== 'HUF' && !Number.isNaN(rate) && rate > 0;
+
+  return (
+    <View className="mb-4 rounded-[30px] bg-white p-5" style={cardShadow}>
+      <View className="flex-row items-start justify-between">
+        <View className="flex-1 pr-4">
+          <Text className="text-xs font-extrabold uppercase text-neutral-400">
+            Részletek
+          </Text>
+          <Text className="mt-1 text-2xl font-extrabold text-black" numberOfLines={1}>
+            {subscription.name || 'Névtelen előfizetés'}
+          </Text>
+          <Text className="mt-1 text-sm font-bold text-[#0ca9f2]">
+            {categoryLabel} · {getBillingCycleLabel(subscription.billing_cycle)}
+          </Text>
+        </View>
+        <Pressable className="rounded-full bg-[#f3f5f8] px-3 py-2" onPress={onClose}>
+          <Text className="text-xs font-extrabold text-neutral-600">Bezár</Text>
+        </Pressable>
+      </View>
+
+      <View className="mt-5 flex-row flex-wrap justify-between">
+        <DetailStat label="Következő fizetés" value={formatDateOnly(nextBillingDate)} />
+        <DetailStat label="Éves becslés" value={formatMoney(annualPrice)} />
+        <DetailStat label="Eredeti ár" value={formatMoney(subscription.price, currency)} />
+        <DetailStat
+          label="Árfolyam"
+          value={hasRate ? `1 ${currency} = ${Math.round(rate)} Ft` : 'HUF'}
+        />
+      </View>
+
+      <View className="mt-4 rounded-2xl bg-[#f3f5f8] px-4 py-3">
+        <Text className="text-xs font-bold text-neutral-500">Értesítés státusz</Text>
+        <Text className="mt-1 text-sm font-extrabold text-black">
+          Profilbeállítás szerint
+        </Text>
+      </View>
+
+      <Pressable className="mt-4 rounded-2xl bg-black py-4" onPress={onEdit}>
+        <Text className="text-center text-sm font-extrabold text-white">Módosítás</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function DetailStat({ label, value }) {
+  return (
+    <View className="mb-3 w-[48%] rounded-2xl bg-[#f3f5f8] px-4 py-3">
+      <Text className="text-xs font-bold text-neutral-500">{label}</Text>
+      <Text className="mt-1 text-base font-extrabold text-black" numberOfLines={1}>
+        {value}
+      </Text>
+    </View>
+  );
+}
+
+function SubscriptionCard({ subscription, isOpen, onOpenDetails }) {
   const name = subscription.name || 'Névtelen előfizetés';
   const currency = subscription.currency || 'HUF';
   const priceHuf = getPriceInHuf(subscription);
@@ -292,9 +551,15 @@ function SubscriptionCard({ subscription, onEdit }) {
 
   return (
     <Pressable
-      className="mb-3 flex-row items-center rounded-[26px] bg-white px-4 py-4"
-      style={({ pressed }) => [cardShadow, pressed && { opacity: 0.88 }]}
-      onPress={onEdit}
+      className={`mb-3 flex-row items-center rounded-[26px] px-4 py-4 ${
+        isOpen ? 'bg-[#eef7ff]' : 'bg-white'
+      }`}
+      style={({ pressed }) => [
+        cardShadow,
+        isOpen && { borderWidth: 1, borderColor: '#0ca9f2' },
+        pressed && { opacity: 0.88 },
+      ]}
+      onPress={onOpenDetails}
     >
       <SubscriptionLogo logoUrl={logoUrl} />
 
@@ -321,7 +586,9 @@ function SubscriptionCard({ subscription, onEdit }) {
         {subscription.is_shared ? (
           <Text className="mt-1 text-xs font-bold text-[#0ca9f2]">Megosztott</Text>
         ) : null}
-        <Text className="mt-2 text-xs font-extrabold text-neutral-400">Módosít</Text>
+        <Text className="mt-2 text-xs font-extrabold text-neutral-400">
+          {isOpen ? 'Bezár' : 'Részletek'}
+        </Text>
       </View>
     </Pressable>
   );
@@ -379,6 +646,20 @@ function getPriceInHuf(item) {
   return 0;
 }
 
+function getAnnualPriceInHuf(item) {
+  const price = getPriceInHuf(item);
+
+  if (item.billing_cycle === 'monthly') {
+    return price * 12;
+  }
+
+  if (item.billing_cycle === 'weekly') {
+    return price * 52;
+  }
+
+  return price;
+}
+
 function getBillingCycleLabel(value) {
   if (value === 'yearly') {
     return 'Éves';
@@ -403,7 +684,7 @@ function getCategoryLabel(value) {
     other: 'Egyéb',
   };
 
-  return categories[value] || 'Egyéb';
+  return categories[value] || value || 'Egyéb';
 }
 
 function getNextBillingLabel(items) {

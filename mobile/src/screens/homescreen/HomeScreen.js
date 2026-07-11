@@ -69,6 +69,9 @@ export default function HomeScreen() {
   const profileAvatar = getUserAvatar(profile);
   const summary = useMemo(() => getSubscriptionSummary(subscriptions), [subscriptions]);
   const nextBilling = useMemo(() => getNextBilling(subscriptions), [subscriptions]);
+  const upcomingPayments = useMemo(() => getUpcomingPayments(subscriptions), [subscriptions]);
+  const expensiveSubscriptions = useMemo(() => getMostExpensiveSubscriptions(subscriptions), [subscriptions]);
+  const monthlyTrend = useMemo(() => getMonthlyTrend(subscriptions), [subscriptions]);
 
   return (
     <View className="flex-1 bg-[#f3f5f8]">
@@ -151,6 +154,38 @@ export default function HomeScreen() {
             categories={summary.categoryTotals}
             total={summary.monthlyTotal}
           />
+
+          <DashboardListSection
+            title="Közelgő fizetések"
+            subtitle="A következő napokban esedékes előfizetések"
+            emptyText="Nincs közelgő fizetés"
+            items={upcomingPayments}
+            renderItem={(item) => (
+              <DashboardListRow
+                key={`${item.id}-upcoming`}
+                title={item.name}
+                meta={formatDateOnly(item.date)}
+                value={formatMoney(getPriceInHuf(item))}
+              />
+            )}
+          />
+
+          <DashboardListSection
+            title="Legdrágább előfizetések"
+            subtitle="Havi költség alapján rendezve"
+            emptyText="Még nincs aktív előfizetés"
+            items={expensiveSubscriptions}
+            renderItem={(item) => (
+              <DashboardListRow
+                key={`${item.id}-expensive`}
+                title={item.name || 'Előfizetés'}
+                meta={getCategoryLabel(item.category)}
+                value={formatMoney(getMonthlyEquivalentInHuf(item))}
+              />
+            )}
+          />
+
+          <MonthlyTrendCard data={monthlyTrend} />
 
           <View className="mt-5 flex-row flex-wrap justify-between">
             <MetricCard
@@ -272,6 +307,87 @@ function getNextBilling(items) {
     .sort((a, b) => a.date.getTime() - b.date.getTime())[0];
 }
 
+function getUpcomingPayments(items) {
+  return items
+    .filter((item) => item.is_active !== false)
+    .map((item) => ({
+      ...item,
+      date: parseDateValue(item.next_billing_date || item.start_date),
+    }))
+    .filter((item) => item.date)
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .slice(0, 4);
+}
+
+function getMostExpensiveSubscriptions(items) {
+  return items
+    .filter((item) => item.is_active !== false)
+    .sort((a, b) => getMonthlyEquivalentInHuf(b) - getMonthlyEquivalentInHuf(a))
+    .slice(0, 4);
+}
+
+function getMonthlyTrend(items) {
+  const now = new Date();
+  const months = Array.from({ length: 6 }, (_, index) => {
+    const date = new Date(now.getFullYear(), now.getMonth() + index, 1);
+
+    return {
+      key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+      label: formatMonthLabel(date),
+      total: 0,
+      date,
+    };
+  });
+  const monthByKey = Object.fromEntries(months.map((month) => [month.key, month]));
+  const endDate = new Date(now.getFullYear(), now.getMonth() + 6, 1);
+
+  items
+    .filter((item) => item.is_active !== false)
+    .forEach((item) => {
+      let paymentDate = parseDateValue(item.next_billing_date || item.start_date);
+
+      while (paymentDate && paymentDate < now) {
+        paymentDate = addBillingCycle(paymentDate, item.billing_cycle);
+      }
+
+      while (paymentDate && paymentDate < endDate) {
+        const key = `${paymentDate.getFullYear()}-${String(paymentDate.getMonth() + 1).padStart(2, '0')}`;
+
+        if (monthByKey[key]) {
+          monthByKey[key].total += getPriceInHuf(item);
+        }
+
+        paymentDate = addBillingCycle(paymentDate, item.billing_cycle);
+      }
+    });
+
+  return months;
+}
+
+function addBillingCycle(date, billingCycle) {
+  if (billingCycle === 'weekly') {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 7);
+  }
+
+  if (billingCycle === 'yearly') {
+    return createDateWithClampedDay(date.getFullYear() + 1, date.getMonth(), date.getDate());
+  }
+
+  return createDateWithClampedDay(date.getFullYear(), date.getMonth() + 1, date.getDate());
+}
+
+function createDateWithClampedDay(year, month, day) {
+  const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+
+  return new Date(year, month, Math.min(day, lastDayOfMonth));
+}
+
+function formatMonthLabel(date) {
+  return date.toLocaleDateString('hu-HU', {
+    month: 'short',
+  });
+}
+
 function parseDateValue(value) {
   if (!value) {
     return null;
@@ -376,6 +492,81 @@ function DashboardCategoryBreakdown({ categories, total }) {
   );
 }
 
+function DashboardListSection({ title, subtitle, emptyText, items, renderItem }) {
+  return (
+    <View className="mt-5 rounded-[30px] bg-white p-5" style={cardShadow}>
+      <View className="mb-4">
+        <Text className="text-lg font-extrabold text-black">{title}</Text>
+        <Text className="mt-1 text-xs font-semibold text-neutral-500">{subtitle}</Text>
+      </View>
+
+      {items.length === 0 ? (
+        <View className="rounded-2xl bg-[#f3f5f8] px-4 py-4">
+          <Text className="text-sm font-bold text-neutral-500">{emptyText}</Text>
+        </View>
+      ) : (
+        items.map(renderItem)
+      )}
+    </View>
+  );
+}
+
+function DashboardListRow({ title, meta, value }) {
+  return (
+    <View className="mb-3 flex-row items-center rounded-2xl bg-[#f3f5f8] px-4 py-3 last:mb-0">
+      <View className="h-10 w-10 items-center justify-center rounded-2xl bg-white">
+        <SubscriptionsIcon />
+      </View>
+      <View className="ml-3 flex-1">
+        <Text className="text-sm font-extrabold text-black" numberOfLines={1}>
+          {title || 'Előfizetés'}
+        </Text>
+        <Text className="mt-1 text-xs font-semibold text-neutral-500" numberOfLines={1}>
+          {meta}
+        </Text>
+      </View>
+      <Text className="ml-3 text-sm font-extrabold text-black">{value}</Text>
+    </View>
+  );
+}
+
+function MonthlyTrendCard({ data }) {
+  const maxTotal = Math.max(...data.map((item) => item.total), 1);
+
+  return (
+    <View className="mt-5 rounded-[30px] bg-white p-5" style={cardShadow}>
+      <View className="mb-5 flex-row items-start justify-between">
+        <View className="flex-1 pr-4">
+          <Text className="text-lg font-extrabold text-black">Havi trend</Text>
+          <Text className="mt-1 text-xs font-semibold text-neutral-500">
+            Következő 6 hónap várható fizetései
+          </Text>
+        </View>
+      </View>
+
+      <View className="h-36 flex-row items-end justify-between">
+        {data.map((item) => {
+          const height = Math.max((item.total / maxTotal) * 112, item.total > 0 ? 16 : 6);
+
+          return (
+            <View key={item.key} className="items-center">
+              <View className="h-28 justify-end">
+                <View
+                  className="w-8 rounded-t-2xl bg-[#0ca9f2]"
+                  style={{ height }}
+                />
+              </View>
+              <Text className="mt-2 text-[10px] font-bold text-neutral-500">
+                {item.label}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
 function getPriceInHuf(item) {
   const convertedPrice = Number(item.price_huf);
 
@@ -388,6 +579,24 @@ function getPriceInHuf(item) {
   }
 
   return 0;
+}
+
+function getMonthlyEquivalentInHuf(item) {
+  const price = getPriceInHuf(item);
+
+  if (item.billing_cycle === 'yearly') {
+    return price / 12;
+  }
+
+  if (item.billing_cycle === 'weekly') {
+    return price * 4;
+  }
+
+  return price;
+}
+
+function getCategoryLabel(value) {
+  return CATEGORY_META[value]?.label || value || 'Egyéb';
 }
 
 function SummaryPill({ label, value }) {

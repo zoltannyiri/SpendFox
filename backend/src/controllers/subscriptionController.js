@@ -1,5 +1,11 @@
-const {listSubscriptions, getSubscriptionById, createSubscription: createSubscriptionRecord, 
-    deleteSubscription: deleteSubscriptionRecord, updateSubscription: updateSubscriptionRecord} = require('../services/subscriptionService');
+const {
+  listSubscriptions,
+  getSubscriptionById,
+  createSubscription: createSubscriptionRecord,
+  deleteSubscription: deleteSubscriptionRecord,
+  updateSubscription: updateSubscriptionRecord,
+  refreshUserExchangeRates,
+} = require('../services/subscriptionService');
 const { convertPriceToHuf } = require('../services/exchangeRateService');
 const { resolveBrandLogoUrl } = require('../services/brandLogoService');
 
@@ -88,11 +94,24 @@ const buildPriceConversionFields = async (price, currency) => {
 
 const getSubscriptions = async (req, res) => {
   try {
-    const { userId, limit, cursor, includeSummary } = req.query;
+    const {
+      userId,
+      limit,
+      cursor,
+      includeSummary,
+      search,
+      status,
+      category,
+      billingCycle,
+    } = req.query;
     const { data, error, pagination, summary } = await listSubscriptions(userId, {
       limit,
       cursor,
       includeSummary: includeSummary === 'true',
+      search,
+      status,
+      category,
+      billingCycle,
     });
 
     if (error) {
@@ -167,6 +186,27 @@ const createSubscription = async (req, res) => {
     };
 
     const { data, error } = await createSubscriptionRecord(payload);
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.json({ data });
+  } catch (err) {
+    return res.status(500).json({ error: 'Unexpected error' });
+  }
+};
+
+const refreshExchangeRates = async (req, res) => {
+  try {
+    const userId = req.auth?.uid;
+    const force = req.body?.force === true;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Missing authenticated user' });
+    }
+
+    const { data, error } = await refreshUserExchangeRates(userId, { force });
 
     if (error) {
       return res.status(500).json({ error: error.message });
@@ -268,4 +308,5 @@ module.exports = {
   createSubscription,
   deleteSubscription,
   updateSubscription,
+  refreshExchangeRates,
 };

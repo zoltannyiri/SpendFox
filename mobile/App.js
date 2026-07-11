@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import './global.css';
 import {
   Alert,
+  AppState,
   BackHandler,
   NativeModules,
   Platform,
@@ -29,6 +30,8 @@ const navigationRef = createNavigationContainerRef();
 const storage = new MMKV();
 const API_BASE = process.env.REACT_APP_API_HOST ?? 'http://192.168.0.2:5000/api';
 let refreshRequest = null;
+
+const getTodayKey = () => new Date().toISOString().slice(0, 10);
 
 axios.defaults.baseURL = API_BASE;
 
@@ -154,6 +157,7 @@ class App extends Component {
       'hardwareBackPress',
       this.handleHardwareBack
     );
+    this.appStateSubscription = AppState.addEventListener('change', this.handleAppStateChange);
 
     if (!storage.getString('language') || storage.getString('language') === undefined) {
       if (deviceLanguage?.substring(0, 2) === 'hu') {
@@ -163,12 +167,22 @@ class App extends Component {
       }
     }
 
+    if (this.state.userToken) {
+      this.refreshExchangeRatesIfNeeded();
+    }
   }
 
   componentWillUnmount() {
     this.unsubscribePushListeners?.();
     this.backSubscription?.remove?.();
+    this.appStateSubscription?.remove?.();
   }
+
+  handleAppStateChange = (nextState) => {
+    if (nextState === 'active' && this.state.userToken) {
+      this.refreshExchangeRatesIfNeeded();
+    }
+  };
 
   handleHardwareBack = () => {
     if (!navigationRef.isReady()) {
@@ -206,6 +220,30 @@ class App extends Component {
     }
 
     this.setState({ userToken: token });
+    this.refreshExchangeRatesIfNeeded();
+  };
+
+  refreshExchangeRatesIfNeeded = async () => {
+    try {
+      const todayKey = getTodayKey();
+
+      if (storage.getString('exchangeRatesLastRefreshDate') === todayKey) {
+        return;
+      }
+
+      const response = await axios.post('/subscriptions/exchange-rates/refresh');
+
+      if (response.data?.data?.last_refresh_date) {
+        storage.set('exchangeRatesLastRefreshDate', response.data.data.last_refresh_date);
+      } else {
+        storage.set('exchangeRatesLastRefreshDate', todayKey);
+      }
+    } catch (err) {
+      console.log(
+        'Failed to refresh exchange rates:',
+        err?.response?.data || err?.message
+      );
+    }
   };
 
   alert = (response, button = 'Ok') => {
