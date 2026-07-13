@@ -155,37 +155,7 @@ export default function HomeScreen() {
             total={summary.monthlyTotal}
           />
 
-          <DashboardListSection
-            title="Közelgő fizetések"
-            subtitle="A következő napokban esedékes előfizetések"
-            emptyText="Nincs közelgő fizetés"
-            items={upcomingPayments}
-            renderItem={(item) => (
-              <DashboardListRow
-                key={`${item.id}-upcoming`}
-                title={item.name}
-                meta={formatDateOnly(item.date)}
-                value={formatMoney(getPriceInHuf(item))}
-              />
-            )}
-          />
-
-          <DashboardListSection
-            title="Legdrágább előfizetések"
-            subtitle="Havi költség alapján rendezve"
-            emptyText="Még nincs aktív előfizetés"
-            items={expensiveSubscriptions}
-            renderItem={(item) => (
-              <DashboardListRow
-                key={`${item.id}-expensive`}
-                title={item.name || 'Előfizetés'}
-                meta={getCategoryLabel(item.category)}
-                value={formatMoney(getMonthlyEquivalentInHuf(item))}
-              />
-            )}
-          />
-
-          <MonthlyTrendCard data={monthlyTrend} />
+          
 
           <View className="mt-5 flex-row flex-wrap justify-between">
             <MetricCard
@@ -201,6 +171,42 @@ export default function HomeScreen() {
               note={nextBilling ? formatDateOnly(nextBilling.date) : 'Nincs dátum'}
             />
           </View>
+
+          <DashboardListSection
+            title="Közelgő fizetések"
+            subtitle="A következő napokban esedékes előfizetések"
+            emptyText="Nincs közelgő fizetés"
+            items={upcomingPayments}
+            renderItem={(item, index, list) => (
+              <DashboardListRow
+                key={`${item.id}-upcoming`}
+                title={item.name}
+                meta={formatDateOnly(item.date)}
+                value={formatMoney(getPriceInHuf(item))}
+                isLast={index === list.length - 1}
+              />
+            )}
+          />
+
+          <DashboardListSection
+            title="Legdrágább előfizetések"
+            subtitle="Havi költség alapján rendezve"
+            emptyText="Még nincs aktív előfizetés"
+            items={expensiveSubscriptions}
+            renderItem={(item, index, list) => (
+              <DashboardListRow
+                key={`${item.id}-expensive`}
+                title={item.name || 'Előfizetés'}
+                meta={getCategoryLabel(item.category)}
+                value={formatMoney(getMonthlyEquivalentInHuf(item))}
+                isLast={index === list.length - 1}
+              />
+            )}
+          />
+
+          <MonthlyTrendCard data={monthlyTrend} />
+
+          
 
           <View className="mt-6">
             <View className="mb-3 flex-row items-center justify-between">
@@ -253,6 +259,10 @@ const blueShadow = {
   elevation: 5,
 };
 
+const listRowSpacing = {
+  marginBottom: 12,
+};
+
 function getSubscriptionSummary(items) {
   return items.reduce(
     (summary, item) => {
@@ -297,22 +307,26 @@ function getSubscriptionSummary(items) {
 }
 
 function getNextBilling(items) {
+  const today = startOfDay(new Date());
+
   return items
     .filter((item) => item.is_active !== false)
     .map((item) => ({
       name: item.name || 'Előfizetés',
-      date: parseDateValue(item.next_billing_date || item.start_date),
+      date: getNextBillingDate(item, today),
     }))
     .filter((item) => item.date)
     .sort((a, b) => a.date.getTime() - b.date.getTime())[0];
 }
 
 function getUpcomingPayments(items) {
+  const today = startOfDay(new Date());
+
   return items
     .filter((item) => item.is_active !== false)
     .map((item) => ({
       ...item,
-      date: parseDateValue(item.next_billing_date || item.start_date),
+      date: getNextBillingDate(item, today),
     }))
     .filter((item) => item.date)
     .sort((a, b) => a.date.getTime() - b.date.getTime())
@@ -327,7 +341,7 @@ function getMostExpensiveSubscriptions(items) {
 }
 
 function getMonthlyTrend(items) {
-  const now = new Date();
+  const now = startOfDay(new Date());
   const months = Array.from({ length: 6 }, (_, index) => {
     const date = new Date(now.getFullYear(), now.getMonth() + index, 1);
 
@@ -344,11 +358,7 @@ function getMonthlyTrend(items) {
   items
     .filter((item) => item.is_active !== false)
     .forEach((item) => {
-      let paymentDate = parseDateValue(item.next_billing_date || item.start_date);
-
-      while (paymentDate && paymentDate < now) {
-        paymentDate = addBillingCycle(paymentDate, item.billing_cycle);
-      }
+      let paymentDate = getNextBillingDate(item, now);
 
       while (paymentDate && paymentDate < endDate) {
         const key = `${paymentDate.getFullYear()}-${String(paymentDate.getMonth() + 1).padStart(2, '0')}`;
@@ -362,6 +372,65 @@ function getMonthlyTrend(items) {
     });
 
   return months;
+}
+
+function getNextBillingDate(item, today) {
+  const sourceDate = parseDateValue(item.next_billing_date || item.start_date);
+
+  if (!sourceDate) {
+    return null;
+  }
+
+  const paymentDate = startOfDay(sourceDate);
+
+  if (item.billing_cycle === 'monthly') {
+    const paymentDay = paymentDate.getDate();
+    let candidate = createDateWithClampedDay(
+      today.getFullYear(),
+      today.getMonth(),
+      paymentDay
+    );
+
+    if (candidate < today) {
+      candidate = createDateWithClampedDay(
+        today.getFullYear(),
+        today.getMonth() + 1,
+        paymentDay
+      );
+    }
+
+    return candidate;
+  }
+
+  if (item.billing_cycle === 'yearly') {
+    let candidate = createDateWithClampedDay(
+      today.getFullYear(),
+      paymentDate.getMonth(),
+      paymentDate.getDate()
+    );
+
+    if (candidate < today) {
+      candidate = createDateWithClampedDay(
+        today.getFullYear() + 1,
+        paymentDate.getMonth(),
+        paymentDate.getDate()
+      );
+    }
+
+    return candidate;
+  }
+
+  if (item.billing_cycle === 'weekly') {
+    let candidate = paymentDate;
+
+    while (candidate < today) {
+      candidate = addBillingCycle(candidate, 'weekly');
+    }
+
+    return candidate;
+  }
+
+  return paymentDate >= today ? paymentDate : null;
 }
 
 function addBillingCycle(date, billingCycle) {
@@ -380,6 +449,10 @@ function createDateWithClampedDay(year, month, day) {
   const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
 
   return new Date(year, month, Math.min(day, lastDayOfMonth));
+}
+
+function startOfDay(date) {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
 function formatMonthLabel(date) {
@@ -505,15 +578,18 @@ function DashboardListSection({ title, subtitle, emptyText, items, renderItem })
           <Text className="text-sm font-bold text-neutral-500">{emptyText}</Text>
         </View>
       ) : (
-        items.map(renderItem)
+        items.map((item, index) => renderItem(item, index, items))
       )}
     </View>
   );
 }
 
-function DashboardListRow({ title, meta, value }) {
+function DashboardListRow({ title, meta, value, isLast }) {
   return (
-    <View className="mb-3 flex-row items-center rounded-2xl bg-[#f3f5f8] px-4 py-3 last:mb-0">
+    <View
+      className="flex-row items-center rounded-2xl bg-[#f3f5f8] px-4 py-3"
+      style={!isLast ? listRowSpacing : null}
+    >
       <View className="h-10 w-10 items-center justify-center rounded-2xl bg-white">
         <SubscriptionsIcon />
       </View>
