@@ -607,40 +607,40 @@ function DashboardListRow({ title, meta, value, isLast }) {
 }
 
 function MonthlyTrendCard({ data }) {
-  const maxTotal = Math.max(...data.map((item) => item.total), 1);
+  // const maxTotal = Math.max(...data.map((item) => item.total), 1);
 
-  return (
-    <View className="mt-5 rounded-[30px] bg-white p-5" style={cardShadow}>
-      <View className="mb-5 flex-row items-start justify-between">
-        <View className="flex-1 pr-4">
-          <Text className="text-lg font-extrabold text-black">Havi trend</Text>
-          <Text className="mt-1 text-xs font-semibold text-neutral-500">
-            Következő 6 hónap várható fizetései
-          </Text>
-        </View>
-      </View>
+  // return (
+  //   <View className="mt-5 rounded-[30px] bg-white p-5" style={cardShadow}>
+  //     <View className="mb-5 flex-row items-start justify-between">
+  //       <View className="flex-1 pr-4">
+  //         <Text className="text-lg font-extrabold text-black">Havi trend</Text>
+  //         <Text className="mt-1 text-xs font-semibold text-neutral-500">
+  //           Következő 6 hónap várható fizetései
+  //         </Text>
+  //       </View>
+  //     </View>
 
-      <View className="h-36 flex-row items-end justify-between">
-        {data.map((item) => {
-          const height = Math.max((item.total / maxTotal) * 112, item.total > 0 ? 16 : 6);
+  //     <View className="h-36 flex-row items-end justify-between">
+  //       {data.map((item) => {
+  //         const height = Math.max((item.total / maxTotal) * 112, item.total > 0 ? 16 : 6);
 
-          return (
-            <View key={item.key} className="items-center">
-              <View className="h-28 justify-end">
-                <View
-                  className="w-8 rounded-t-2xl bg-[#0ca9f2]"
-                  style={{ height }}
-                />
-              </View>
-              <Text className="mt-2 text-[10px] font-bold text-neutral-500">
-                {item.label}
-              </Text>
-            </View>
-          );
-        })}
-      </View>
-    </View>
-  );
+  //         return (
+  //           <View key={item.key} className="items-center">
+  //             <View className="h-28 justify-end">
+  //               <View
+  //                 className="w-8 rounded-t-2xl bg-[#0ca9f2]"
+  //                 style={{ height }}
+  //               />
+  //             </View>
+  //             <Text className="mt-2 text-[10px] font-bold text-neutral-500">
+  //               {item.label}
+  //             </Text>
+  //           </View>
+  //         );
+  //       })}
+  //     </View>
+  //   </View>
+  // );
 }
 
 function getPriceInHuf(item) {

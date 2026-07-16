@@ -20,6 +20,7 @@ import AnimatedScreen from '../../components/layout/AnimatedScreen';
 
 const storage = new MMKV();
 const REMINDER_DAYS = [1, 2, 3, 5, 7];
+const SHOW_NOTIFICATION_TEST_ACTIONS = __DEV__;
 
 const DEFAULT_NOTIFICATION_SETTINGS = {
   email_enabled: false,
@@ -123,10 +124,7 @@ export default function ProfileSettingsScreen() {
         return;
       }
 
-      await axios.post('/push/test-delayed', {
-        title: 'SpendFox teszt',
-        body: 'Ha ezt látod, működik a push értesítés.',
-      });
+      await axios.post('/push/test-delayed');
 
       Alert.alert('Push teszt', 'Oké, 10 másodperc múlva küldöm az értesítést.');
     } catch (err) {
@@ -142,10 +140,7 @@ export default function ProfileSettingsScreen() {
       setSaving(true);
 
 
-      await axios.post('/email/test', {
-        title: 'SpendFox teszt',
-        body: 'Ha ezt látod, működik az email küldő.',
-      });
+      await axios.post('/email/test');
 
       Alert.alert('Email teszt', 'Email elküldve.');
     } catch (err) {
@@ -238,28 +233,32 @@ export default function ProfileSettingsScreen() {
                 disabled={saving}
               />
             )}
-            <Pressable
-              className={`mx-4 mb-4 h-12 items-center justify-center rounded-2xl ${
-                saving ? 'bg-neutral-300' : 'bg-black'
-              }`}
-              disabled={saving}
-              onPress={handleDelayedPushTest}
-            >
-              <Text className="text-sm font-extrabold text-white">
-                Teszt push 10 másodperc múlva
-              </Text>
-            </Pressable>
-            <Pressable
-              className={`mx-4 mb-4 h-12 items-center justify-center rounded-2xl ${
-                saving ? 'bg-neutral-300' : 'bg-black'
-              }`}
-              disabled={saving}
-              onPress={handleEmailTest}
-            >
-              <Text className="text-sm font-extrabold text-white">
-                Teszt email küldés
-              </Text>
-            </Pressable>
+            {SHOW_NOTIFICATION_TEST_ACTIONS && (
+              <>
+                <Pressable
+                  className={`mx-4 mb-4 h-12 items-center justify-center rounded-2xl ${
+                    saving ? 'bg-neutral-300' : 'bg-black'
+                  }`}
+                  disabled={saving}
+                  onPress={handleDelayedPushTest}
+                >
+                  <Text className="text-sm font-extrabold text-white">
+                    Teszt push 10 másodperc múlva
+                  </Text>
+                </Pressable>
+                <Pressable
+                  className={`mx-4 mb-4 h-12 items-center justify-center rounded-2xl ${
+                    saving ? 'bg-neutral-300' : 'bg-black'
+                  }`}
+                  disabled={saving}
+                  onPress={handleEmailTest}
+                >
+                  <Text className="text-sm font-extrabold text-white">
+                    Teszt email küldés
+                  </Text>
+                </Pressable>
+              </>
+            )}
           </Section>
 
           <Section title="Fiók">

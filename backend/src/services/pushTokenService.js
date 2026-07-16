@@ -7,6 +7,11 @@ const toServiceError = (err) => ({
   message: err.message || 'Firestore operation failed',
 });
 
+const normalizeDataPayload = (data) =>
+  Object.fromEntries(
+    Object.entries(data || {}).map(([key, value]) => [key, String(value ?? '')])
+  );
+
 const registerPushToken = async ({ uid, pushToken, platform }) => {
   try {
     if (!uid || !pushToken) {
@@ -64,9 +69,9 @@ const sendPushToUser = async ({ uid, title, body, data }) => {
       tokens,
       notification: {
         title: title || 'SpendFox',
-        body: body || 'Uj ertesites erkezett.',
+        body: body || 'Új értesítés érkezett.',
       },
-      data: data || {},
+      data: normalizeDataPayload(data),
     });
 
     return {

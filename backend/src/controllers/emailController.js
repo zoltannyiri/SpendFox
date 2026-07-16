@@ -1,11 +1,14 @@
 const { sendEmail } = require('../services/emailService');
 const { getUserByUid } = require('../services/userService');
+const { getNextSubscriptionReminder } = require('../services/subscriptionReminderService');
 const { buildSubscriptionEmail } = require('../templates/notifications/subscriptionEmailTemplate');
+
+const getReminderDaysBefore = (user) =>
+  Number(user?.notification_settings?.days_before) || 3;
 
 const sendTest = async (req, res) => {
   try {
     const { uid } = req.auth;
-    const { subject, text, html } = req.body;
     const { data: user, error: userError } = await getUserByUid(uid);
 
     if (userError) {
@@ -16,22 +19,24 @@ const sendTest = async (req, res) => {
       return res.status(400).json({ error: 'User email is required' });
     }
 
-    const fallbackEmail = buildSubscriptionEmail({
+    const reminder = await getNextSubscriptionReminder(uid);
+
+    if (!reminder) {
+      return res.status(400).json({ error: 'No active subscription found for reminder' });
+    }
+
+    const email = buildSubscriptionEmail({
       user,
-      subscription: {
-        id: 'test',
-        name: 'Teszt előfizetés',
-        price: 3990,
-        currency: 'HUF',
-      },
-      daysBefore: 3,
+      subscription: reminder.subscription,
+      daysBefore: getReminderDaysBefore(user),
+      billingDate: reminder.billingDate,
     });
 
     const { data, error } = await sendEmail({
       to: user.email,
-      subject: subject || fallbackEmail.subject,
-      text: text || fallbackEmail.text,
-      html: html || fallbackEmail.html,
+      subject: email.subject,
+      text: email.text,
+      html: email.html,
     });
 
     if (error) {

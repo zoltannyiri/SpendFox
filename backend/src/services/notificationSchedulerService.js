@@ -118,6 +118,7 @@ const sendDueSubscriptionNotifications = async (now = new Date()) => {
           const message = buildSubscriptionPushNotification({
             subscription,
             daysBefore: settings.days_before,
+            billingDate: nextBillingDate,
           });
 
           await sendPushToUser({
@@ -149,6 +150,7 @@ const sendDueSubscriptionNotifications = async (now = new Date()) => {
             user,
             subscription,
             daysBefore: settings.days_before,
+            billingDate: nextBillingDate,
           });
 
           await sendEmail({
