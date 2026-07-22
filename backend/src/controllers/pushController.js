@@ -3,8 +3,17 @@ const { getUserByUid } = require('../services/userService');
 const { getNextSubscriptionReminder } = require('../services/subscriptionReminderService');
 const { buildSubscriptionPushNotification } = require('../templates/notifications/subscriptionPushTemplate');
 
-const getReminderDaysBefore = (user) =>
-  Number(user?.notification_settings?.days_before) || 3;
+const getReminderDaysBefore = (user) => {
+  const values = Array.isArray(user?.notification_settings?.days_before_list)
+    ? user.notification_settings.days_before_list
+    : [user?.notification_settings?.days_before];
+  const days = values
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0)
+    .sort((a, b) => a - b);
+
+  return days[0] || 3;
+};
 
 const buildNextReminderMessage = async (uid) => {
   const { data: user, error: userError } = await getUserByUid(uid);

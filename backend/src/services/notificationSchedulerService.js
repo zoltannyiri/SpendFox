@@ -47,29 +47,50 @@ const formatDateOnly = (date) => {
 const addDays = (date, days) =>
   new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
 
+const normalizeReminderDays = (notificationSettings) => {
+  const values = Array.isArray(notificationSettings?.days_before_list)
+    ? notificationSettings.days_before_list
+    : [notificationSettings?.days_before];
+  const days = values
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0);
+  const uniqueDays = [...new Set(days)].sort((a, b) => a - b);
+
+  return uniqueDays.length ? uniqueDays : [DEFAULT_DAYS_BEFORE];
+};
+
 const getNotificationSettings = (user) => ({
   push_enabled: Boolean(user?.notification_settings?.push_enabled),
   email_enabled: Boolean(user?.notification_settings?.email_enabled),
-  days_before: Number(user?.notification_settings?.days_before) || DEFAULT_DAYS_BEFORE,
+  reminder_days: normalizeReminderDays(user?.notification_settings),
 });
 
-const wasSent = async ({ userId, subscriptionId, targetDate, channel }) => {
-  const docId = `${userId}_${subscriptionId}_${targetDate}_${channel}`;
+const wasSent = async ({ userId, subscriptionId, targetDate, channel, daysBefore }) => {
+  const docId = `${userId}_${subscriptionId}_${targetDate}_${daysBefore}_${channel}`;
   const doc = await notificationLogsCollection.doc(docId).get();
 
   return doc.exists;
 };
 
-const markSent = async ({ userId, subscriptionId, targetDate, channel }) => {
-  const docId = `${userId}_${subscriptionId}_${targetDate}_${channel}`;
+const markSent = async ({ userId, subscriptionId, targetDate, channel, daysBefore }) => {
+  const docId = `${userId}_${subscriptionId}_${targetDate}_${daysBefore}_${channel}`;
 
   await notificationLogsCollection.doc(docId).set({
     user_id: userId,
     subscription_id: subscriptionId,
     target_date: targetDate,
+    days_before: daysBefore,
     channel,
     sent_at: new Date().toISOString(),
   });
+};
+
+const getMatchingReminderDaysBefore = ({ today, nextBillingDate, reminderDays }) => {
+  const targetDate = formatDateOnly(nextBillingDate);
+
+  return reminderDays.find((daysBefore) =>
+    formatDateOnly(addDays(today, daysBefore)) === targetDate
+  );
 };
 
 const sendDueSubscriptionNotifications = async (now = new Date()) => {
@@ -88,7 +109,6 @@ const sendDueSubscriptionNotifications = async (now = new Date()) => {
       continue;
     }
 
-    const reminderDate = formatDateOnly(addDays(today, settings.days_before));
     const subscriptionsSnapshot = await subscriptionsCollection
       .where('user_id', '==', user.id)
       .where('is_active', '==', true)
@@ -100,8 +120,15 @@ const sendDueSubscriptionNotifications = async (now = new Date()) => {
         ...subscriptionDoc.data(),
       };
       const nextBillingDate = parseDateOnly(subscription.next_billing_date);
+      const daysBefore = nextBillingDate
+        ? getMatchingReminderDaysBefore({
+            today,
+            nextBillingDate,
+            reminderDays: settings.reminder_days,
+          })
+        : null;
 
-      if (!nextBillingDate || formatDateOnly(nextBillingDate) !== reminderDate) {
+      if (!nextBillingDate || !daysBefore) {
         continue;
       }
 
@@ -111,13 +138,14 @@ const sendDueSubscriptionNotifications = async (now = new Date()) => {
           userId: user.id,
           subscriptionId: subscription.id,
           targetDate,
+          daysBefore,
           channel: 'push',
         });
 
         if (!alreadySent) {
           const message = buildSubscriptionPushNotification({
             subscription,
-            daysBefore: settings.days_before,
+            daysBefore,
             billingDate: nextBillingDate,
           });
 
@@ -131,6 +159,7 @@ const sendDueSubscriptionNotifications = async (now = new Date()) => {
             userId: user.id,
             subscriptionId: subscription.id,
             targetDate,
+            daysBefore,
             channel: 'push',
           });
         }
@@ -142,6 +171,7 @@ const sendDueSubscriptionNotifications = async (now = new Date()) => {
           userId: user.id,
           subscriptionId: subscription.id,
           targetDate,
+          daysBefore,
           channel: 'email',
         });
 
@@ -149,7 +179,7 @@ const sendDueSubscriptionNotifications = async (now = new Date()) => {
           const email = buildSubscriptionEmail({
             user,
             subscription,
-            daysBefore: settings.days_before,
+            daysBefore,
             billingDate: nextBillingDate,
           });
 
@@ -163,6 +193,7 @@ const sendDueSubscriptionNotifications = async (now = new Date()) => {
             userId: user.id,
             subscriptionId: subscription.id,
             targetDate,
+            daysBefore,
             channel: 'email',
           });
         }

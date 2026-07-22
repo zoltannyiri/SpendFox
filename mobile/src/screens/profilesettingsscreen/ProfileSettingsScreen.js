@@ -26,15 +26,41 @@ const DEFAULT_NOTIFICATION_SETTINGS = {
   email_enabled: false,
   push_enabled: false,
   days_before: 3,
+  days_before_list: [3],
+};
+
+const normalizeReminderDays = (settings) => {
+  const values = Array.isArray(settings?.days_before_list)
+    ? settings.days_before_list
+    : [settings?.days_before];
+  const days = values
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0);
+  const uniqueDays = [...new Set(days)].sort((a, b) => a - b);
+
+  return uniqueDays.length ? uniqueDays : DEFAULT_NOTIFICATION_SETTINGS.days_before_list;
+};
+
+const normalizeNotificationSettings = (settings) => {
+  const mergedSettings = {
+    ...DEFAULT_NOTIFICATION_SETTINGS,
+    ...(settings || {}),
+  };
+  const reminderDays = normalizeReminderDays(mergedSettings);
+
+  return {
+    ...mergedSettings,
+    days_before: reminderDays[0],
+    days_before_list: reminderDays,
+  };
 };
 
 export default function ProfileSettingsScreen() {
   const navigation = useNavigation();
   const [profile, setProfileState] = useState(() => getStoredUser());
-  const [notificationSettings, setNotificationSettings] = useState(() => ({
-    ...DEFAULT_NOTIFICATION_SETTINGS,
-    ...(getStoredUser()?.notification_settings || {}),
-  }));
+  const [notificationSettings, setNotificationSettings] = useState(() =>
+    normalizeNotificationSettings(getStoredUser()?.notification_settings)
+  );
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -46,10 +72,9 @@ export default function ProfileSettingsScreen() {
         if (freshProfile) {
           saveProfileLocally(freshProfile);
           setProfileState(freshProfile);
-          setNotificationSettings({
-            ...DEFAULT_NOTIFICATION_SETTINGS,
-            ...(freshProfile.notification_settings || {}),
-          });
+          setNotificationSettings(
+            normalizeNotificationSettings(freshProfile.notification_settings)
+          );
         }
       } catch (err) {
         console.log('Failed to load profile:', err?.response?.data || err?.message);
@@ -107,9 +132,16 @@ export default function ProfileSettingsScreen() {
   };
 
   const handleReminderDaysChange = async (daysBefore) => {
+    const currentDays = normalizeReminderDays(notificationSettings);
+    const nextDays = currentDays.includes(daysBefore)
+      ? currentDays.filter((day) => day !== daysBefore)
+      : [...currentDays, daysBefore].sort((a, b) => a - b);
+    const reminderDays = nextDays.length ? nextDays : [daysBefore];
+
     await saveNotificationSettings({
       ...notificationSettings,
-      days_before: daysBefore,
+      days_before: reminderDays[0],
+      days_before_list: reminderDays,
     });
   };
 
@@ -228,7 +260,7 @@ export default function ProfileSettingsScreen() {
             />
             {(notificationSettings.push_enabled || notificationSettings.email_enabled) && (
               <ReminderDaysSelector
-                value={notificationSettings.days_before}
+                value={notificationSettings.days_before_list}
                 onChange={handleReminderDaysChange}
                 disabled={saving}
               />
@@ -336,6 +368,8 @@ function SettingSwitchRow({ icon, label, description, value, onValueChange, disa
 }
 
 function ReminderDaysSelector({ value, onChange, disabled }) {
+  const selectedDays = Array.isArray(value) ? value : [value];
+
   return (
     <View className="border-t border-neutral-100 px-4 py-4">
       <Text className="text-sm font-extrabold text-black">Mikor küldjünk emlékeztetőt?</Text>
@@ -344,7 +378,7 @@ function ReminderDaysSelector({ value, onChange, disabled }) {
       </Text>
       <View className="mt-3 flex-row flex-wrap">
         {REMINDER_DAYS.map((days) => {
-          const active = days === value;
+          const active = selectedDays.includes(days);
 
           return (
             <Pressable
