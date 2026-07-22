@@ -1,19 +1,7 @@
 const { sendEmail } = require('../services/emailService');
 const { getUserByUid } = require('../services/userService');
-const { getNextSubscriptionReminder } = require('../services/subscriptionReminderService');
+const { getNextNotificationPreview } = require('../services/subscriptionReminderService');
 const { buildSubscriptionEmail } = require('../templates/notifications/subscriptionEmailTemplate');
-
-const getReminderDaysBefore = (user) => {
-  const values = Array.isArray(user?.notification_settings?.days_before_list)
-    ? user.notification_settings.days_before_list
-    : [user?.notification_settings?.days_before];
-  const days = values
-    .map((value) => Number(value))
-    .filter((value) => Number.isInteger(value) && value > 0)
-    .sort((a, b) => a - b);
-
-  return days[0] || 3;
-};
 
 const sendTest = async (req, res) => {
   try {
@@ -28,17 +16,18 @@ const sendTest = async (req, res) => {
       return res.status(400).json({ error: 'User email is required' });
     }
 
-    const reminder = await getNextSubscriptionReminder(uid);
+    const reminder = await getNextNotificationPreview(uid, user.notification_settings);
 
     if (!reminder) {
-      return res.status(400).json({ error: 'No active subscription found for reminder' });
+      return res.status(400).json({ error: 'No upcoming notification found for reminder' });
     }
 
     const email = buildSubscriptionEmail({
       user,
       subscription: reminder.subscription,
-      daysBefore: getReminderDaysBefore(user),
-      billingDate: reminder.billingDate,
+      daysBefore: reminder.daysBefore,
+      billingDate: reminder.targetDate,
+      reminderType: reminder.reminderType,
     });
 
     const { data, error } = await sendEmail({

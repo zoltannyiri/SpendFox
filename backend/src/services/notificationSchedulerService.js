@@ -65,21 +65,36 @@ const getNotificationSettings = (user) => ({
   reminder_days: normalizeReminderDays(user?.notification_settings),
 });
 
-const wasSent = async ({ userId, subscriptionId, targetDate, channel, daysBefore }) => {
-  const docId = `${userId}_${subscriptionId}_${targetDate}_${daysBefore}_${channel}`;
+const wasSent = async ({
+  userId,
+  subscriptionId,
+  targetDate,
+  channel,
+  daysBefore,
+  reminderType,
+}) => {
+  const docId = `${userId}_${subscriptionId}_${reminderType}_${targetDate}_${daysBefore}_${channel}`;
   const doc = await notificationLogsCollection.doc(docId).get();
 
   return doc.exists;
 };
 
-const markSent = async ({ userId, subscriptionId, targetDate, channel, daysBefore }) => {
-  const docId = `${userId}_${subscriptionId}_${targetDate}_${daysBefore}_${channel}`;
+const markSent = async ({
+  userId,
+  subscriptionId,
+  targetDate,
+  channel,
+  daysBefore,
+  reminderType,
+}) => {
+  const docId = `${userId}_${subscriptionId}_${reminderType}_${targetDate}_${daysBefore}_${channel}`;
 
   await notificationLogsCollection.doc(docId).set({
     user_id: userId,
     subscription_id: subscriptionId,
     target_date: targetDate,
     days_before: daysBefore,
+    reminder_type: reminderType,
     channel,
     sent_at: new Date().toISOString(),
   });
@@ -92,6 +107,30 @@ const getMatchingReminderDaysBefore = ({ today, nextBillingDate, reminderDays })
     formatDateOnly(addDays(today, daysBefore)) === targetDate
   );
 };
+
+const buildDueReminderEvents = ({ subscription, today, reminderDays }) =>
+  [
+    {
+      reminderType: 'billing',
+      targetDate: parseDateOnly(subscription.next_billing_date),
+    },
+    subscription.trial_enabled && subscription.trial_end_date
+      ? {
+          reminderType: 'trial',
+          targetDate: parseDateOnly(subscription.trial_end_date),
+        }
+      : null,
+  ]
+    .filter((event) => event?.targetDate)
+    .map((event) => ({
+      ...event,
+      daysBefore: getMatchingReminderDaysBefore({
+        today,
+        nextBillingDate: event.targetDate,
+        reminderDays,
+      }),
+    }))
+    .filter((event) => event.daysBefore);
 
 const sendDueSubscriptionNotifications = async (now = new Date()) => {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -119,83 +158,85 @@ const sendDueSubscriptionNotifications = async (now = new Date()) => {
         id: Number(subscriptionDoc.id) || subscriptionDoc.id,
         ...subscriptionDoc.data(),
       };
-      const nextBillingDate = parseDateOnly(subscription.next_billing_date);
-      const daysBefore = nextBillingDate
-        ? getMatchingReminderDaysBefore({
-            today,
-            nextBillingDate,
-            reminderDays: settings.reminder_days,
-          })
-        : null;
+      const reminderEvents = buildDueReminderEvents({
+        subscription,
+        today,
+        reminderDays: settings.reminder_days,
+      });
 
-      if (!nextBillingDate || !daysBefore) {
-        continue;
-      }
+      for (const reminderEvent of reminderEvents) {
+        const { reminderType, targetDate: reminderDate, daysBefore } = reminderEvent;
+        const targetDate = formatDateOnly(reminderDate);
 
-      if (settings.push_enabled) {
-        const targetDate = formatDateOnly(nextBillingDate);
-        const alreadySent = await wasSent({
-          userId: user.id,
-          subscriptionId: subscription.id,
-          targetDate,
-          daysBefore,
-          channel: 'push',
-        });
-
-        if (!alreadySent) {
-          const message = buildSubscriptionPushNotification({
-            subscription,
-            daysBefore,
-            billingDate: nextBillingDate,
-          });
-
-          await sendPushToUser({
-            uid: user.id,
-            title: message.title,
-            body: message.body,
-            data: message.data,
-          });
-          await markSent({
+        if (settings.push_enabled) {
+          const alreadySent = await wasSent({
             userId: user.id,
             subscriptionId: subscription.id,
             targetDate,
             daysBefore,
+            reminderType,
             channel: 'push',
           });
+
+          if (!alreadySent) {
+            const message = buildSubscriptionPushNotification({
+              subscription,
+              daysBefore,
+              billingDate: reminderDate,
+              reminderType,
+            });
+
+            await sendPushToUser({
+              uid: user.id,
+              title: message.title,
+              body: message.body,
+              data: message.data,
+            });
+            await markSent({
+              userId: user.id,
+              subscriptionId: subscription.id,
+              targetDate,
+              daysBefore,
+              reminderType,
+              channel: 'push',
+            });
+          }
         }
-      }
 
-      if (settings.email_enabled) {
-        const targetDate = formatDateOnly(nextBillingDate);
-        const alreadySent = await wasSent({
-          userId: user.id,
-          subscriptionId: subscription.id,
-          targetDate,
-          daysBefore,
-          channel: 'email',
-        });
-
-        if (!alreadySent) {
-          const email = buildSubscriptionEmail({
-            user,
-            subscription,
-            daysBefore,
-            billingDate: nextBillingDate,
-          });
-
-          await sendEmail({
-            to: user.email,
-            subject: email.subject,
-            text: email.text,
-            html: email.html,
-          });
-          await markSent({
+        if (settings.email_enabled) {
+          const alreadySent = await wasSent({
             userId: user.id,
             subscriptionId: subscription.id,
             targetDate,
             daysBefore,
+            reminderType,
             channel: 'email',
           });
+
+          if (!alreadySent) {
+            const email = buildSubscriptionEmail({
+              user,
+              subscription,
+              daysBefore,
+              billingDate: reminderDate,
+              reminderType,
+            });
+
+            await sendEmail({
+              to: user.email,
+              subject: email.subject,
+              text: email.text,
+              html: email.html,
+            });
+            await markSent({
+              userId: user.id,
+              subscriptionId: subscription.id,
+              targetDate,
+              daysBefore,
+              reminderType,
+              channel: 'email',
+            });
+          }
         }
       }
     }

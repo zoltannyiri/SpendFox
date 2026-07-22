@@ -1,19 +1,7 @@
 const { registerPushToken, sendPushToUser } = require('../services/pushTokenService');
 const { getUserByUid } = require('../services/userService');
-const { getNextSubscriptionReminder } = require('../services/subscriptionReminderService');
+const { getNextNotificationPreview } = require('../services/subscriptionReminderService');
 const { buildSubscriptionPushNotification } = require('../templates/notifications/subscriptionPushTemplate');
-
-const getReminderDaysBefore = (user) => {
-  const values = Array.isArray(user?.notification_settings?.days_before_list)
-    ? user.notification_settings.days_before_list
-    : [user?.notification_settings?.days_before];
-  const days = values
-    .map((value) => Number(value))
-    .filter((value) => Number.isInteger(value) && value > 0)
-    .sort((a, b) => a - b);
-
-  return days[0] || 3;
-};
 
 const buildNextReminderMessage = async (uid) => {
   const { data: user, error: userError } = await getUserByUid(uid);
@@ -22,19 +10,20 @@ const buildNextReminderMessage = async (uid) => {
     return { error: userError };
   }
 
-  const reminder = await getNextSubscriptionReminder(uid);
+  const reminder = await getNextNotificationPreview(uid, user.notification_settings);
 
   if (!reminder) {
     return {
-      error: { message: 'No active subscription found for reminder' },
+      error: { message: 'No upcoming notification found for reminder' },
     };
   }
 
   return {
     data: buildSubscriptionPushNotification({
       subscription: reminder.subscription,
-      daysBefore: getReminderDaysBefore(user),
-      billingDate: reminder.billingDate,
+      daysBefore: reminder.daysBefore,
+      billingDate: reminder.targetDate,
+      reminderType: reminder.reminderType,
     }),
   };
 };

@@ -33,23 +33,36 @@ const getBillingCycleLabel = (value) => {
   return 'havi';
 };
 
-const buildSubscriptionEmail = ({ user, subscription, daysBefore, billingDate }) => {
+const buildSubscriptionEmail = ({
+  user,
+  subscription,
+  daysBefore,
+  billingDate,
+  reminderType = 'billing',
+}) => {
   const userName = user?.full_name || user?.username || 'Szia';
   const name = subscription?.name || 'előfizetés';
   const amount = formatAmount(subscription);
   const dateText = formatDate(billingDate);
   const cycle = getBillingCycleLabel(subscription?.billing_cycle);
   const whenText = Number(daysBefore) === 0 ? 'ma' : `${daysBefore} nap múlva`;
+  const isTrial = reminderType === 'trial';
+  const subject = isTrial
+    ? `SpendFox próbaidő emlékeztető: ${name}`
+    : `SpendFox emlékeztető: ${name}`;
+  const mainText = isTrial
+    ? `A(z) ${name} próbaidőszaka ${whenText} lejár.`
+    : `A(z) ${name} előfizetésed ${whenText} esedékes.`;
+  const dateLabel = isTrial ? 'Próbaidő vége' : 'Fizetési dátum';
 
   return {
-    subject: `SpendFox emlékeztető: ${name}`,
+    subject,
     text: [
       `Szia ${userName}!`,
       '',
-      `A(z) ${name} előfizetésed ${whenText} esedékes.`,
-      `Fizetési dátum: ${dateText}`,
-      `Összeg: ${amount}`,
-      `Számlázási ciklus: ${cycle}`,
+      mainText,
+      `${dateLabel}: ${dateText}`,
+      ...(isTrial ? [] : [`Összeg: ${amount}`, `Számlázási ciklus: ${cycle}`]),
       '',
       'SpendFox',
     ].join('\n'),
@@ -57,14 +70,15 @@ const buildSubscriptionEmail = ({ user, subscription, daysBefore, billingDate })
       <div style="font-family:Arial,sans-serif;line-height:1.5;color:#111">
         <h2 style="margin:0 0 12px">SpendFox emlékeztető</h2>
         <p>Szia ${userName}!</p>
-        <p>
-          A(z) <strong>${name}</strong> előfizetésed
-          <strong>${whenText}</strong> esedékes.
-        </p>
+        <p>${mainText}</p>
         <div style="padding:14px 16px;border-radius:14px;background:#f3f5f8;margin:18px 0">
-          <p style="margin:0 0 8px"><strong>Fizetési dátum:</strong> ${dateText}</p>
-          <p style="margin:0 0 8px"><strong>Összeg:</strong> ${amount}</p>
-          <p style="margin:0"><strong>Számlázási ciklus:</strong> ${cycle}</p>
+          <p style="margin:0 0 8px"><strong>${dateLabel}:</strong> ${dateText}</p>
+          ${
+            isTrial
+              ? ''
+              : `<p style="margin:0 0 8px"><strong>Összeg:</strong> ${amount}</p>
+                 <p style="margin:0"><strong>Számlázási ciklus:</strong> ${cycle}</p>`
+          }
         </div>
         <p style="color:#555">Ezt az értesítést a profil beállításaid alapján küldtük.</p>
         <p>SpendFox</p>

@@ -20,22 +20,31 @@ const formatDate = (value) => {
   });
 };
 
-const buildSubscriptionPushNotification = ({ subscription, daysBefore, billingDate }) => {
+const buildSubscriptionPushNotification = ({
+  subscription,
+  daysBefore,
+  billingDate,
+  reminderType = 'billing',
+}) => {
   const name = subscription?.name || 'előfizetés';
   const amount = formatAmount(subscription);
   const dateText = formatDate(billingDate);
   const whenText = Number(daysBefore) === 0 ? 'ma' : `${daysBefore} nap múlva`;
   const amountText = amount ? `, ${amount}` : '';
   const dateSuffix = dateText ? ` (${dateText})` : '';
+  const isTrial = reminderType === 'trial';
 
   return {
-    title: `${name} fizetés közeleg`,
-    body: `${whenText} esedékes${dateSuffix}${amountText}.`,
+    title: isTrial ? `${name} próbaidő lejár` : `${name} fizetés közeleg`,
+    body: isTrial
+      ? `${whenText} lejár a próbaidő${dateSuffix}.`
+      : `${whenText} esedékes${dateSuffix}${amountText}.`,
     data: {
-      type: 'subscription_reminder',
+      type: isTrial ? 'trial_reminder' : 'subscription_reminder',
       subscriptionId: String(subscription?.id || ''),
       daysBefore: String(daysBefore),
       billingDate: billingDate ? new Date(billingDate).toISOString().slice(0, 10) : '',
+      reminderType,
     },
   };
 };

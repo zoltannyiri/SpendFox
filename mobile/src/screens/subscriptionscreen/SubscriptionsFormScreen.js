@@ -50,6 +50,11 @@ export default function SubscriptionsFormScreen() {
     formatDateInput(editingSubscription?.start_date || editingSubscription?.next_billing_date || '')
   );
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [trialEnabled, setTrialEnabled] = useState(editingSubscription?.trial_enabled ?? false);
+  const [trialEndDate, setTrialEndDate] = useState(
+    formatDateInput(editingSubscription?.trial_end_date || '')
+  );
+  const [showTrialDatePicker, setShowTrialDatePicker] = useState(false);
   const [isActive, setIsActive] = useState(editingSubscription?.is_active ?? true);
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState('');
@@ -116,6 +121,11 @@ export default function SubscriptionsFormScreen() {
         return;
       }
 
+      if (trialEnabled && !trialEndDate.trim()) {
+        setErrorText('Add meg a próbaidő végét.');
+        return;
+      }
+
       const user = JSON.parse(storage.getString('appUser') || '{}');
       const payload = {
         name: name.trim(),
@@ -124,6 +134,8 @@ export default function SubscriptionsFormScreen() {
         category,
         billing_cycle: billingCycle,
         start_date: normalizedStartDate,
+        trial_enabled: trialEnabled,
+        trial_end_date: trialEnabled ? trialEndDate.trim() || null : null,
         is_shared: editingSubscription?.is_shared || false,
         is_active: isActive,
         user_id: user.id,
@@ -311,6 +323,67 @@ export default function SubscriptionsFormScreen() {
               ) : null}
             </View>
 
+            <View className="mt-5 rounded-2xl bg-[#f7f8fa] p-4">
+              <View className="flex-row items-center justify-between">
+                <View className="mr-4 flex-1">
+                  <Text className="text-sm font-extrabold text-black">Próbaidő figyelés</Text>
+                  <Text className="mt-1 text-xs font-semibold leading-4 text-neutral-500">
+                    Szólunk a trial lejárata előtt is.
+                  </Text>
+                </View>
+                <Pressable
+                  className={trialEnabled ? "h-10 w-20 items-center justify-center rounded-full bg-[#0ca9f2]" : "h-10 w-20 items-center justify-center rounded-full bg-white"}
+                  onPress={() => setTrialEnabled((current) => !current)}
+                >
+                  <Text
+                    className={trialEnabled ? "text-sm font-extrabold text-white" : "text-sm font-extrabold text-neutral-500"}
+                  >
+                    {trialEnabled ? 'Igen' : 'Nem'}
+                  </Text>
+                </Pressable>
+              </View>
+
+              {trialEnabled ? (
+                <View className="mt-4">
+                  <FieldLabel label="Próbaidő vége" />
+                  <Pressable
+                    className="h-14 justify-center rounded-2xl bg-white px-4"
+                    onPress={() => setShowTrialDatePicker(true)}
+                  >
+                    <Text className="text-base font-semibold text-black">
+                      {trialEndDate || 'Válassz dátumot'}
+                    </Text>
+                  </Pressable>
+
+                  {showTrialDatePicker ? (
+                    <View className="mt-2 overflow-hidden rounded-2xl bg-white">
+                      <DateTimePicker
+                        display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                        mode="date"
+                        value={parseDateInput(trialEndDate) || new Date()}
+                        onChange={(event, selectedDate) => {
+                          if (Platform.OS === 'android') {
+                            setShowTrialDatePicker(false);
+                          }
+
+                          if (selectedDate) {
+                            setTrialEndDate(formatDateInput(selectedDate));
+                          }
+                        }}
+                      />
+                      {Platform.OS === 'ios' ? (
+                        <Pressable
+                          className="h-12 items-center justify-center border-t border-neutral-100"
+                          onPress={() => setShowTrialDatePicker(false)}
+                        >
+                          <Text className="text-sm font-extrabold text-[#0ca9f2]">Kész</Text>
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  ) : null}
+                </View>
+              ) : null}
+            </View>
             <View className="mt-5">
               <FieldLabel label="Aktív előfizetés?" />
               <View className="flex-row rounded-2xl bg-[#f7f8fa] p-1">

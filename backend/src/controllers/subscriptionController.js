@@ -80,6 +80,24 @@ const calculateNextBillingDate = (startDateValue, billingCycle) => {
   return nextDate ? formatDateOnly(nextDate) : undefined;
 };
 
+const resolveNextBillingDate = ({
+  nextBillingDate,
+  startDate,
+  billingCycle,
+  trialEnabled,
+  trialEndDate,
+}) => {
+  if (nextBillingDate) {
+    return nextBillingDate;
+  }
+
+  if (trialEnabled && trialEndDate) {
+    return trialEndDate;
+  }
+
+  return calculateNextBillingDate(startDate, billingCycle);
+};
+
 const buildPriceConversionFields = async (price, currency) => {
   try {
     return await convertPriceToHuf(price, currency);
@@ -156,14 +174,21 @@ const createSubscription = async (req, res) => {
       next_billing_date,
       is_active,
       category,
+      trial_enabled,
+      trial_end_date,
     } = req.body;
 
     if (!start_date) {
       return res.status(400).json({ error: 'start_date is required' });
     }
 
-    const calculatedNextBillingDate =
-      next_billing_date || calculateNextBillingDate(start_date, billing_cycle);
+    const calculatedNextBillingDate = resolveNextBillingDate({
+      nextBillingDate: next_billing_date,
+      startDate: start_date,
+      billingCycle: billing_cycle,
+      trialEnabled: trial_enabled,
+      trialEndDate: trial_end_date,
+    });
     const conversion = await buildPriceConversionFields(price, currency);
 
     if (conversion.error) {
@@ -182,6 +207,8 @@ const createSubscription = async (req, res) => {
       start_date,
       is_active,
       category,
+      trial_enabled,
+      trial_end_date,
       logo_url: resolveBrandLogoUrl(name),
     };
 
@@ -247,6 +274,8 @@ const updateSubscription = async (req, res) => {
       next_billing_date,
       is_active,
       category,
+      trial_enabled,
+      trial_end_date,
     } = req.body;
 
     const { data: currentSubscription, error: getError } = await getSubscriptionById(id);
@@ -265,10 +294,13 @@ const updateSubscription = async (req, res) => {
     const resolvedPrice = price ?? currentSubscription.price;
     const resolvedCurrency = currency ?? currentSubscription.currency;
     const resolvedName = name ?? currentSubscription.name;
-    const calculatedNextBillingDate =
-      resolvedStartDate && resolvedBillingCycle
-        ? calculateNextBillingDate(resolvedStartDate, resolvedBillingCycle)
-        : next_billing_date;
+    const calculatedNextBillingDate = resolveNextBillingDate({
+      nextBillingDate: next_billing_date,
+      startDate: resolvedStartDate,
+      billingCycle: resolvedBillingCycle,
+      trialEnabled: trial_enabled ?? currentSubscription.trial_enabled,
+      trialEndDate: trial_end_date ?? currentSubscription.trial_end_date,
+    });
     const conversion = await buildPriceConversionFields(resolvedPrice, resolvedCurrency);
 
     if (conversion.error) {
@@ -287,6 +319,8 @@ const updateSubscription = async (req, res) => {
       next_billing_date: calculatedNextBillingDate,
       is_active,
       category,
+      trial_enabled,
+      trial_end_date,
       logo_url: resolveBrandLogoUrl(resolvedName),
     };
 

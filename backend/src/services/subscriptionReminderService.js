@@ -63,6 +63,21 @@ const addBillingCycle = (date, billingCycle) => {
   return createDateWithClampedDay(date.getFullYear(), date.getMonth() + 1, date.getDate());
 };
 
+const addDays = (date, days) =>
+  new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
+
+const normalizeReminderDays = (notificationSettings) => {
+  const values = Array.isArray(notificationSettings?.days_before_list)
+    ? notificationSettings.days_before_list
+    : [notificationSettings?.days_before];
+  const days = values
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0);
+  const uniqueDays = [...new Set(days)].sort((a, b) => a - b);
+
+  return uniqueDays.length ? uniqueDays : [3];
+};
+
 const getNextBillingDate = (subscription, today = startOfDay(new Date())) => {
   const sourceDate = parseDateOnly(subscription.next_billing_date || subscription.start_date);
 
@@ -127,19 +142,92 @@ const getNextSubscriptionReminder = async (userId) => {
       id: Number(doc.id) || doc.id,
       ...doc.data(),
     }))
-    .map((subscription) => ({
-      subscription,
-      billingDate: getNextBillingDate(subscription, today),
-    }))
-    .filter((item) => item.billingDate)
+    .flatMap((subscription) => [
+      {
+        subscription,
+        billingDate: getNextBillingDate(subscription, today),
+        reminderType: 'billing',
+      },
+      subscription.trial_enabled && subscription.trial_end_date
+        ? {
+            subscription,
+            billingDate: parseDateOnly(subscription.trial_end_date),
+            reminderType: 'trial',
+          }
+        : null,
+    ])
+    .filter((item) => item?.billingDate && item.billingDate >= today)
     .sort((a, b) => a.billingDate.getTime() - b.billingDate.getTime());
 
   return reminders[0] || null;
 };
 
+const getNextNotificationPreview = async (userId, notificationSettings = {}) => {
+  const snapshot = await subscriptionsCollection
+    .where('user_id', '==', toNumericId(userId))
+    .where('is_active', '==', true)
+    .get();
+
+  const today = startOfDay(new Date());
+  const reminderDays = normalizeReminderDays(notificationSettings);
+  const notifications = snapshot.docs
+    .filter((doc) => doc.id !== '_schema')
+    .map((doc) => ({
+      id: Number(doc.id) || doc.id,
+      ...doc.data(),
+    }))
+    .flatMap((subscription) => [
+      {
+        subscription,
+        reminderType: 'billing',
+        targetDate: getNextBillingDate(subscription, today),
+      },
+      subscription.trial_enabled && subscription.trial_end_date
+        ? {
+            subscription,
+            reminderType: 'trial',
+            targetDate: parseDateOnly(subscription.trial_end_date),
+          }
+        : null,
+    ])
+    .filter((item) => item?.targetDate && item.targetDate >= today)
+    .flatMap((item) =>
+      reminderDays.map((daysBefore) => ({
+        ...item,
+        daysBefore,
+        sendDate: addDays(item.targetDate, -daysBefore),
+      }))
+    )
+    .filter((item) => item.sendDate >= today)
+    .sort((a, b) => {
+      const sendDateDiff = a.sendDate.getTime() - b.sendDate.getTime();
+
+      if (sendDateDiff !== 0) {
+        return sendDateDiff;
+      }
+
+      return a.targetDate.getTime() - b.targetDate.getTime();
+    });
+
+  const next = notifications[0];
+
+  if (!next) {
+    return null;
+  }
+
+  return {
+    subscription: next.subscription,
+    reminderType: next.reminderType,
+    daysBefore: next.daysBefore,
+    sendDate: formatDateOnly(next.sendDate),
+    targetDate: formatDateOnly(next.targetDate),
+  };
+};
+
 module.exports = {
   formatDateOnly,
   getNextBillingDate,
+  getNextNotificationPreview,
   getNextSubscriptionReminder,
   parseDateOnly,
 };
