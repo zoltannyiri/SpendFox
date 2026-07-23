@@ -5,6 +5,7 @@
   "main": "src/server.js",
   "scripts": {
     "init:firestore": "node scripts/initFirestore.js",
+    "app:version": "node scripts/setAppVersion.js",
     "migrate:users": "node scripts/migrateProfilesToUsers.js",
     "cleanup:user-uid": "node scripts/removeUserUidField.js",
     "test": "echo \"Error: no test specified\" && exit 1",
