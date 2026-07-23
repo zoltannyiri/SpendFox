@@ -215,7 +215,7 @@ export default function ProfileSettingsForm() {
             <FieldLabel label="Teljes név" />
             <TextInput
               className="h-14 rounded-2xl bg-[#f7f8fa] px-4 text-base font-semibold text-black"
-              placeholder="Nyiri Zoltán"
+              placeholder=""
               placeholderTextColor="#9b9ba1"
               value={fullName}
               onChangeText={setFullName}
@@ -226,7 +226,7 @@ export default function ProfileSettingsForm() {
               <FieldLabel label="Felhasználónév" />
               <TextInput
                 className="h-14 rounded-2xl bg-[#f7f8fa] px-4 text-base font-semibold text-black"
-                placeholder="admin"
+                placeholder=""
                 placeholderTextColor="#9b9ba1"
                 autoCapitalize="none"
                 autoCorrect={false}
