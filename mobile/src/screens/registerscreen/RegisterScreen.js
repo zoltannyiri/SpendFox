@@ -13,7 +13,7 @@ import {
 import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
 import AppLogoComponent from '../../components/logocomponent/AppLogoComponent';
 
-export default function RegisterScreen({navigation}) {
+export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
@@ -24,7 +24,7 @@ export default function RegisterScreen({navigation}) {
   const handleRegister = async () => {
     try {
       if (!email || !password || !fullName || !username) {
-        setErrorMsg('All fields are required');
+        setErrorMsg('Minden mező kitöltése kötelező.');
         return;
       }
 
@@ -34,7 +34,7 @@ export default function RegisterScreen({navigation}) {
         email: email.trim(),
         password,
         full_name: fullName.trim(),
-        username: username.trim()
+        username: username.trim(),
       };
 
       console.log('[register] POST', `${axios.defaults.baseURL}/auth/register`, {
@@ -50,18 +50,15 @@ export default function RegisterScreen({navigation}) {
 
       console.log('[register] response:', JSON.stringify(data, null, 2));
 
-      const token = data?.data?.customToken;
+      const token = data?.data?.session?.access_token;
+
       if (!token) {
-        const msg = data?.error || data?.message || data?.detail;
+        const msg = data?.error || data?.message || data?.detail || 'Nem sikerült beléptetni.';
         setErrorMsg(msg);
         return;
       }
-      navigation.navigate('LoginScreen');
-      setTimeout(() => {
-        window.App?.loginSuccess?.(token);
-      }, 50);
-      window.App?.loginSuccess?.(token);
-      return;
+
+      window.App?.loginSuccess?.(token, data?.data?.user || data?.appUser, data?.data?.session);
     } catch (e) {
       const status = e?.response?.status;
       const url = e?.response?.config?.url || '/auth/register';
@@ -80,13 +77,13 @@ export default function RegisterScreen({navigation}) {
       });
 
       if (status === 401) {
-        setErrorMsg('Invalid email or password');
+        setErrorMsg('Hibás email vagy jelszó.');
       } else if (serverMsg) {
         setErrorMsg(serverMsg);
       } else if (e?.message) {
         setErrorMsg(e.message);
       } else {
-        setErrorMsg('UNKNOWN_ERROR');
+        setErrorMsg('Ismeretlen hiba történt.');
       }
     } finally {
       setLoading(false);
@@ -96,11 +93,13 @@ export default function RegisterScreen({navigation}) {
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-black"
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
     >
       <ScrollView
         className="flex-1"
         contentContainerClassName="min-h-screen justify-center px-8 py-10"
+        automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
       >
         <View className="absolute inset-x-0 bottom-0 h-80 overflow-hidden">
@@ -118,10 +117,9 @@ export default function RegisterScreen({navigation}) {
             className="mb-3 h-14 w-full rounded-md bg-[#1d1d1f] px-4 text-base text-white"
             placeholder="Teljes név"
             placeholderTextColor="#8f8f95"
-            autoCapitalize="none"
+            autoCapitalize="words"
             autoCorrect={false}
-            keyboardType="full_name"
-            textContentType="full_name"
+            textContentType="name"
             value={fullName}
             onChangeText={setFullName}
           />
@@ -132,7 +130,6 @@ export default function RegisterScreen({navigation}) {
             placeholderTextColor="#8f8f95"
             autoCapitalize="none"
             autoCorrect={false}
-            keyboardType="username"
             textContentType="username"
             value={username}
             onChangeText={setUsername}
@@ -152,7 +149,7 @@ export default function RegisterScreen({navigation}) {
 
           <TextInput
             className="h-14 w-full rounded-md bg-[#1d1d1f] px-4 text-base text-white"
-            placeholder="Password"
+            placeholder="Jelszó"
             placeholderTextColor="#8f8f95"
             autoCapitalize="none"
             autoCorrect={false}
@@ -165,11 +162,11 @@ export default function RegisterScreen({navigation}) {
 
           <View className="my-3 w-full flex-row justify-end">
             <Text className="text-xs font-semibold text-white">
-              Forgot Password?{' '}
+              Elfelejtetted a jelszavad?{' '}
             </Text>
             <Pressable>
               <Text className="text-xs font-semibold text-fox-cyan">
-                Recover here
+                Visszaállítás
               </Text>
             </Pressable>
           </View>
@@ -193,18 +190,18 @@ export default function RegisterScreen({navigation}) {
               <ActivityIndicator color="#fff" />
             ) : (
               <Text className="text-base font-extrabold text-white">
-                REGISTER
+                REGISZTRÁCIÓ
               </Text>
             )}
           </Pressable>
 
           <View className="mt-44 flex-row justify-center">
             <Text className="text-sm font-semibold text-white">
-              Have an account?{' '}
+              Van már fiókod?{' '}
             </Text>
-            <Pressable>
-              <Text className="text-sm font-semibold text-fox-cyan" onPress={() => navigation.navigate('LoginScreen')}>
-                Login here
+            <Pressable onPress={() => navigation.navigate('LoginScreen')}>
+              <Text className="text-sm font-semibold text-fox-cyan">
+                Belépés
               </Text>
             </Pressable>
           </View>

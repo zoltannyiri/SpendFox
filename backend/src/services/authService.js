@@ -16,7 +16,7 @@ const registerWithEmail = async ({ email, password, fullName, username, avatar_u
       email,
       password,
       displayName: fullName,
-      avatar_url: avatar_url || null,
+      ...(avatar_url ? { photoURL: avatar_url } : {}),
     });
 
     const appUserPayload = {
@@ -33,19 +33,20 @@ const registerWithEmail = async ({ email, password, fullName, username, avatar_u
 
     const appUserSnapshot = await db.collection('users').doc(user.uid).get();
     const customToken = await admin.auth().createCustomToken(user.uid);
+    const loginResult = await loginWithEmail({ email, password });
 
     return {
       data: {
-        user: {
+        user: loginResult.data?.user || {
           id: nextUserId,
           email: user.email,
-          avatar_url: avatar_url || null,
           user_metadata: {
             full_name: fullName || null,
             username: username || null,
+            avatar_url: avatar_url || null,
           },
         },
-        session: null,
+        session: loginResult.data?.session || null,
         customToken,
       },
       error: null,

@@ -32,6 +32,7 @@ const API_BASE = process.env.REACT_APP_API_HOST ?? 'http://192.168.0.2:5000/api'
 let refreshRequest = null;
 
 const getTodayKey = () => new Date().toISOString().slice(0, 10);
+const TOKEN_REFRESH_WINDOW_MS = 5 * 60 * 1000;
 
 axios.defaults.baseURL = API_BASE;
 
@@ -167,9 +168,7 @@ class App extends Component {
       }
     }
 
-    if (this.state.userToken) {
-      this.refreshExchangeRatesIfNeeded();
-    }
+    this.restoreStoredSession();
   }
 
   componentWillUnmount() {
@@ -204,6 +203,35 @@ class App extends Component {
     return true;
   };
 
+  restoreStoredSession = async () => {
+    const refreshToken = storage.getString('refreshToken');
+    const tokenExpiresAt = Number(storage.getString('tokenExpiresAt') || 0);
+    const shouldRefresh =
+      Boolean(refreshToken) &&
+      (!this.state.userToken || !tokenExpiresAt || tokenExpiresAt - Date.now() < TOKEN_REFRESH_WINDOW_MS);
+
+    if (!shouldRefresh) {
+      if (this.state.userToken) {
+        this.refreshExchangeRatesIfNeeded();
+      }
+
+      return;
+    }
+
+    try {
+      const token = await refreshAccessToken(refreshToken);
+      this.setState({ userToken: token });
+      this.refreshExchangeRatesIfNeeded();
+    } catch (err) {
+      console.log('Failed to restore session:', err?.message || err);
+      storage.delete('userToken');
+      storage.delete('refreshToken');
+      storage.delete('tokenExpiresAt');
+      storage.delete('appUser');
+      this.setState({ userToken: null });
+    }
+  };
+
   loginSuccess = (token, user, session) => {
     storage.set('userToken', token);
 
@@ -216,7 +244,7 @@ class App extends Component {
     }
 
     if (user) {
-      storage.set('appUser', JSON.stringify(user));
+      storage.set('appUser', JSON.stringify(normalizeAppUser(user)));
     }
 
     this.setState({ userToken: token });
@@ -380,6 +408,17 @@ class App extends Component {
     );
   }
 }
+
+const normalizeAppUser = (user) => {
+  const metadata = user?.user_metadata || {};
+
+  return {
+    ...user,
+    full_name: user?.full_name ?? metadata.full_name ?? null,
+    username: user?.username ?? metadata.username ?? null,
+    avatar_url: user?.avatar_url ?? metadata.avatar_url ?? null,
+  };
+};
 
 const styles = StyleSheet.create({
   root: {

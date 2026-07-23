@@ -22,7 +22,7 @@ export default function LoginScreen({navigation}) {
   const handleLogin = async () => {
     try {
       if (!email || !password) {
-        setErrorMsg('Email and password are required');
+        setErrorMsg('Az email és a jelszó megadása kötelező.');
         return;
       }
 
@@ -70,7 +70,7 @@ export default function LoginScreen({navigation}) {
       });
 
       if (status === 401) {
-        setErrorMsg('Invalid email or password');
+        setErrorMsg('Hibás email vagy jelszó.');
       } else if (serverMsg) {
         setErrorMsg(serverMsg);
       } else if (e?.message) {
@@ -86,11 +86,13 @@ export default function LoginScreen({navigation}) {
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-black"
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
     >
       <ScrollView
         className="flex-1"
         contentContainerClassName="min-h-screen justify-center px-8 py-10"
+        automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
       >
         <View className="absolute inset-x-0 bottom-0 h-80 overflow-hidden">
@@ -118,7 +120,7 @@ export default function LoginScreen({navigation}) {
 
           <TextInput
             className="h-14 w-full rounded-md bg-[#1d1d1f] px-4 text-base text-white"
-            placeholder="Password"
+            placeholder="Jelszó"
             placeholderTextColor="#8f8f95"
             autoCapitalize="none"
             autoCorrect={false}
@@ -131,11 +133,11 @@ export default function LoginScreen({navigation}) {
 
           <View className="my-3 w-full flex-row justify-end">
             <Text className="text-xs font-semibold text-white">
-              Forgot Password?{' '}
+              Elfelejtetted a jelszavad?{' '}
             </Text>
             <Pressable>
               <Text className="text-xs font-semibold text-fox-cyan">
-                Recover here
+                Visszaállítás
               </Text>
             </Pressable>
           </View>
@@ -159,18 +161,18 @@ export default function LoginScreen({navigation}) {
               <ActivityIndicator color="#fff" />
             ) : (
               <Text className="text-base font-extrabold text-white">
-                LOGIN
+                BELÉPÉS
               </Text>
             )}
           </Pressable>
 
           <View className="mt-44 flex-row justify-center">
             <Text className="text-sm font-semibold text-white">
-              Don't have an account?{' '}
+              Nincs még fiókod?{' '}
             </Text>
             <Pressable onPress={() => navigation.navigate('RegisterScreen')}>
               <Text className="text-sm font-semibold text-fox-cyan">
-                SignUp here
+                Regisztráció
               </Text>
             </Pressable>
           </View>
