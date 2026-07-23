@@ -483,6 +483,9 @@ function SubscriptionDetailCard({ subscription, onClose, onEdit }) {
   const categoryLabel = getCategoryLabel(subscription.category);
   const rate = Number(subscription.exchange_rate_to_huf);
   const hasRate = currency !== 'HUF' && !Number.isNaN(rate) && rate > 0;
+  const trialEndDate = subscription.trial_enabled && subscription.trial_end_date
+    ? parseDateValue(subscription.trial_end_date)
+    : null;
 
   return (
     <View className="mb-4 rounded-[30px] bg-white p-5" style={cardShadow}>
@@ -504,13 +507,18 @@ function SubscriptionDetailCard({ subscription, onClose, onEdit }) {
       </View>
 
       <View className="mt-5 flex-row flex-wrap justify-between">
-        <DetailStat label="Következő fizetés" value={formatDateOnly(nextBillingDate)} />
+        {!trialEndDate && (
+          <DetailStat label="Következő fizetés" value={formatDateOnly(nextBillingDate)} />
+        )}
         <DetailStat label="Éves becslés" value={formatMoney(annualPrice)} />
         <DetailStat label="Eredeti ár" value={formatMoney(subscription.price, currency)} />
         <DetailStat
           label="Árfolyam"
           value={hasRate ? `1 ${currency} = ${Math.round(rate)} Ft` : 'HUF'}
         />
+        {trialEndDate ? (
+          <DetailStat label="Próbaidő vége" value={formatDateOnly(trialEndDate)} />
+        ) : null}
       </View>
 
       <View className="mt-4 rounded-2xl bg-[#f3f5f8] px-4 py-3">
@@ -545,8 +553,14 @@ function SubscriptionCard({ subscription, isOpen, onOpenDetails }) {
   const categoryLabel = getCategoryLabel(subscription.category);
   const billingCycle = getBillingCycleLabel(subscription.billing_cycle);
   const logoUrl = subscription.logo_url;
+  const trialEndDate = subscription.trial_enabled && subscription.trial_end_date
+    ? parseDateValue(subscription.trial_end_date)
+    : null;
   const nextBilling = subscription.next_billing_date
     ? `Következő fizetés: ${formatDateOnly(parseDateValue(subscription.next_billing_date))}`
+    : '';
+  const trialLabel = trialEndDate
+    ? `Próbaidő vége: ${formatDateOnly(trialEndDate)}`
     : '';
 
   return (
@@ -564,10 +578,20 @@ function SubscriptionCard({ subscription, isOpen, onOpenDetails }) {
       <SubscriptionLogo logoUrl={logoUrl} />
 
       <View className="ml-4 flex-1">
-        <Text className="text-base font-extrabold text-black" numberOfLines={1}>{name}</Text>
+        <View className="flex-row items-center">
+          <Text className="flex-1 text-base font-extrabold text-black" numberOfLines={1}>
+            {name}
+          </Text>
+          {trialEndDate ? <TrialBadge /> : null}
+        </View>
         <Text className="mt-1 text-xs font-semibold text-neutral-500">{billingCycle}</Text>
         <Text className="mt-1 text-xs font-bold text-[#0ca9f2]">{categoryLabel}</Text>
-        {!!nextBilling && (
+        {!!trialLabel && (
+          <Text className="mt-1 text-xs font-extrabold text-orange-500" numberOfLines={1}>
+            {trialLabel}
+          </Text>
+        )}
+        {!trialEndDate && !!nextBilling && (
           <Text className="mt-1 text-xs font-semibold text-neutral-500" numberOfLines={1}>
             {nextBilling}
           </Text>
@@ -591,6 +615,14 @@ function SubscriptionCard({ subscription, isOpen, onOpenDetails }) {
         </Text>
       </View>
     </Pressable>
+  );
+}
+
+function TrialBadge() {
+  return (
+    <View className="ml-2 rounded-full bg-orange-100 px-2 py-1">
+      <Text className="text-[10px] font-extrabold uppercase text-orange-600">Próbaidőszak</Text>
+    </View>
   );
 }
 
