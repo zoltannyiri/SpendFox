@@ -131,7 +131,7 @@ export default function LoginScreen({navigation}) {
             onSubmitEditing={handleLogin}
           />
 
-          <View className="my-3 w-full flex-row justify-end">
+          {/* <View className="my-3 w-full flex-row justify-end">
             <Text className="text-xs font-semibold text-white">
               Elfelejtetted a jelszavad?{' '}
             </Text>
@@ -140,7 +140,7 @@ export default function LoginScreen({navigation}) {
                 Visszaállítás
               </Text>
             </Pressable>
-          </View>
+          </View> */}
 
           {!!errorMsg && (
             <Text className="mb-3 self-start text-[13px] text-red-300">
