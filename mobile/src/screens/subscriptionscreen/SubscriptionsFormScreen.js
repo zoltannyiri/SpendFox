@@ -50,6 +50,10 @@ export default function SubscriptionsFormScreen() {
     formatDateInput(editingSubscription?.start_date || editingSubscription?.next_billing_date || '')
   );
   const [showStartDatePicker, setShowStartDatePicker] = useState(false);
+  const [nextBillingDate, setNextBillingDate] = useState(
+    formatDateInput(editingSubscription?.next_billing_date || '')
+  );
+  const [showNextBillingDatePicker, setShowNextBillingDatePicker] = useState(false);
   const [trialEnabled, setTrialEnabled] = useState(editingSubscription?.trial_enabled ?? false);
   const [trialEndDate, setTrialEndDate] = useState(
     formatDateInput(editingSubscription?.trial_end_date || '')
@@ -134,6 +138,9 @@ export default function SubscriptionsFormScreen() {
         category,
         billing_cycle: billingCycle,
         start_date: normalizedStartDate,
+        next_billing_date: !trialEnabled && nextBillingDate.trim()
+          ? nextBillingDate.trim()
+          : undefined,
         trial_enabled: trialEnabled,
         trial_end_date: trialEnabled ? trialEndDate.trim() || null : null,
         is_shared: editingSubscription?.is_shared || false,
@@ -322,6 +329,57 @@ export default function SubscriptionsFormScreen() {
                 </View>
               ) : null}
             </View>
+
+            {!trialEnabled ? (
+              <View className="mt-5">
+                <FieldLabel label="Következő fizetés" />
+                <Pressable
+                  className="h-14 justify-center rounded-2xl bg-[#f7f8fa] px-4"
+                  onPress={() => setShowNextBillingDatePicker(true)}
+                >
+                  <Text className="text-base font-semibold text-black">
+                    {nextBillingDate || 'Automatikus számítás'}
+                  </Text>
+                </Pressable>
+                <Text className="mt-2 text-xs font-semibold leading-4 text-neutral-500">
+                  Csak akkor módosítsd, ha a tényleges fizetési dátum elcsúszott.
+                </Text>
+                {!!nextBillingDate && (
+                  <Pressable className="mt-2 self-start" onPress={() => setNextBillingDate('')}>
+                    <Text className="text-xs font-extrabold text-[#0ca9f2]">
+                      Automatikusra állítás
+                    </Text>
+                  </Pressable>
+                )}
+
+                {showNextBillingDatePicker ? (
+                  <View className="mt-2 overflow-hidden rounded-2xl bg-white">
+                    <DateTimePicker
+                      display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                      mode="date"
+                      value={parseDateInput(nextBillingDate) || parseDateInput(startDate) || new Date()}
+                      onChange={(event, selectedDate) => {
+                        if (Platform.OS === 'android') {
+                          setShowNextBillingDatePicker(false);
+                        }
+
+                        if (selectedDate) {
+                          setNextBillingDate(formatDateInput(selectedDate));
+                        }
+                      }}
+                    />
+                    {Platform.OS === 'ios' ? (
+                      <Pressable
+                        className="h-12 items-center justify-center border-t border-neutral-100"
+                        onPress={() => setShowNextBillingDatePicker(false)}
+                      >
+                        <Text className="text-sm font-extrabold text-[#0ca9f2]">Kész</Text>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
 
             <View className="mt-5 rounded-2xl bg-[#f7f8fa] p-4">
               <View className="flex-row items-center justify-between">

@@ -521,12 +521,12 @@ function SubscriptionDetailCard({ subscription, onClose, onEdit }) {
         ) : null}
       </View>
 
-      <View className="mt-4 rounded-2xl bg-[#f3f5f8] px-4 py-3">
+      {/* <View className="mt-4 rounded-2xl bg-[#f3f5f8] px-4 py-3">
         <Text className="text-xs font-bold text-neutral-500">Értesítés státusz</Text>
         <Text className="mt-1 text-sm font-extrabold text-black">
           Profilbeállítás szerint
         </Text>
-      </View>
+      </View> */}
 
       <Pressable className="mt-4 rounded-2xl bg-black py-4" onPress={onEdit}>
         <Text className="text-center text-sm font-extrabold text-white">Módosítás</Text>
