@@ -31,12 +31,14 @@ const buildNextReminderMessage = async (uid) => {
 const register = async (req, res) => {
   try {
     const { uid } = req.auth;
-    const { pushToken, platform } = req.body;
+    const { pushToken, platform, appVersionCode, appVersionName } = req.body;
 
     const { data, error } = await registerPushToken({
       uid,
       pushToken,
       platform,
+      appVersionCode,
+      appVersionName,
     });
 
     if (error) {

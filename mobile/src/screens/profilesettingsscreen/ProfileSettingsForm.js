@@ -145,13 +145,15 @@ export default function ProfileSettingsForm() {
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-[#f3f5f8]"
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      keyboardVerticalOffset={0}
     >
       <StatusBar barStyle="light-content" backgroundColor="#19386e" />
 
       <ScrollView
         className="flex-1"
-        contentContainerClassName="pb-36"
+        contentContainerClassName="pb-72"
+        automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >

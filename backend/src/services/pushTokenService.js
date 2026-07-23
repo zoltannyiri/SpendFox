@@ -12,7 +12,7 @@ const normalizeDataPayload = (data) =>
     Object.entries(data || {}).map(([key, value]) => [key, String(value ?? '')])
   );
 
-const registerPushToken = async ({ uid, pushToken, platform }) => {
+const registerPushToken = async ({ uid, pushToken, platform, appVersionCode, appVersionName }) => {
   try {
     if (!uid || !pushToken) {
       return {
@@ -30,6 +30,8 @@ const registerPushToken = async ({ uid, pushToken, platform }) => {
         uid: String(uid),
         pushToken,
         platform: platform || null,
+        app_version_code: appVersionCode ? Number(appVersionCode) : null,
+        app_version_name: appVersionName || null,
         updated_at: now,
         created_at: now,
       },

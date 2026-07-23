@@ -1,7 +1,9 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -14,6 +16,8 @@ import { MMKV } from 'react-native-mmkv';
 import CurvedHeader, { HeaderIconButton } from '../../components/layout/CurvedHeader';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import AnimatedScreen from '../../components/layout/AnimatedScreen';
+import { APP_VERSION } from '../../config/appVersion';
+import { downloadAndInstallUpdate, resolveUpdateUrl } from '../../services/appUpdate/ApkUpdateService';
 
 const storage = new MMKV();
 
@@ -32,6 +36,7 @@ export default function HomeScreen() {
   const navigation = useNavigation();
   const [profile, setProfile] = useState(() => getStoredUser());
   const [subscriptions, setSubscriptions] = useState([]);
+  const [appUpdate, setAppUpdate] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const loadDashboard = useCallback(async () => {
@@ -52,6 +57,17 @@ export default function HomeScreen() {
       });
 
       setSubscriptions(subscriptionsResponse.data?.data || []);
+
+      if (Platform.OS === 'android') {
+        const versionResponse = await axios.get('/app-version/android', {
+          params: {
+            versionCode: APP_VERSION.androidVersionCode,
+          },
+        });
+        const updateInfo = versionResponse.data?.data;
+
+        setAppUpdate(updateInfo?.updateAvailable ? updateInfo : null);
+      }
     } catch (err) {
       console.log('Failed to load home dashboard:', err?.response?.data || err?.message);
     } finally {
@@ -155,6 +171,8 @@ export default function HomeScreen() {
             categories={summary.categoryTotals}
             total={summary.monthlyTotal}
           />
+
+          {appUpdate ? <AppUpdateCard update={appUpdate} /> : null}
 
           
 
@@ -655,8 +673,49 @@ function DashboardListSection({ title, subtitle, emptyText, items, renderItem })
   );
 }
 
+function AppUpdateCard({ update }) {
+  const downloadUrl = resolveUpdateUrl(update);
+
+  const handleOpenUpdate = async () => {
+    if (!downloadUrl) {
+      Alert.alert('Frissítés', 'Nincs beállítva letöltési link az új verzióhoz.');
+      return;
+    }
+
+    await downloadAndInstallUpdate(update);
+  };
+
+  return (
+    <View className="mt-5 rounded-[30px] bg-black px-5 py-5" style={cardShadow}>
+      <View className="flex-row items-start justify-between">
+        <View className="flex-1 pr-4">
+          <Text className="text-sm font-extrabold uppercase text-white/60">
+            Frissítés érhető el
+          </Text>
+          <Text className="mt-1 text-2xl font-extrabold text-white">
+            SpendFox {update.versionName}
+          </Text>
+          <Text className="mt-2 text-sm font-semibold leading-5 text-white/70">
+            {update.message || 'Töltsd le az új APK-t, majd telepítsd a készüléken.'}
+          </Text>
+        </View>
+        <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
+          <DownloadIcon />
+        </View>
+      </View>
+
+      <Pressable className="mt-5 h-12 items-center justify-center rounded-2xl bg-white" onPress={handleOpenUpdate}>
+        <Text className="text-sm font-extrabold text-black">
+          Frissítés letöltése
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
+
 function DashboardListRow({ title, meta, value, isLast, tone = 'default', onActionPress }) {
   const isWarning = tone === 'warning';
+  const logoUrl = resolveBrandLogoUrl(title);
   const valueClassName = `ml-3 text-sm font-extrabold ${
     isWarning ? 'text-orange-600' : 'text-black'
   }`;
@@ -671,9 +730,7 @@ function DashboardListRow({ title, meta, value, isLast, tone = 'default', onActi
       }`}
       style={!isLast ? listRowSpacing : null}
     >
-      <View className="h-10 w-10 items-center justify-center rounded-2xl bg-white">
-        <SubscriptionsIcon />
-      </View>
+      <DashboardSubscriptionLogo logoUrl={logoUrl} />
       <View className="ml-3 flex-1">
         <Text className="text-sm font-extrabold text-black" numberOfLines={1}>
           {title || 'Előfizetés'}
@@ -691,6 +748,25 @@ function DashboardListRow({ title, meta, value, isLast, tone = 'default', onActi
         </Pressable>
       ) : (
         <Text className={valueClassName}>{value}</Text>
+      )}
+    </View>
+  );
+}
+
+function DashboardSubscriptionLogo({ logoUrl }) {
+  const [failed, setFailed] = useState(false);
+
+  return (
+    <View className="h-10 w-10 items-center justify-center overflow-hidden rounded-2xl bg-white">
+      {logoUrl && !failed ? (
+        <Image
+          source={{ uri: logoUrl }}
+          className="h-full w-full"
+          resizeMode="contain"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <SubscriptionsIcon />
       )}
     </View>
   );
@@ -835,11 +911,67 @@ function getInitial(value) {
   return value?.trim()?.charAt(0)?.toUpperCase() || 'S';
 }
 
+function resolveBrandLogoUrl(name) {
+  const normalizedName = normalizeBrandName(name);
+  const brandDomains = {
+    netflix: 'netflix.com',
+    spotify: 'spotify.com',
+    disney: 'disneyplus.com',
+    disneyplus: 'disneyplus.com',
+    youtube: 'youtube.com',
+    hbo: 'max.com',
+    max: 'max.com',
+    skyshowtime: 'skyshowtime.com',
+    facebook: 'facebook.com',
+    twitter: 'x.com',
+    instagram: 'instagram.com',
+    github: 'github.com',
+    openai: 'openai.com',
+    chatgpt: 'openai.com',
+    google: 'google.com',
+    apple: 'apple.com',
+    microsoft: 'microsoft.com',
+    steam: 'steampowered.com',
+    nordvpn: 'nordvpn.com',
+    expressvpn: 'expressvpn.com',
+    surfshark: 'surfshark.com',
+  };
+  const matchingBrand = Object.keys(brandDomains)
+    .sort((a, b) => b.length - a.length)
+    .find((brandName) => normalizedName.includes(normalizeBrandName(brandName)));
+  const domain = matchingBrand ? brandDomains[matchingBrand] : null;
+
+  return domain
+    ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`
+    : null;
+}
+
+function normalizeBrandName(value) {
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\+/g, ' plus ')
+    .replace(/[^\w\s.-]/g, ' ')
+    .replace(/\s+/g, '');
+}
+
 function SvgIcon({ children, size = 22 }) {
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
       {children}
     </Svg>
+  );
+}
+
+function DownloadIcon() {
+  return (
+    <SvgIcon size={24}>
+      <Path d="M12 4v10" stroke="#fff" strokeLinecap="round" strokeWidth="1.9" />
+      <Path d="m8 10 4 4 4-4" stroke="#fff" strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.9" />
+      <Path d="M5 19h14" stroke="#fff" strokeLinecap="round" strokeWidth="1.9" />
+    </SvgIcon>
   );
 }
 

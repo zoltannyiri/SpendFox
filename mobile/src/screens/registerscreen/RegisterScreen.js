@@ -98,7 +98,7 @@ export default function RegisterScreen({ navigation }) {
     >
       <ScrollView
         className="flex-1"
-        contentContainerClassName="min-h-screen justify-center px-8 py-10"
+        contentContainerClassName="min-h-screen justify-center px-8 pb-36 pt-10"
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
       >

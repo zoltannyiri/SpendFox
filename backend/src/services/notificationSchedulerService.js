@@ -1,6 +1,7 @@
 const { db } = require('./firestoreClient');
 const { sendPushToUser } = require('./pushTokenService');
 const { sendEmail } = require('./emailService');
+const { sendAppUpdateNotifications } = require('./appUpdateNotificationService');
 const { buildSubscriptionPushNotification } = require('../templates/notifications/subscriptionPushTemplate');
 const { buildSubscriptionEmail } = require('../templates/notifications/subscriptionEmailTemplate');
 
@@ -265,6 +266,7 @@ const startNotificationScheduler = () => {
 
     try {
       await sendDueSubscriptionNotifications(now);
+      await sendAppUpdateNotifications(now);
     } catch (err) {
       console.log('[notifications] scheduler failed:', err?.message || err);
     }

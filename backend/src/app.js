@@ -7,6 +7,7 @@ const dictionaryRoutes = require('./routes/dictionaryRoutes');
 const profileRoutes = require('./routes/profileRoutes');
 const pushRoutes = require('./routes/pushRoutes');
 const emailRoutes = require('./routes/emailRoutes');
+const appVersionRoutes = require('./routes/appVersionRoutes');
 
 const app = express();
 
@@ -19,5 +20,6 @@ app.use('/api', dictionaryRoutes);
 app.use('/api', profileRoutes);
 app.use('/api', pushRoutes);
 app.use('/api', emailRoutes);
+app.use('/api', appVersionRoutes);
 
 module.exports = app;

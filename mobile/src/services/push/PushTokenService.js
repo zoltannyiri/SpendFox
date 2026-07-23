@@ -1,6 +1,8 @@
 import messaging from '@react-native-firebase/messaging';
 import { Alert, PermissionsAndroid, Platform } from 'react-native';
 import axios from 'axios';
+import { APP_VERSION } from '../../config/appVersion';
+import { downloadAndInstallUpdate } from '../appUpdate/ApkUpdateService';
 
 export async function requestAndRegisterPushToken() {
   try {
@@ -32,6 +34,23 @@ export function setupPushListeners() {
     const body =
       remoteMessage?.notification?.body ??
       'Új értesítés érkezett a SpendFoxtól.';
+    const downloadUrl = remoteMessage?.data?.downloadUrl;
+
+    if (remoteMessage?.data?.type === 'app_update' && downloadUrl) {
+      Alert.alert(title, body, [
+        { text: 'Később', style: 'cancel' },
+        {
+          text: 'Letöltés',
+          onPress: () =>
+            downloadAndInstallUpdate({
+              apkUrl: downloadUrl,
+              versionCode: remoteMessage?.data?.versionCode,
+              versionName: remoteMessage?.data?.versionName,
+            }),
+        },
+      ]);
+      return;
+    }
 
     Alert.alert(title, body);
   });
@@ -79,5 +98,7 @@ async function registerPushToken(pushToken) {
   await axios.post('/push/register', {
     pushToken,
     platform: Platform.OS,
+    appVersionCode: APP_VERSION.androidVersionCode,
+    appVersionName: APP_VERSION.androidVersionName,
   });
 }
