@@ -68,8 +68,9 @@ export default function HomeScreen() {
   const profileName = getUserName(profile);
   const profileAvatar = getUserAvatar(profile);
   const summary = useMemo(() => getSubscriptionSummary(subscriptions), [subscriptions]);
-  const nextBilling = useMemo(() => getNextBilling(subscriptions), [subscriptions]);
+  const nextAction = useMemo(() => getNextAction(subscriptions), [subscriptions]);
   const upcomingPayments = useMemo(() => getUpcomingPayments(subscriptions), [subscriptions]);
+  const upcomingTrials = useMemo(() => getUpcomingTrials(subscriptions), [subscriptions]);
   const expensiveSubscriptions = useMemo(() => getMostExpensiveSubscriptions(subscriptions), [subscriptions]);
   const monthlyTrend = useMemo(() => getMonthlyTrend(subscriptions), [subscriptions]);
 
@@ -144,8 +145,8 @@ export default function HomeScreen() {
               <SummaryPill label="Éves becslés" value={formatMoney(summary.yearlyTotal)} />
               <View className="w-3" />
               <SummaryPill
-                label="Következő"
-                value={nextBilling ? formatDateOnly(nextBilling.date) : '-'}
+                label={nextAction?.type === 'trial' ? 'Trial vége' : 'Következő'}
+                value={nextAction ? formatDateOnly(nextAction.date) : '-'}
               />
             </View>
           </View>
@@ -166,11 +167,33 @@ export default function HomeScreen() {
             />
             <MetricCard
               icon={<CalendarIcon />}
-              label="Következő fizetés"
-              value={nextBilling?.name || '-'}
-              note={nextBilling ? formatDateOnly(nextBilling.date) : 'Nincs dátum'}
+              label={nextAction?.type === 'trial' ? 'Trial lemondás' : 'Következő fizetés'}
+              value={nextAction?.name || '-'}
+              note={nextAction ? `${nextAction.label} · ${formatDateOnly(nextAction.date)}` : 'Nincs dátum'}
             />
           </View>
+
+          <DashboardListSection
+            title="Lejáró próbaidők"
+            subtitle="Ezeket érdemes lemondás előtt átnézni"
+            emptyText="Nincs közelgő próbaidő lejárat"
+            items={upcomingTrials}
+            renderItem={(item, index, list) => (
+              <DashboardListRow
+                key={`${item.id}-trial`}
+                title={item.name}
+                meta={`Próbaidő vége: ${formatDateOnly(item.date)}`}
+                value="Lemondás?"
+                isLast={index === list.length - 1}
+                tone="warning"
+                onActionPress={() =>
+                  navigation.navigate('SubscriptionsForm', {
+                    subscription: item,
+                  })
+                }
+              />
+            )}
+          />
 
           <DashboardListSection
             title="Közelgő fizetések"
@@ -306,16 +329,10 @@ function getSubscriptionSummary(items) {
   );
 }
 
-function getNextBilling(items) {
+function getNextAction(items) {
   const today = startOfDay(new Date());
 
-  return items
-    .filter((item) => item.is_active !== false)
-    .map((item) => ({
-      name: item.name || 'Előfizetés',
-      date: getNextBillingDate(item, today),
-    }))
-    .filter((item) => item.date)
+  return getUpcomingEvents(items, today)
     .sort((a, b) => a.date.getTime() - b.date.getTime())[0];
 }
 
@@ -324,6 +341,7 @@ function getUpcomingPayments(items) {
 
   return items
     .filter((item) => item.is_active !== false)
+    .filter((item) => !getTrialEndDate(item, today))
     .map((item) => ({
       ...item,
       date: getNextBillingDate(item, today),
@@ -331,6 +349,39 @@ function getUpcomingPayments(items) {
     .filter((item) => item.date)
     .sort((a, b) => a.date.getTime() - b.date.getTime())
     .slice(0, 4);
+}
+
+function getUpcomingTrials(items) {
+  const today = startOfDay(new Date());
+
+  return items
+    .filter((item) => item.is_active !== false)
+    .map((item) => ({
+      ...item,
+      date: getTrialEndDate(item, today),
+    }))
+    .filter((item) => item.date)
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .slice(0, 4);
+}
+
+function getUpcomingEvents(items, today) {
+  const trialEvents = getUpcomingTrials(items).map((item) => ({
+    id: item.id,
+    name: item.name || 'Előfizetés',
+    date: item.date,
+    type: 'trial',
+    label: 'Próbaidő vége',
+  }));
+  const billingEvents = getUpcomingPayments(items).map((item) => ({
+    id: item.id,
+    name: item.name || 'Előfizetés',
+    date: item.date,
+    type: 'billing',
+    label: 'Fizetés',
+  }));
+
+  return [...trialEvents, ...billingEvents].filter((item) => item.date && item.date >= today);
 }
 
 function getMostExpensiveSubscriptions(items) {
@@ -372,6 +423,26 @@ function getMonthlyTrend(items) {
     });
 
   return months;
+}
+
+function getTrialEndDate(item, today) {
+  if (!item.trial_enabled || !item.trial_end_date) {
+    return null;
+  }
+
+  const parsedTrialEndDate = parseDateValue(item.trial_end_date);
+
+  if (!parsedTrialEndDate) {
+    return null;
+  }
+
+  const trialEndDate = startOfDay(parsedTrialEndDate);
+
+  if (trialEndDate < today) {
+    return null;
+  }
+
+  return trialEndDate;
 }
 
 function getNextBillingDate(item, today) {
@@ -584,10 +655,20 @@ function DashboardListSection({ title, subtitle, emptyText, items, renderItem })
   );
 }
 
-function DashboardListRow({ title, meta, value, isLast }) {
+function DashboardListRow({ title, meta, value, isLast, tone = 'default', onActionPress }) {
+  const isWarning = tone === 'warning';
+  const valueClassName = `ml-3 text-sm font-extrabold ${
+    isWarning ? 'text-orange-600' : 'text-black'
+  }`;
+  const actionTextClassName = `text-sm font-extrabold ${
+    isWarning ? 'text-orange-600' : 'text-black'
+  }`;
+
   return (
     <View
-      className="flex-row items-center rounded-2xl bg-[#f3f5f8] px-4 py-3"
+      className={`flex-row items-center rounded-2xl px-4 py-3 ${
+        isWarning ? 'bg-orange-50' : 'bg-[#f3f5f8]'
+      }`}
       style={!isLast ? listRowSpacing : null}
     >
       <View className="h-10 w-10 items-center justify-center rounded-2xl bg-white">
@@ -601,7 +682,16 @@ function DashboardListRow({ title, meta, value, isLast }) {
           {meta}
         </Text>
       </View>
-      <Text className="ml-3 text-sm font-extrabold text-black">{value}</Text>
+      {onActionPress ? (
+        <Pressable
+          className="ml-3 rounded-full bg-white px-3 py-2"
+          onPress={onActionPress}
+        >
+          <Text className={actionTextClassName}>{value}</Text>
+        </Pressable>
+      ) : (
+        <Text className={valueClassName}>{value}</Text>
+      )}
     </View>
   );
 }

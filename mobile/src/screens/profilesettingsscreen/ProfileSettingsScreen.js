@@ -200,11 +200,11 @@ export default function ProfileSettingsScreen() {
               <BackIcon />
             </HeaderIconButton>
           }
-          right={
-            <HeaderIconButton>
-              <MoreIcon />
-            </HeaderIconButton>
-          }
+          // right={
+          //   <HeaderIconButton>
+          //     <MoreIcon />
+          //   </HeaderIconButton>
+          // }
         />
 
         <AnimatedScreen className="-mt-16 px-5">

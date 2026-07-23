@@ -48,10 +48,10 @@ const buildSubscriptionEmail = ({
   const whenText = Number(daysBefore) === 0 ? 'ma' : `${daysBefore} nap múlva`;
   const isTrial = reminderType === 'trial';
   const subject = isTrial
-    ? `SpendFox próbaidő emlékeztető: ${name}`
+    ? `SpendFox trial lemondási emlékeztető: ${name}`
     : `SpendFox emlékeztető: ${name}`;
   const mainText = isTrial
-    ? `A(z) ${name} próbaidőszaka ${whenText} lejár.`
+    ? `A(z) ${name} próbaidőszaka ${whenText} lejár. Ha nem szeretnéd, hogy fizetőssé váljon, érdemes időben lemondani.`
     : `A(z) ${name} előfizetésed ${whenText} esedékes.`;
   const dateLabel = isTrial ? 'Próbaidő vége' : 'Fizetési dátum';
 

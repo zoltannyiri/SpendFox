@@ -35,9 +35,9 @@ const buildSubscriptionPushNotification = ({
   const isTrial = reminderType === 'trial';
 
   return {
-    title: isTrial ? `${name} próbaidő lejár` : `${name} fizetés közeleg`,
+    title: isTrial ? `${name} trial lemondás` : `${name} fizetés közeleg`,
     body: isTrial
-      ? `${whenText} lejár a próbaidő${dateSuffix}.`
+      ? `${whenText} lejár a próbaidő${dateSuffix}. Ha nem szeretnéd fizetni, érdemes időben lemondani.`
       : `${whenText} esedékes${dateSuffix}${amountText}.`,
     data: {
       type: isTrial ? 'trial_reminder' : 'subscription_reminder',
