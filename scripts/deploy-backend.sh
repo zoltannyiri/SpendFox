@@ -23,5 +23,16 @@ fi
 
 pm2 save
 
-curl --fail --silent --show-error --max-time 10 http://127.0.0.1:5000/api/health
-echo
+for attempt in {1..30}; do
+  if curl --fail --silent --show-error --max-time 5 http://127.0.0.1:5000/api/health; then
+    echo
+    exit 0
+  fi
+
+  echo "Waiting for backend health check... ($attempt/30)"
+  sleep 2
+done
+
+echo "Backend health check failed after waiting."
+pm2 logs "$PM2_NAME" --lines 80 --nostream
+exit 1
