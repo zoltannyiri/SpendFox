@@ -1,4 +1,4 @@
-const { getUserByUid, updateUserByUid } = require('../services/userService');
+const { getUserByUid, updateUserByUid, deleteUserById } = require('../services/userService');
 
 const getProfile = async (req, res) => {
   try {
@@ -40,7 +40,23 @@ const updateProfile = async (req, res) => {
   }
 };
 
+const deleteProfile = async (req, res) => {
+  try {
+    const { uid } = req.auth;
+    const { data, error } = await deleteUserById(uid);
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    return res.json({ data, message: 'Profile deleted successfully' });
+  } catch (err) {
+    return res.status(500).json({ error: 'Unexpected error' });
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
+  deleteProfile,
 };

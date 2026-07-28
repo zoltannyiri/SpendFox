@@ -1,6 +1,8 @@
 const { admin, db } = require('./firestoreClient');
 
 const usersCollection = db.collection('users');
+const subscriptionsCollection = db.collection('subscriptions');
+const pushTokensCollection = db.collection('push_tokens');
 
 const toNumericId = (value) => {
   const numericValue = Number(value);
@@ -139,6 +141,7 @@ const updateUserByUid = async (uid, payload) => {
 const deleteUserById = async (id) => {
   try {
     const userId = String(id);
+    const numericUserId = toNumericId(id);
 
     try {
       await admin.auth().deleteUser(userId);
@@ -148,7 +151,43 @@ const deleteUserById = async (id) => {
       }
     }
 
-    await usersCollection.doc(userId).delete();
+    const subscriptionsSnapshot = await subscriptionsCollection
+      .where('user_id', '==', numericUserId)
+      .get();
+    const pushTokensSnapshot = await pushTokensCollection
+      .where('uid', '==', userId)
+      .get();
+    let batch = db.batch();
+    let operationCount = 0;
+    const commitBatchIfNeeded = async () => {
+      if (operationCount < 450) {
+        return;
+      }
+
+      await batch.commit();
+      batch = db.batch();
+      operationCount = 0;
+    };
+
+    for (const doc of subscriptionsSnapshot.docs) {
+      batch.delete(doc.ref);
+      operationCount += 1;
+      await commitBatchIfNeeded();
+    }
+
+    for (const doc of pushTokensSnapshot.docs) {
+      batch.delete(doc.ref);
+      operationCount += 1;
+      await commitBatchIfNeeded();
+    }
+
+    batch.delete(usersCollection.doc(userId));
+    operationCount += 1;
+
+    if (operationCount > 0) {
+      await batch.commit();
+    }
+
     return { data: true, error: null };
   } catch (err) {
     return { data: null, error: toServiceError(err) };

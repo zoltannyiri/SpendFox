@@ -8,6 +8,7 @@ const profileRoutes = require('./routes/profileRoutes');
 const pushRoutes = require('./routes/pushRoutes');
 const emailRoutes = require('./routes/emailRoutes');
 const appVersionRoutes = require('./routes/appVersionRoutes');
+const legalRoutes = require('./routes/legalRoutes');
 
 const app = express();
 
@@ -21,5 +22,6 @@ app.use('/api', profileRoutes);
 app.use('/api', pushRoutes);
 app.use('/api', emailRoutes);
 app.use('/api', appVersionRoutes);
+app.use(legalRoutes);
 
 module.exports = app;

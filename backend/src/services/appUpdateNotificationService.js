@@ -4,29 +4,23 @@ const { getAndroidAppVersion } = require('./appVersionService');
 const pushTokensCollection = db.collection('push_tokens');
 const notificationLogsCollection = db.collection('notification_logs');
 
-const formatDateOnly = (date) => {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+const getUpdateLogDocId = ({ tokenDocId, versionCode }) =>
+  `app_update_${tokenDocId}_${versionCode}`;
 
-  return `${year}-${month}-${day}`;
-};
-
-const wasUpdateNotificationSent = async ({ tokenDocId, versionCode, todayKey }) => {
-  const docId = `app_update_${tokenDocId}_${versionCode}_${todayKey}`;
+const wasUpdateNotificationSent = async ({ tokenDocId, versionCode }) => {
+  const docId = getUpdateLogDocId({ tokenDocId, versionCode });
   const doc = await notificationLogsCollection.doc(docId).get();
 
   return doc.exists;
 };
 
-const markUpdateNotificationSent = async ({ tokenDocId, uid, versionCode, todayKey }) => {
-  const docId = `app_update_${tokenDocId}_${versionCode}_${todayKey}`;
+const markUpdateNotificationSent = async ({ tokenDocId, uid, versionCode }) => {
+  const docId = getUpdateLogDocId({ tokenDocId, versionCode });
 
   await notificationLogsCollection.doc(docId).set({
     uid: uid ? String(uid) : null,
     token_doc_id: tokenDocId,
     version_code: versionCode,
-    target_date: todayKey,
     reminder_type: 'app_update',
     channel: 'push',
     sent_at: new Date().toISOString(),
@@ -40,7 +34,6 @@ const sendAppUpdateNotifications = async (now = new Date()) => {
     return;
   }
 
-  const todayKey = formatDateOnly(now);
   const snapshot = await pushTokensCollection.where('platform', '==', 'android').get();
 
   for (const doc of snapshot.docs) {
@@ -54,7 +47,6 @@ const sendAppUpdateNotifications = async (now = new Date()) => {
     const alreadySent = await wasUpdateNotificationSent({
       tokenDocId: doc.id,
       versionCode: latestVersion.versionCode,
-      todayKey,
     });
 
     if (alreadySent) {
@@ -79,7 +71,6 @@ const sendAppUpdateNotifications = async (now = new Date()) => {
       tokenDocId: doc.id,
       uid: tokenData.uid,
       versionCode: latestVersion.versionCode,
-      todayKey,
     });
   }
 };

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Alert,
   Image,
+  Linking,
   Pressable,
   ScrollView,
   StatusBar,
@@ -183,6 +184,42 @@ export default function ProfileSettingsScreen() {
     }
   };
 
+  const openLegalPage = async (path) => {
+    const baseUrl = (axios.defaults.baseURL || '').replace(/\/api\/?$/, '');
+
+    try {
+      await Linking.openURL(`${baseUrl}${path}`);
+    } catch (err) {
+      Alert.alert('Hiba', 'Nem sikerült megnyitni az oldalt.');
+    }
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Fiók törlése',
+      'Biztosan törölni szeretnéd a fiókodat? Ez törli a profilodat és az előfizetéseidet.',
+      [
+        { text: 'Mégsem', style: 'cancel' },
+        {
+          text: 'Törlés',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setSaving(true);
+              await axios.delete('/profile');
+              window.App?.logout?.();
+            } catch (err) {
+              console.log('Failed to delete account:', err?.response?.data || err?.message);
+              Alert.alert('Fiók törlése', 'Nem sikerült törölni a fiókot.');
+            } finally {
+              setSaving(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <View className="flex-1 bg-[#f3f5f8]">
       <StatusBar barStyle="light-content" backgroundColor="#19386e" />
@@ -298,24 +335,35 @@ export default function ProfileSettingsScreen() {
               icon={<ShieldIcon />}
               label="Adatvédelem"
               description="Fiók és adatkezelési beállítások"
+              onPress={() => openLegalPage('/legal/privacy')}
             />
             <SettingActionRow
               icon={<HelpIcon />}
               label="Segítség"
               description="Kapcsolat, hibajelentés és támogatás"
+              onPress={() => openLegalPage('/legal/delete-account')}
             />
             <SettingActionRow
               icon={<DocumentIcon />}
               label="Feltételek és adatvédelem"
               description="Jogi információk és szabályzatok"
+              onPress={() => openLegalPage('/legal/terms')}
             />
           </Section>
 
           <Pressable
             className="mt-6 h-14 items-center justify-center rounded-2xl bg-red-50"
+            disabled={saving}
+            onPress={handleDeleteAccount}
+          >
+            <Text className="text-base font-extrabold text-red-600">Fiók törlése</Text>
+          </Pressable>
+
+          <Pressable
+            className="mt-3 h-14 items-center justify-center rounded-2xl bg-neutral-900"
             onPress={() => window.App?.logout?.()}
           >
-            <Text className="text-base font-extrabold text-red-600">Kijelentkezés</Text>
+            <Text className="text-base font-extrabold text-white">Kijelentkezés</Text>
           </Pressable>
         </AnimatedScreen>
       </ScrollView>
