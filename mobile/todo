@@ -1,0 +1,7 @@
+most majd deploy után token törléshez:
+
+cd /root/spendfox/backend
+git pull
+npm install
+npm run cleanup:push-tokens
+pm2 restart spendfox-backend --update-env

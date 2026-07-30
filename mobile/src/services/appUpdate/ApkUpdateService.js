@@ -2,6 +2,7 @@ import { Alert, Linking, NativeModules, Platform } from 'react-native';
 import axios from 'axios';
 
 const { ApkInstaller } = NativeModules;
+let currentDownloadPromise = null;
 
 export function resolveUpdateUrl(update) {
   const updateUrl = update?.apkUrl || update?.downloadUrl;
@@ -21,7 +22,11 @@ export function resolveUpdateUrl(update) {
   return `${baseOrigin}/api${normalizedPath}`;
 }
 
-export async function downloadAndInstallUpdate(update) {
+export function isUpdateDownloadInProgress() {
+  return Boolean(currentDownloadPromise);
+}
+
+export async function downloadAndInstallUpdate(update, options = {}) {
   const updateUrl = resolveUpdateUrl(update);
 
   if (!updateUrl) {
@@ -29,13 +34,27 @@ export async function downloadAndInstallUpdate(update) {
     return;
   }
 
+  if (currentDownloadPromise) {
+    Alert.alert('Frissítés', 'A frissítés letöltése már folyamatban van.');
+    return currentDownloadPromise;
+  }
+
   if (Platform.OS !== 'android' || !ApkInstaller?.downloadAndInstallApk) {
     await Linking.openURL(updateUrl);
     return;
   }
 
+  if (options.showStartedAlert) {
+    Alert.alert('Frissítés', 'A letöltés elindult a háttérben.');
+  }
+
+  currentDownloadPromise = ApkInstaller.downloadAndInstallApk(
+    updateUrl,
+    'spendfox-update.apk'
+  );
+
   try {
-    await ApkInstaller.downloadAndInstallApk(updateUrl, 'spendfox-update.apk');
+    await currentDownloadPromise;
   } catch (err) {
     if (err?.code === 'INSTALL_PERMISSION_REQUIRED') {
       Alert.alert(
@@ -47,7 +66,9 @@ export async function downloadAndInstallUpdate(update) {
 
     Alert.alert(
       'Frissítés',
-      err?.message || 'Nem sikerült letölteni vagy elindítani az APK telepítését.'
+      err?.message || 'Nem sikerült letölteni vagy elindítani a telepítést.'
     );
+  } finally {
+    currentDownloadPromise = null;
   }
 }

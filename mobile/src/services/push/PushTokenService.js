@@ -28,6 +28,22 @@ export async function requestAndRegisterPushToken() {
   }
 }
 
+export async function syncPushTokenVersion() {
+  try {
+    const fcmToken = await messaging().getToken();
+
+    if (!fcmToken) {
+      return null;
+    }
+
+    await registerPushToken(fcmToken);
+    return fcmToken;
+  } catch (err) {
+    console.log('Push token version sync failed:', err?.response?.data || err?.message || err);
+    return null;
+  }
+}
+
 export function setupPushListeners() {
   const unsubscribeMessage = messaging().onMessage(async (remoteMessage) => {
     const title = remoteMessage?.notification?.title ?? 'SpendFox';
@@ -46,7 +62,7 @@ export function setupPushListeners() {
               apkUrl: downloadUrl,
               versionCode: remoteMessage?.data?.versionCode,
               versionName: remoteMessage?.data?.versionName,
-            }),
+            }, { showStartedAlert: true }),
         },
       ]);
       return;

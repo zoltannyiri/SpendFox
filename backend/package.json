@@ -8,6 +8,7 @@
     "app:version": "node scripts/setAppVersion.js",
     "migrate:users": "node scripts/migrateProfilesToUsers.js",
     "cleanup:user-uid": "node scripts/removeUserUidField.js",
+    "cleanup:push-tokens": "node scripts/cleanupDuplicatePushTokens.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/server.js"
   },

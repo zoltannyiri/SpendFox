@@ -625,7 +625,7 @@ function DashboardCategoryBreakdown({ categories, total }) {
         const percentage = total > 0 ? Math.round((item.value / total) * 100) : 0;
 
         return (
-          <View key={item.code} className="mb-4 last:mb-0">
+          <View key={item.code} className="mb-4 last:mb-1">
             <View className="mb-2 flex-row items-center justify-between">
               <View className="flex-row items-center">
                 <View
@@ -675,14 +675,24 @@ function DashboardListSection({ title, subtitle, emptyText, items, renderItem })
 
 function AppUpdateCard({ update }) {
   const downloadUrl = resolveUpdateUrl(update);
+  const [downloading, setDownloading] = useState(false);
 
   const handleOpenUpdate = async () => {
+    if (downloading) {
+      return;
+    }
+
     if (!downloadUrl) {
       Alert.alert('Frissítés', 'Nincs beállítva letöltési link az új verzióhoz.');
       return;
     }
 
-    await downloadAndInstallUpdate(update);
+    try {
+      setDownloading(true);
+      await downloadAndInstallUpdate(update);
+    } finally {
+      setDownloading(false);
+    }
   };
 
   return (
@@ -696,18 +706,29 @@ function AppUpdateCard({ update }) {
             SpendFox {update.versionName}
           </Text>
           <Text className="mt-2 text-sm font-semibold leading-5 text-white/70">
-            {update.message || 'Töltsd le az új APK-t, majd telepítsd a készüléken.'}
+            {downloading
+              ? 'Letöltjük a frissítést a háttérben. Mindjárt indul a telepítés.'
+              : update.message || 'Töltsd le az új APK-t, majd telepítsd a készüléken.'}
           </Text>
         </View>
         <View className="h-12 w-12 items-center justify-center rounded-2xl bg-white/10">
-          <DownloadIcon />
+          {downloading ? <ActivityIndicator color="#fff" /> : <DownloadIcon />}
         </View>
       </View>
 
-      <Pressable className="mt-5 h-12 items-center justify-center rounded-2xl bg-white" onPress={handleOpenUpdate}>
-        <Text className="text-sm font-extrabold text-black">
-          Frissítés letöltése
-        </Text>
+      <Pressable
+        className={`mt-5 h-12 items-center justify-center rounded-2xl ${
+          downloading ? 'bg-white/70' : 'bg-white'
+        }`}
+        disabled={downloading}
+        onPress={handleOpenUpdate}
+      >
+        <View className="flex-row items-center">
+          {downloading ? <ActivityIndicator color="#111" size="small" /> : null}
+          <Text className={`text-sm font-extrabold text-black ${downloading ? 'ml-2' : ''}`}>
+            {downloading ? 'Letöltés folyamatban...' : 'Frissítés letöltése'}
+          </Text>
+        </View>
       </Pressable>
     </View>
   );

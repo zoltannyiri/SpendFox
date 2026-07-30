@@ -12,6 +12,36 @@ const normalizeDataPayload = (data) =>
     Object.entries(data || {}).map(([key, value]) => [key, String(value ?? '')])
   );
 
+const removeTokenFromOtherUsers = async ({ uid, pushToken, tokenHash }) => {
+  const normalizedUid = String(uid);
+  const byPushTokenSnapshot = await pushTokensCollection
+    .where('pushToken', '==', pushToken)
+    .get();
+  const byTokenHashSnapshot = await pushTokensCollection
+    .where('token_hash', '==', tokenHash)
+    .get();
+  const docsById = new Map();
+
+  for (const doc of [...byPushTokenSnapshot.docs, ...byTokenHashSnapshot.docs]) {
+    docsById.set(doc.id, doc);
+  }
+
+  const staleDocs = [...docsById.values()].filter((doc) => {
+    const data = doc.data();
+
+    return String(data?.uid || '') !== normalizedUid;
+  });
+
+  if (staleDocs.length === 0) {
+    return;
+  }
+
+  const batch = db.batch();
+
+  staleDocs.forEach((doc) => batch.delete(doc.ref));
+  await batch.commit();
+};
+
 const registerPushToken = async ({ uid, pushToken, platform, appVersionCode, appVersionName }) => {
   try {
     if (!uid || !pushToken) {
@@ -22,6 +52,8 @@ const registerPushToken = async ({ uid, pushToken, platform, appVersionCode, app
     }
 
     const tokenHash = crypto.createHash('sha256').update(pushToken).digest('hex');
+    await removeTokenFromOtherUsers({ uid, pushToken, tokenHash });
+
     const docRef = pushTokensCollection.doc(`${uid}_${tokenHash}`);
     const now = admin.firestore.FieldValue.serverTimestamp();
 
@@ -29,6 +61,7 @@ const registerPushToken = async ({ uid, pushToken, platform, appVersionCode, app
       {
         uid: String(uid),
         pushToken,
+        token_hash: tokenHash,
         platform: platform || null,
         app_version_code: appVersionCode ? Number(appVersionCode) : null,
         app_version_name: appVersionName || null,

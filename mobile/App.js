@@ -23,7 +23,7 @@ import SubscriptionsScreen from './src/screens/subscriptionscreen/SubscriptionsS
 import SubscriptionsFormScreen from './src/screens/subscriptionscreen/SubscriptionsFormScreen';
 import ProfileSettingsScreen from './src/screens/profilesettingsscreen/ProfileSettingsScreen';
 import ProfileSettingsForm from './src/screens/profilesettingsscreen/ProfileSettingsForm';
-import { setupPushListeners } from './src/services/push/PushTokenService';
+import { setupPushListeners, syncPushTokenVersion } from './src/services/push/PushTokenService';
 
 const Stack = createNativeStackNavigator();
 const navigationRef = createNavigationContainerRef();
@@ -179,6 +179,7 @@ class App extends Component {
 
   handleAppStateChange = (nextState) => {
     if (nextState === 'active' && this.state.userToken) {
+      this.syncPushTokenVersionIfAvailable();
       this.refreshExchangeRatesIfNeeded();
     }
   };
@@ -212,6 +213,7 @@ class App extends Component {
 
     if (!shouldRefresh) {
       if (this.state.userToken) {
+        this.syncPushTokenVersionIfAvailable();
         this.refreshExchangeRatesIfNeeded();
       }
 
@@ -221,6 +223,7 @@ class App extends Component {
     try {
       const token = await refreshAccessToken(refreshToken);
       this.setState({ userToken: token });
+      this.syncPushTokenVersionIfAvailable();
       this.refreshExchangeRatesIfNeeded();
     } catch (err) {
       console.log('Failed to restore session:', err?.message || err);
@@ -248,7 +251,16 @@ class App extends Component {
     }
 
     this.setState({ userToken: token });
+    this.syncPushTokenVersionIfAvailable();
     this.refreshExchangeRatesIfNeeded();
+  };
+
+  syncPushTokenVersionIfAvailable = async () => {
+    try {
+      await syncPushTokenVersion();
+    } catch (err) {
+      console.log('Failed to sync push token version:', err?.message || err);
+    }
   };
 
   refreshExchangeRatesIfNeeded = async () => {

@@ -1,4 +1,4 @@
 export const APP_VERSION = {
-  androidVersionCode: 3,
-  androidVersionName: '1.0.2',
+  androidVersionCode: 4,
+  androidVersionName: '1.0.3',
 };
