@@ -1,4 +1,5 @@
 const express = require('express');
+const cors = require('cors');
 const healthRoutes = require('./routes/healthRoutes');
 const subscriptionRoutes = require('./routes/subscriptionRoutes');
 const authRoutes = require('./routes/authRoutes');
@@ -12,6 +13,7 @@ const legalRoutes = require('./routes/legalRoutes');
 
 const app = express();
 
+app.use(cors());
 app.use(express.json());
 app.use('/api', healthRoutes);
 app.use('/api', subscriptionRoutes);
