@@ -3,15 +3,19 @@ import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
 import heroImg from './assets/hero.png'
 import './App.css'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import axios from "axios"
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 
 import Navbar from './components/Navbar'
 import RegisterScreen from './screens/RegisterScreen/RegisterScreen'
 import LoginScreen from './screens/LoginScreen/LoginScreen'
 import HomeScreen from './screens/HomeScreen/HomeScreen'
+import { AuthProvider } from './auth/AuthContext'
+import { useAuth } from './auth/UseAuth'
 
 function App() {
   const accessToken = localStorage.getItem("accessToken");
+  const { user } = useAuth();
   if (accessToken) {
     console.log("User token found:", accessToken);
   } else {
@@ -21,12 +25,16 @@ function App() {
     <Router>
       <Navbar />
       <Routes>
-        {accessToken ? (
-          <Route path="/home" element={<HomeScreen />} />
+        {user ? (
+          <>
+            <Route path="/home" element={<HomeScreen />} />
+            <Route path="*" element={<Navigate to="/home" replace />} />
+          </>
         ) : (
           <>
             <Route path="/register" element={<RegisterScreen />} />
             <Route path="/login" element={<LoginScreen />} />
+            <Route path="*" element={<Navigate to="/login" replace />} />
           </>
         )}
       </Routes>

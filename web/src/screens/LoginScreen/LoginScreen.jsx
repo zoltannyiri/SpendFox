@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
+import { useAuth } from "../../auth/UseAuth";
 import AppLogo from "../../components/AppLogo";
 
 const LoginScreen = () => {
@@ -10,6 +11,7 @@ const LoginScreen = () => {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const { fetchProfile } = useAuth();
 
   const navigate = useNavigate();
 
@@ -21,23 +23,24 @@ const LoginScreen = () => {
       setLoading(false);
       return;
     }
-    const payload = {
-      email,
-      password,
+    try {
+      const payload = { 
+        email, 
+        password
+      };
+      const response = await axios.post(`${import.meta.env.VITE_API_HOST}/auth/login`, payload);
+      
+      console.log("Login successful:", response.data);
+      localStorage.setItem("accessToken", response.data.data.session.access_token);
+      
+      await fetchProfile();
+      navigate("/home");
+    } catch (err) {
+      console.error("Error during login:", err?.response?.data || err);
+      setError(err?.response?.data?.error || "Hiba történt a bejelentkezés során.");
+    } finally {
+      setLoading(false);
     }
-    axios.post(`${import.meta.env.VITE_API_HOST}/auth/login`, payload)
-      .then((response) => {
-        console.log("Login successful:", response.data);
-        localStorage.setItem("accessToken", response.data.data.session.access_token);
-        navigate("/home");
-      })
-      .catch((error) => {
-        console.error("Error during login:", error.response.data);
-        setError(error.response.data.error || error.response || "Hiba történt a bejelentkezés során.");
-      })
-      .finally(() => {
-        setLoading(false);
-      });
   };
 
   return (
