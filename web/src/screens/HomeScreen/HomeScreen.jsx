@@ -5,6 +5,11 @@ import AppLogo from "../../components/AppLogo";
 import { AiOutlineEdit } from "react-icons/ai";
 import { AiOutlineCalendar } from "react-icons/ai";
 import { AiOutlineStar, AiOutlineUser, } from 'react-icons/ai';
+import { HiOutlineWallet } from 'react-icons/hi2';
+import { TbWallet } from 'react-icons/tb';
+import { TbCalendar } from 'react-icons/tb';
+import { HiOutlineCalendar } from 'react-icons/hi2';
+import { HiOutlineStar } from 'react-icons/hi2';
 import { useAuth } from "../../auth/UseAuth";
 
 const HomeScreen = () => {
@@ -17,6 +22,11 @@ const HomeScreen = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [createdAt, setCreatedAt] = useState("");
+  const [monthlyTotal, setMonthlyTotal] = useState(0);
+  const [activeSubscriptions, setActiveSubscriptions] = useState([]);
+  const [subscriptionsIn7Days, setSubscriptionsIn7Days] = useState([]);
+  const [mostExpensiveSubscription, setMostExpensiveSubscription] = useState(null);
+  const [mostExpensiveSubscriptionPrice, setMostExpensiveSubscriptionPrice] = useState(0);
 
   // const monthlyPrice =
   //   item.billing_cycle === 'yearly'
@@ -27,6 +37,15 @@ const HomeScreen = () => {
 
   // const categoryCode = item.category || 'other';
   // const categoryTotal = summary.categoryTotals[categoryCode] || 0;
+
+  const monthlyPrice = (item) => {
+    const price = item.price;
+    return item.billing_cycle === 'yearly'
+      ? price / 12
+      : item.billing_cycle === 'weekly'
+        ? price * 4
+        : price;
+  }
 
   useEffect(() => {
     axios.get(import.meta.env.VITE_API_HOST + "/profile", {
@@ -46,19 +65,39 @@ const HomeScreen = () => {
       .catch((error) => {
         console.error("Error fetching user profile:", error);
       })
-
+    
     axios.get(import.meta.env.VITE_API_HOST + "/subscriptions?userId=" + profileId, {
       headers: {
         "Authorization": `Bearer ${localStorage.getItem("accessToken")}`,
       },
     })
       .then((response) => {
-        console.log("Subscriptions fetched successfully:", response.data);
+        const subscriptions = response.data.data;
+        const activeSubscriptionsList = subscriptions.filter(item => item.is_active === true);
+        setActiveSubscriptions(activeSubscriptionsList);
+        const subscriptionsIn7DaysList = activeSubscriptionsList.filter(item => {
+          const nextBillingDate = new Date(item.next_billing_date);
+          const today = new Date();
+          const sevenDaysFromNow = new Date(today);
+          sevenDaysFromNow.setDate(today.getDate() + 7);
+          return nextBillingDate <= sevenDaysFromNow;
+        });
+        setSubscriptionsIn7Days(subscriptionsIn7DaysList);
+        const totalMonthlyPrice = activeSubscriptionsList.reduce((total, item) => {
+          const monthlyPriceValue = monthlyPrice(item);
+          return total + monthlyPriceValue;
+        }, 0);
+        setMonthlyTotal(totalMonthlyPrice);
+        const mostExpensiveSubscription = activeSubscriptionsList.reduce((max, item) => {
+          return monthlyPrice(item) > monthlyPrice(max) ? item : max;
+        }, activeSubscriptionsList[0]);
+        setMostExpensiveSubscription(mostExpensiveSubscription);
+        setMostExpensiveSubscriptionPrice(monthlyPrice(mostExpensiveSubscription));
       })
-      .catch((error) => {
+      .catch(error => {
         console.error("Error fetching subscriptions:", error);
       });
-  }, []);
+  }, [profileId]);
 
 
   return (
@@ -112,25 +151,111 @@ const HomeScreen = () => {
         </div>
         
         <div className="w-full max-w-7xl grid grid-cols-1 gap-4 md:grid-cols-10">
-          <div className="md:col-span-4 rounded-2xl border border-zinc-300 bg-gray-800 p-6 text-white shadow-md">
+          <div className="md:col-span-4 rounded-3xl border border-zinc-300 bg-gray-900 p-6 text-white shadow-md">
             {/* <h3 className="mb-2 text-xl font-bold">1. Oszlop</h3>
             <p>Ide jöhet az első ablak tartalma.</p> */}
             <div className="text-gray-300 text-md">
-              Ebben a hónapban
+              Ebben a hónapban 
+              {/* {monthlyTotal}  */}
+            </div>
+            <div className="text-5xl font-bold mt-4">
+              {monthlyTotal.toLocaleString('hu-HU', { style: 'currency', currency: 'HUF' })}
+            </div>
+            <div className="text-white text-xl mt-3">
+              havi előfizetési költség
+            </div>
+            <svg viewBox="0 0 150 40" className="w-28 h-8 overflow-visible mt-7">
+              <polyline
+                fill="none"
+                stroke="#27272a"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                points="0,30 40,28 80,18 120,18"
+              />
+
+              <polyline
+                fill="none"
+                stroke="#818cf8"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                points="80,18 120,8"
+              />
+            </svg>
+            <div className="text-gray-300 text-md mt-2 flex-row grid grid-cols-2">
+              <div className="mr-2 text-left">
+                Éves becslés
+              </div>
+              <div className="text-right">
+                <div className="text-gray-300 text-md">
+                  Éves becslés
+                </div>
+                <div className="font-bold">
+                  {(monthlyTotal * 12).toLocaleString('hu-HU', { style: 'currency', currency: 'HUF' })}
+                </div>
+              </div>
+              {/* <div className="text-right font-bold">
+                {(monthlyTotal * 12).toLocaleString('hu-HU', { style: 'currency', currency: 'HUF' })}
+              </div> */}
+
             </div>
           </div>
+
+
           <div className="md:col-span-2 rounded-2xl border border-zinc-300 bg-white p-6 text-black shadow-md">
-            <h3 className="mb-2 text-xl font-bold">2. Oszlop</h3>
-            <p>Ide jöhet a második ablak tartalma.</p>
+            <div className="flex h-16 w-16 bg-purple-100 rounded-2xl items-center justify-center">
+              {HiOutlineWallet && <HiOutlineWallet className="text-4xl text-purple-500 " />}
+            </div>
+            <div className="text-lg font-bold mt-8">
+              Aktív előfizetések
+            </div>
+            <div className="text-4xl font-bold mt-4">
+              {activeSubscriptions.length} db
+            </div>
+            <div className="text-gray-500 text-md mt-4">
+              összes aktív előfizetés
+            </div>
           </div>
+
           <div className="md:col-span-2 rounded-2xl border border-zinc-300 bg-white p-6 text-black shadow-md">
-            <h3 className="mb-2 text-xl font-bold">3. Oszlop</h3>
-            <p>Ide jöhet a harmadik ablak tartalma.</p>
+            <div className="flex h-16 w-16 bg-orange-100 rounded-2xl items-center justify-center">
+              {HiOutlineCalendar && <HiOutlineCalendar className="text-4xl text-orange-500 " />}
+            </div>
+            <div className="text-lg font-bold mt-8">
+              7 napon belül
+            </div>
+            <div className="text-4xl font-bold mt-4">
+              {subscriptionsIn7Days.length} db
+            </div>
+            <div className="text-gray-500 text-md mt-4">
+              következő fizetések
+            </div>
           </div>
+          
           <div className="md:col-span-2 rounded-2xl border border-zinc-300 bg-white p-6 text-black shadow-md">
-            <h3 className="mb-2 text-xl font-bold">4. Oszlop</h3>
-            <p>Ide jöhet a negyedik ablak tartalma.</p>
+            <div className="flex h-16 w-16 bg-green-100 rounded-2xl items-center justify-center">
+              {HiOutlineStar && <HiOutlineStar className="text-4xl text-green-500 " />}
+            </div>
+            <div className="text-lg font-bold mt-8">
+              Legdrágább előfizetés
+            </div>
+            <div className="text-4xl font-bold mt-4">
+              {mostExpensiveSubscription ? mostExpensiveSubscription.name : "N/A"}
+            </div>
+            <div className="text-gray-500 text-md mt-4">
+              {mostExpensiveSubscriptionPrice.toLocaleString('hu-HU', { style: 'currency', currency: 'HUF' })} / hó
+            </div>
           </div>
+        </div>
+
+        <div className="w-full max-w-7xl gap-4 grid grid-cols-1 md:grid-cols-10 ">
+          <div className="md:col-span-6 rounded-3xl border border-zinc-300 bg-white p-6">
+            <div className="text-xl font-bold">
+              Következő fizetések
+            </div>
+          </div>
+          
         </div>
       </div>
 

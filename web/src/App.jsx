@@ -7,6 +7,7 @@ import axios from "axios"
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 
 import Navbar from './components/Navbar'
+import SubscriptionList from './components/SubscriptionList'
 import RegisterScreen from './screens/RegisterScreen/RegisterScreen'
 import LoginScreen from './screens/LoginScreen/LoginScreen'
 import HomeScreen from './screens/HomeScreen/HomeScreen'
@@ -28,6 +29,7 @@ function App() {
         {user ? (
           <>
             <Route path="/home" element={<HomeScreen />} />
+            <Route path="/subscriptions" element={<SubscriptionList />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </>
         ) : (
