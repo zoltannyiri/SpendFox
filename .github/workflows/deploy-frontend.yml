@@ -1,13 +1,9 @@
-name: Deploy SpendFox frontend
+name: Deploy SpendFox Web
 
 on:
   push:
     branches:
       - main
-    paths:
-      - "web/**"
-      - ".github/workflows/deploy-frontend.yml"
-
   workflow_dispatch:
 
 permissions:
@@ -16,16 +12,12 @@ permissions:
   id-token: write
 
 concurrency:
-  group: github-pages
+  group: spendfox-pages
   cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    defaults:
-      run:
-        working-directory: web
 
     steps:
       - name: Repository letöltése
@@ -39,16 +31,20 @@ jobs:
           cache-dependency-path: web/package-lock.json
 
       - name: Függőségek telepítése
+        working-directory: web
         run: npm ci
 
       - name: Frontend build
+        working-directory: web
         run: npm run build
+        env:
+          VITE_API_HOST: ${{ vars.VITE_API_HOST }}
 
       - name: GitHub Pages beállítása
         uses: actions/configure-pages@v5
 
       - name: Build feltöltése
-        uses: actions/upload-pages-artifact@v3 
+        uses: actions/upload-pages-artifact@v3
         with:
           path: web/dist
 
@@ -61,6 +57,6 @@ jobs:
     needs: build
 
     steps:
-      - name: Publikálás GitHub Pagesre
+      - name: Publikálás
         id: deployment
         uses: actions/deploy-pages@v4
