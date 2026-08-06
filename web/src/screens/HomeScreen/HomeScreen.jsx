@@ -2,15 +2,23 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 
 import AppLogo from "../../components/AppLogo";
+import SubscriptionTable from "../../components/SubscriptionTable";
+import { PieChart } from '@mui/x-charts/PieChart';
 import { AiOutlineEdit } from "react-icons/ai";
 import { AiOutlineCalendar } from "react-icons/ai";
 import { AiOutlineStar, AiOutlineUser, } from 'react-icons/ai';
 import { HiOutlineWallet } from 'react-icons/hi2';
+import { FaArrowRight } from 'react-icons/fa';
+import { CiBellOn } from 'react-icons/ci';
+import { MdOutlineKeyboardArrowRight } from 'react-icons/md';
 import { TbWallet } from 'react-icons/tb';
 import { TbCalendar } from 'react-icons/tb';
 import { HiOutlineCalendar } from 'react-icons/hi2';
 import { HiOutlineStar } from 'react-icons/hi2';
 import { useAuth } from "../../auth/UseAuth";
+
+
+
 
 const HomeScreen = () => {
   const {profileId, user} = useAuth();
@@ -27,7 +35,30 @@ const HomeScreen = () => {
   const [subscriptionsIn7Days, setSubscriptionsIn7Days] = useState([]);
   const [mostExpensiveSubscription, setMostExpensiveSubscription] = useState(null);
   const [mostExpensiveSubscriptionPrice, setMostExpensiveSubscriptionPrice] = useState(0);
+  const [allSubscriptions, setAllSubscriptions] = useState(0);
+  const [subscriptionValue, setSubscriptionValue] = useState(0);
+  const [categoryCount, setCategoryCount] = useState({});
 
+
+  
+
+  const CHART_DATA = [
+    { id: 1, label: 'Streaming', value: categoryCount.streaming || 0, color: '#0ca9f2' },
+    { id: 2, label: 'Munka', value: categoryCount.work || 0, color: '#111111' },
+    { id: 3, label: 'AI tool', value: categoryCount['ai-tool'] || 0, color: '#7c3aed' },
+    { id: 4, label: 'Tárhely', value: categoryCount.hosting || 0, color: '#f97316' },
+    { id: 5, label: 'Mobil', value: categoryCount.mobile || 0, color: '#10b981' },
+    { id: 6, label: 'Bank', value: categoryCount.bank || 0, color: '#64748b' },
+    { id: 7, label: 'Játék', value: categoryCount.gaming || 0, color: '#ef4444' },
+    { id: 8, label: 'Egyéb', value: categoryCount.other || 0, color: '#f59e0b' },
+  ];
+
+  const CHART_SETTINGS = {
+    margin: { right: 5 },
+    width: 200,
+    height: 200,
+    hideLegend: true,
+  };
   // const monthlyPrice =
   //   item.billing_cycle === 'yearly'
   //     ? price / 12
@@ -73,6 +104,7 @@ const HomeScreen = () => {
     })
       .then((response) => {
         const subscriptions = response.data.data;
+        setAllSubscriptions(subscriptions.length);
         const activeSubscriptionsList = subscriptions.filter(item => item.is_active === true);
         setActiveSubscriptions(activeSubscriptionsList);
         const subscriptionsIn7DaysList = activeSubscriptionsList.filter(item => {
@@ -93,6 +125,14 @@ const HomeScreen = () => {
         }, activeSubscriptionsList[0]);
         setMostExpensiveSubscription(mostExpensiveSubscription);
         setMostExpensiveSubscriptionPrice(monthlyPrice(mostExpensiveSubscription));
+        
+
+        const categoryCount = activeSubscriptionsList.reduce((acc, item) => {
+          const cat = item.category || "other";
+          acc[cat] = (acc[cat] || 0) + 1;
+          return acc;
+        }, {});
+        setCategoryCount(categoryCount);
       })
       .catch(error => {
         console.error("Error fetching subscriptions:", error);
@@ -249,13 +289,84 @@ const HomeScreen = () => {
           </div>
         </div>
 
-        <div className="w-full max-w-7xl gap-4 grid grid-cols-1 md:grid-cols-10 ">
-          <div className="md:col-span-6 rounded-3xl border border-zinc-300 bg-white p-6">
+        <div className="w-full max-w-7xl gap-4 grid grid-cols-2 md:grid-cols-10 ">
+          <div className="md:col-span-6 rounded-3xl border border-zinc-300 shadow-md bg-white p-6">
             <div className="text-xl font-bold">
               Következő fizetések
             </div>
+            <div className="mt-5">
+              <SubscriptionTable subscriptions={activeSubscriptions} view={"home"} />
+            </div>
+            <div className="mx-auto max-w-xs mt-5 items-center justify-center flex bg-gray-100 hover:bg-gray-200 rounded-2xl py-2 px-4 cursor-pointer text-black font-bold"
+              onClick={() => window.location.href = "/subscriptions"}
+            >
+              Összes megtekintése
+              <FaArrowRight className="text-md ml-4 text-black shrink-0" /> 
+            </div>
           </div>
-          
+          <div className="md:col-span-4 rounded-3xl border border-zinc-300 shadow-md bg-white p-6">
+            <div className="text-xl font-bold">
+              Kiadások kategóriánként
+            </div>
+            <div className="mt-5 relative flex items-center justify-center">
+              <PieChart
+                series={[{ innerRadius: 50, outerRadius: 100, data:CHART_DATA, }]}
+                {...CHART_SETTINGS}
+              />
+              <div className="absolute flex flex-col items-center justify-center pointer-events-none">
+                <div className="font-bold text-xl ">
+                  {monthlyTotal.toLocaleString('hu-HU', { style: 'currency', currency: 'HUF' })}
+                </div>
+                <div className="text-sm font-light text-gray-500">
+                  összesen
+                </div>
+              </div>
+            </div>
+            <div className="mt-6 flex flex-col gap-3">
+              {CHART_DATA.map((data) => (
+                data.value > 0 && (
+                  <div key={data.id} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2">
+                      <span className="inline-block shrink-0 h-4 w-4 rounded-md" style={{ backgroundColor: data.color }} />
+                      <span className="font-medium">
+                        {data.label}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <span className="font-semibold">
+                        {data.value} db
+                      </span>
+                      <span className="w-10 text-right text-gray-400">
+                        {allSubscriptions > 0 ? Math.round((data.value / allSubscriptions) * 100) : 0}%
+                      </span>
+                    </div>
+                  </div>
+                )
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="w-full max-w-7xl gap-4 grid grid-cols-1 md:grid-cols-10 ">
+          <div className="md:col-span-6 rounded-3xl border border-amber-100 bg-amber-50 p-6 flex flex-row items-center">
+            <div className="flex h-13 w-13 bg-amber-100 items-center justify-center rounded-2xl">
+              <CiBellOn className="text-4xl text-amber-500 items-center justify-center font-bold-4xl" />
+            </div>
+            <div className="ml-7">
+              <div className="font-bold text-black">
+                előfizetésed X nap múlva megújul.
+              </div>
+              <div className="text-sm text-gray-600 mt-1">
+                Augusztus valahányadika
+              </div>
+            </div>
+            <div className="ml-auto justify-end-safe cursor-pointer py-1 px-5 bg-orange-50 rounded-2xl font-bold ">
+              <div className="max-w-xl items-center justify-end flex text-orange-400 ">
+                Részletek
+                <MdOutlineKeyboardArrowRight className="ml-2 text-2xl" />
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

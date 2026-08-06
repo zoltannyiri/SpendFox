@@ -13,6 +13,7 @@ import { RiSecurePaymentLine } from "react-icons/ri";
 import { IoMdAdd } from "react-icons/io";
 
 import SubscriptionLogo from './SubscriptionLogo';
+import SubscriptionTable from './SubscriptionTable';
 import { useAuth } from "../auth/UseAuth";
 import { Badge } from 'primereact/badge';
 
@@ -221,7 +222,7 @@ const SubscriptionList = () => {
             <div className="text-gray-300 text-md">
               Ebben a hónapban 
               {/* {monthlyTotal}  */}
-              {subscriptionsInLastMonth.length}
+              {/* {subscriptionsInLastMonth.length} */}
             </div>
             <div className="text-5xl font-bold mt-4">
               {monthlyTotal.toLocaleString('hu-HU', { style: 'currency', currency: 'HUF' })}
@@ -317,43 +318,7 @@ const SubscriptionList = () => {
         <div className="w-full max-w-7xl grid grid-cols-2 gap-4 md:grid-cols-10">
           <div className="md:col-span-7 w-full max-w-7xl space-y-8 rounded-3xl  p-8 shadow-2xl border border-zinc-300 gap-y-2">
             <h1 className="text-xl font-bold">Fizetések</h1>
-            <DataTable
-              value={subscriptions}
-              paginator
-              loading={loading}
-              rows={10}
-              rowsPerPageOptions={[5, 10, 25]}
-              filterDisplay="row"
-              responsiveLayout="scroll"
-              emptyMessage="Nincs előfizetés"
-              // stripedRows
-              selectionMode={"single"}  
-            >
-              <Column field="name" header="Szolgáltatás" sortable filter showFilterMenu={false} className="text-black font-bold" body={(rowData) => {
-                const logoUrl = resolveBrandLogoUrl(rowData.name);
-                return (
-                  <SubscriptionLogo logoUrl={logoUrl} name={rowData.name} />
-                );
-              }}></Column>
-              <Column field="category" header="Kategória" sortable filter filterElement={dropdownFilterTemplate} showFilterMenu={false} body={(rowData) => {
-                const meta = (rowData.category && CATEGORY_META[rowData.category]) || CATEGORY_META.other;
-                return (
-                  <span className="inline-flex items-center gap-2">
-                    <span
-                      className="h-3 w-3 rounded-full"
-                      style={{ backgroundColor: meta.color }}
-                    ></span>
-                    {meta.label}
-                  </span>
-                );
-              }}></Column>
-              {/* <Column field="start_date" header="Előfizetés kezdete" sortable body={(rowData) => formatDate(rowData.start_date)}></Column> */}
-              <Column field="next_billing_date" header="Következő előfizetés kezdete" sortable body={(rowData) => formatDate(rowData.next_billing_date)}></Column>
-              <Column field="is_active" header="Állapot" sortable body={(rowData) => 
-                (rowData.is_active ? <Badge value="Sikeres" severity="success" /> : <Badge value="Függőben" severity="warning" />)
-              }></Column>
-              <Column field="price_huf" header="Összeg" sortable bodyClassName="font-bold text-black"></Column>
-            </DataTable>
+            <SubscriptionTable subscriptions={subscriptions} />
           </div>
           <div className="md:col-span-3 w-full max-w-7xl space-y-8 rounded-3xl gap-y-2">
             <div className="rounded-3xl border border-zinc-300 bg-white p-6 text-black shadow-md">
