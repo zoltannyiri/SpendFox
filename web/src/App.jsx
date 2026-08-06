@@ -9,6 +9,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Navbar from './components/Navbar'
 import SubscriptionList from './components/SubscriptionList'
 import RegisterScreen from './screens/RegisterScreen/RegisterScreen'
+import Footer from './components/Footer'
 import LoginScreen from './screens/LoginScreen/LoginScreen'
 import HomeScreen from './screens/HomeScreen/HomeScreen'
 import { AuthProvider } from './auth/AuthContext'
@@ -40,6 +41,7 @@ function App() {
           </>
         )}
       </Routes>
+      <Footer />
     </Router>
   )
 }

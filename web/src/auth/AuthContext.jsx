@@ -37,8 +37,8 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={{ user, profileId: user?.id, loading, fetchProfile }}>
       {loading ? (
-        <div className="flex h-screen w-full items-center justify-center bg-black text-white">
-          Betöltés...
+        <div className="">
+          {/* Betöltés... */}
         </div>
       ) : (
         children

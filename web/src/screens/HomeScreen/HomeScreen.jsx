@@ -233,7 +233,7 @@ const HomeScreen = () => {
             </div>
           </div>
           
-          <div className="md:col-span-2 rounded-2xl border border-zinc-300 bg-white p-6 text-black shadow-md">
+          <div className="md:col-span-2 rounded-2xl border border-zinc-300 bg-white p-6 text-black shadow-md break-words">
             <div className="flex h-16 w-16 bg-green-100 rounded-2xl items-center justify-center">
               {HiOutlineStar && <HiOutlineStar className="text-4xl text-green-500 " />}
             </div>
