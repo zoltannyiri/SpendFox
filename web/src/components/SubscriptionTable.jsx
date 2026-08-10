@@ -111,7 +111,7 @@ const SubscriptionTable = (props) => {
 
   return (
         <DataTable
-          value={props.view !== "home" ? subscriptions : props.subscriptions?.slice(0, 3)}
+          value={props.view !== "home" ? (props.subscriptions || subscriptions) : props.subscriptions?.slice(0, 3)}
           showHeader={props.view !== "home"}
           paginator={props.view !== "home"}
           loading={loading}

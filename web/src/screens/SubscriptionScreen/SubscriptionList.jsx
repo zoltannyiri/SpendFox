@@ -12,10 +12,12 @@ import { PieChart } from '@mui/x-charts/PieChart';
 import { RiSecurePaymentLine } from "react-icons/ri";
 import { IoMdAdd } from "react-icons/io";
 
-import SubscriptionLogo from './SubscriptionLogo';
-import SubscriptionTable from './SubscriptionTable';
-import { useAuth } from "../auth/UseAuth";
+import SubscriptionLogo from '../../components/SubscriptionLogo';
+import SubscriptionTable from '../../components/SubscriptionTable';
+import SubscriptionForm from './SubscriptionForm';
+import { useAuth } from "../../auth/UseAuth";
 import { Badge } from 'primereact/badge';
+import { Sidebar } from 'primereact/sidebar';
 
 const CATEGORY_META = {
   streaming: { label: 'Streaming', value: 'streaming', color: '#0ca9f2' },
@@ -40,6 +42,7 @@ const SubscriptionList = () => {
   const [subscriptionsIn7Days, setSubscriptionsIn7Days] = useState([]);
   const [subscriptionsInLastMonth, setSubscriptionsInLastMonth] = useState([]);
   const [allSubscriptions, setAllSubscriptions] = useState(0);
+  const [visible, setVisible] = useState(false);
 
   
 
@@ -131,7 +134,7 @@ const SubscriptionList = () => {
         : price;
   }
 
-  useEffect(() => {
+  const fetchSubscriptions = () => {
     axios.get(import.meta.env.VITE_API_HOST + "/subscriptions?userId=" + profileId, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
@@ -179,10 +182,21 @@ const SubscriptionList = () => {
       console.error("Error fetching subscriptions:", error);
       setLoading(false);
     });
-  }, [profileId]); 
+  }; 
+
+  useEffect(() => {
+    if (profileId) {
+      fetchSubscriptions();
+    }
+  }, [profileId]);
 
   return (
     <>
+      <Sidebar visible={visible} position="right" onHide={() => setVisible(false)} className="mt-40 rounded-3xl mr-10 mb-30" style={{width: '30%'}}>
+        <SubscriptionForm onSuccess={fetchSubscriptions} onClose={() => setVisible(false)} />
+      </Sidebar>
+
+
       <div className="flex w-full flex-col items-center gap-6 px-4 py-12">
         <div className="w-full max-w-7xl space-y-8 rounded-3xl bg-black p-8 shadow-2xl border border-zinc-800 gap-y-2">
           <div className="relative">
@@ -413,7 +427,10 @@ const SubscriptionList = () => {
                   </div>
                 </div>
               </div>
-              <div className="bg-black cursor-pointer border border-zinc-400 rounded-2xl py-4 px-4 mt-3">
+              <div className="bg-black cursor-pointer border border-zinc-400 rounded-2xl py-4 px-4 mt-3" 
+                onClick={() => {
+                  setVisible(true);
+                }}>
                 <div className="flex flex-row justify-center items-center text-center text-white text-md">
                   <IoMdAdd className="text-2xl mr-2 text-white items-center justify-center" /> Új fizetés hozzáadása
                 </div>

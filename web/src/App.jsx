@@ -7,7 +7,7 @@ import axios from "axios"
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 
 import Navbar from './components/Navbar'
-import SubscriptionList from './components/SubscriptionList'
+import SubscriptionList from './screens/SubscriptionScreen/SubscriptionList'
 import RegisterScreen from './screens/RegisterScreen/RegisterScreen'
 import Footer from './components/Footer'
 import LoginScreen from './screens/LoginScreen/LoginScreen'
