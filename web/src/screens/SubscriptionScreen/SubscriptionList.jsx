@@ -217,7 +217,7 @@ const SubscriptionList = () => {
             </div>
           </div>
 
-          <div className="flex flex-row items-center">
+          {/* <div className="flex flex-row items-center">
             <AiOutlineCalendar className="text-3xl mr-3 text-white shrink-0" /> 
             <div className="flex flex-col text-gray-300">
               <div className=" text-gray-300 text-md mt-2 tracking-wider">
@@ -228,7 +228,7 @@ const SubscriptionList = () => {
               </div>
             </div>
             
-          </div>
+          </div> */}
         </div>
 
         <div className="w-full max-w-7xl grid grid-cols-1 gap-4 md:grid-cols-10">

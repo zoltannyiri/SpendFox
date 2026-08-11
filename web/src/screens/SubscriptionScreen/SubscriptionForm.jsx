@@ -45,6 +45,10 @@ const SubscriptionForm = ({ onSuccess, onClose }) => {
   const [loading, setLoading] = useState();
   const [formData, setFormData] = useState({});
   const [currency, setCurrency] = useState([]);
+  const [isNextBillingDateDisabled, setIsNextBillingDateDisabled] = useState(true);
+  const changeNextBillingDateState=()=>{
+    setIsNextBillingDateDisabled(!isNextBillingDateDisabled);
+  }
   // const [nextBillingDate, setNextBillingDate] = useState(
   //   (subscriptionId?.next_billing_date || '')
   // );
@@ -247,6 +251,7 @@ const SubscriptionForm = ({ onSuccess, onClose }) => {
                                 //   })
                                 // })
                                 // value={formData.name || ''}
+                                locale="hu-HU"
                                 onChange={(e) => {
                                   input.onChange(e.value);
                                 }}
@@ -329,17 +334,23 @@ const SubscriptionForm = ({ onSuccess, onClose }) => {
                     </div>
                     <div className="text-sm text-gray-400">
                       Csak akkor módosítsd, ha a fizetési időszak elcsúszott.
-                    </div></label>
+                      <div className="text-blue-600 font-bold italic" onClick={changeNextBillingDateState} style={{cursor: 'pointer'}}>
+                        {isNextBillingDateDisabled ? "Módosítás" : "Automatikus beállítás"}
+                      </div>
+                    </div>
+                  </label>
                   <span className="p-d-block">
                     <Calendar id="next_billing_date" 
                               {...input} 
+                              disabled={isNextBillingDateDisabled}
+                              value={input.value ? new Date(input.value) : null}
                               showIcon={true}
                               locale="hu"
                               dateFormat="yy-mm-dd"
                               onChange={(e) => {
                                 input.onChange(e.value);
                               }}
-                              placeholder="Automatikus beállítás" />
+                              placeholder="Automatikusan beállítva" />
                   </span>
                 </div>
               )} />
