@@ -38,9 +38,9 @@ const isActive = [
 ]
 
 
-const SubscriptionForm = ({ onSuccess, onClose }) => {
+const SubscriptionForm = ({ onSuccess, onClose, subscriptionId }) => {
   const { profileId } = useAuth();
-  const [subscriptionId, setSubscriptionId] = useState(null);
+  // const [subscriptionId, setSubscriptionId] = useState(null);
   const navigate = useNavigate();
   const [loading, setLoading] = useState();
   const [formData, setFormData] = useState({});
@@ -206,6 +206,7 @@ const SubscriptionForm = ({ onSuccess, onClose }) => {
                                 //   })
                                 // })
                                 // value={formData.name || ''}
+                                // value={subscriptionId && subscriptionId.name ? subscriptionId.name : ''}
                                 placeholder="Pl. Netflix" />
                   </span>
                 </div>

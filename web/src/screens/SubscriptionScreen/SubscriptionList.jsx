@@ -42,6 +42,7 @@ const SubscriptionList = () => {
   const [subscriptionsIn7Days, setSubscriptionsIn7Days] = useState([]);
   const [subscriptionsInLastMonth, setSubscriptionsInLastMonth] = useState([]);
   const [allSubscriptions, setAllSubscriptions] = useState(0);
+  const [subscriptionId, setSubscriptionId] = useState(null);
   const [visible, setVisible] = useState(false);
 
   
@@ -142,6 +143,7 @@ const SubscriptionList = () => {
     })
     .then(response => {
       setSubscriptions(response.data.data);
+      setSubscriptionId(response.data.data.id);
       setAllSubscriptions(response.data.data.length);
       const activeSubscriptionsList = response.data.data.filter(item => item.is_active === true);
       setActiveSubscriptions(activeSubscriptionsList);
@@ -193,7 +195,7 @@ const SubscriptionList = () => {
   return (
     <>
       <Sidebar visible={visible} position="right" onHide={() => setVisible(false)} className="mt-40 rounded-3xl mr-10 mb-30" style={{width: '30%'}}>
-        <SubscriptionForm onSuccess={fetchSubscriptions} onClose={() => setVisible(false)} />
+        <SubscriptionForm subscriptionId={subscriptionId} onSuccess={fetchSubscriptions} onClose={() => setVisible(false)} />
       </Sidebar>
 
 
@@ -332,7 +334,14 @@ const SubscriptionList = () => {
         <div className="w-full max-w-7xl grid grid-cols-2 gap-4 md:grid-cols-10">
           <div className="md:col-span-7 w-full max-w-7xl space-y-8 rounded-3xl  p-8 shadow-2xl border border-zinc-300 gap-y-2">
             <h1 className="text-xl font-bold">Fizetések</h1>
-            <SubscriptionTable subscriptions={subscriptions} />
+            <SubscriptionTable 
+              subscriptions={subscriptions} 
+              subscriptionId={subscriptionId} 
+              onRefresh={fetchSubscriptions} 
+              onEdit={(id) => {
+                setSubscriptionId(id);
+                setVisible(true);
+            }}/>
           </div>
           <div className="md:col-span-3 w-full max-w-7xl space-y-8 rounded-3xl gap-y-2">
             <div className="rounded-3xl border border-zinc-300 bg-white p-6 text-black shadow-md">
@@ -429,6 +438,7 @@ const SubscriptionList = () => {
               </div>
               <div className="bg-black cursor-pointer border border-zinc-400 rounded-2xl py-4 px-4 mt-3" 
                 onClick={() => {
+                  setSubscriptionId(null);
                   setVisible(true);
                 }}>
                 <div className="flex flex-row justify-center items-center text-center text-white text-md">

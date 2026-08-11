@@ -5,7 +5,10 @@ import axios from 'axios';
 import { Column } from 'primereact/column';
 import { useAuth } from "../auth/UseAuth";
 import { Badge } from 'primereact/badge';
+import { Sidebar } from 'primereact/sidebar';
+import { Calendar } from 'primereact/calendar';
 
+import SubscriptionForm from '../screens/SubscriptionScreen/SubscriptionForm';
 import SubscriptionLogo from './SubscriptionLogo';
 
 const CATEGORY_META = {
@@ -24,6 +27,8 @@ const SubscriptionTable = (props) => {
   const { profileId } = useAuth();
   const [subscriptions, setSubscriptions] = useState(null);
   const categoryOptions = Object.values(CATEGORY_META);
+  const [visibleForm, setVisibleForm] = useState(false);
+  const [subscriptionId, setSubscriptionId] = useState(null);
 
 
   const formatDate = (dateString) => {
@@ -92,6 +97,91 @@ const SubscriptionTable = (props) => {
     );
   };
 
+  const actionBodyTemplate = (rowData) => {
+    return (
+      <>
+        <div className="flex justify-center gap-2">
+          <button className="p-button p-component p-button-text p-button-plain" onClick={() => {
+            if (props.onEdit) {
+              props.onEdit(rowData.id);
+            }
+          }}>
+            <span className="p-button-icon p-c pi pi-pencil" title="Szerkesztés" tooltip="Szerkesztés">
+
+            </span>
+          </button>
+          <button className="p-button p-component p-button-text p-button-plain" onClick={() => {
+            window.confirm("Biztosan törölni szeretnéd az előfizetést?") &&
+            axios.delete(import.meta.env.VITE_API_HOST + "/subscriptions/" + rowData.id, {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+              },
+            })
+              .then(response => {
+                props.onRefresh();
+                // setVisibleForm(true);
+            }) 
+              .catch(error => {
+                console.error("Error fetching subscription:", error);
+              })
+          }}>
+            <span className="p-button-icon p-c pi pi-trash" title="Törlés" tooltip="Törlés"></span>
+          </button>
+        </div>
+      </>
+    )
+  }
+
+  const fetchSubscriptions = () => {
+    axios.get(import.meta.env.VITE_API_HOST + "/subscriptions?userId=" + profileId, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+      },
+    })
+    .then(response => {
+      setSubscriptions(response.data.data);
+      // setAllSubscriptions(response.data.data.length);
+      // const activeSubscriptionsList = response.data.data.filter(item => item.is_active === true);
+      // setActiveSubscriptions(activeSubscriptionsList);
+      // const subscriptionsInLastMonthList = activeSubscriptionsList.filter(item => {
+      //     const last30days = new Date();
+      //     last30days.setDate(last30days.getDate() - 30);
+      //     return last30days <= new Date(item.next_billing_date) && new Date(item.next_billing_date) <= new Date();
+      //   });
+      // setSubscriptionsInLastMonth(subscriptionsInLastMonthList);
+      
+      // const today = new Date();
+      // today.setHours(0, 0, 0, 0);
+      // const sevenDaysFromNow = new Date();
+      // sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
+      // sevenDaysFromNow.setHours(23, 59, 59, 999);
+      // const subscriptionsIn7DaysList = activeSubscriptionsList.filter(item => {
+      //   const nextBillingDate = new Date(item.next_billing_date);
+      //   return nextBillingDate >= today && nextBillingDate <= sevenDaysFromNow;
+      // });
+      // setSubscriptionsIn7Days(subscriptionsIn7DaysList);
+      //   const totalMonthlyPrice = activeSubscriptionsList.reduce((total, item) => {
+      //     const monthlyPriceValue = monthlyPrice(item);
+      //     return total + monthlyPriceValue;
+      //   }, 0);
+      // const totalMonthlyPrice = activeSubscriptionsList.reduce((total, item) => {
+      //     const monthlyPriceValue = monthlyPrice(item);
+      //     return total + monthlyPriceValue;
+      //   }, 0);
+      // setMonthlyTotal(totalMonthlyPrice);
+      // const mostExpensiveSubscription = activeSubscriptionsList.reduce((max, item) => {
+      //   return monthlyPrice(item) > monthlyPrice(max) ? item : max;
+      // }, activeSubscriptionsList[0]);
+      // setMostExpensiveSubscription(mostExpensiveSubscription);
+      // setMostExpensiveSubscriptionPrice(monthlyPrice(mostExpensiveSubscription));
+      setLoading(false);
+    })
+    .catch(error => {
+      console.error("Error fetching subscriptions:", error);
+      setLoading(false);
+    });
+  }; 
+
   useEffect(() => {
     axios.get(import.meta.env.VITE_API_HOST + "/subscriptions?userId=" + profileId, {
       headers: {
@@ -100,6 +190,7 @@ const SubscriptionTable = (props) => {
     })
     .then(response => {
       setSubscriptions(response.data.data);
+      setSubscriptionId(response.data.data.id);
       setLoading(false);
     })
     .catch(error => {
@@ -110,6 +201,12 @@ const SubscriptionTable = (props) => {
 
 
   return (
+        <>
+        {/* <Sidebar visible={visibleForm} position="right" onHide={() => setVisibleForm(false)} className="mt-40 rounded-3xl mr-10 mb-30" style={{width: '30%'}}>
+          <SubscriptionForm onSuccess={fetchSubscriptions} onClose={() => setVisibleForm(false)} subscriptionId={subscriptionId} />
+        </Sidebar> */}
+
+
         <DataTable
           value={props.view !== "home" ? (props.subscriptions || subscriptions) : props.subscriptions?.slice(0, 3)}
           showHeader={props.view !== "home"}
@@ -155,7 +252,9 @@ const SubscriptionTable = (props) => {
             }></Column>
           )}
           <Column field="price_huf" header="Összeg" sortable bodyClassName="font-bold text-black"></Column>
+          <Column body={actionBodyTemplate} header="Műveletek" className="text-center"></Column>
         </DataTable>
+        </>
   );
 }
 
