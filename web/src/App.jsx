@@ -9,6 +9,7 @@ import LoginScreen from './screens/LoginScreen/LoginScreen'
 import HomeScreen from './screens/HomeScreen/HomeScreen'
 import ProfileScreen from './screens/ProfileScreen/ProfileScreen'
 import ProfileEditScreen from './screens/ProfileScreen/ProfileEditScreen'
+import PostDetailScreen from './screens/PostDetailScreen/PostDetailScreen'
 import MessageScreen from './screens/MessageScreen/MessageScreen'
 import { useAuth } from './auth/UseAuth'
 
@@ -29,9 +30,11 @@ function App() {
             <Route path="/home" element={<HomeScreen />} />
             <Route path="/subscriptions" element={<SubscriptionList />} />
             <Route path="/profile" element={<ProfileScreen />} />
-            <Route path="/profile/:userId" element={<ProfileScreen />} />
             <Route path="/profile/edit" element={<ProfileEditScreen />} />
+            <Route path="/settings" element={<ProfileEditScreen />} />
             <Route path="/messages/:userId" element={<MessageScreen />} />
+            <Route path="/post/:activityId" element={<PostDetailScreen />} />
+            <Route path="/:username" element={<ProfileScreen />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </>
         ) : (

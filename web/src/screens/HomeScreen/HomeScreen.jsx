@@ -1,377 +1,1256 @@
-import React, { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
-
-import AppLogo from "../../components/AppLogo";
-import SubscriptionTable from "../../components/SubscriptionTable";
-import { PieChart } from '@mui/x-charts/PieChart';
-import { AiOutlineEdit } from "react-icons/ai";
-import { AiOutlineCalendar } from "react-icons/ai";
-import { AiOutlineStar, AiOutlineUser, } from 'react-icons/ai';
-import { HiOutlineWallet } from 'react-icons/hi2';
-import { FaArrowRight } from 'react-icons/fa';
-import { CiBellOn } from 'react-icons/ci';
-import { MdOutlineKeyboardArrowRight } from 'react-icons/md';
-import { TbWallet } from 'react-icons/tb';
-import { TbCalendar } from 'react-icons/tb';
-import { HiOutlineCalendar } from 'react-icons/hi2';
-import { HiOutlineStar } from 'react-icons/hi2';
+import {
+  FiArrowRight,
+  FiBookmark,
+  FiCheckCircle,
+  FiClock,
+  FiGlobe,
+  FiMessageCircle,
+  FiPlus,
+  FiSend,
+  FiStar,
+  FiTrendingUp,
+  FiUsers,
+  FiX,
+  FiZap,
+} from "react-icons/fi";
+import { LuLightbulb } from "react-icons/lu";
 import { useAuth } from "../../auth/UseAuth";
 
+const API_HOST = import.meta.env.VITE_API_HOST;
 
+const getAuthHeaders = () => ({
+  Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+});
 
+const formatCurrency = (value) =>
+  Math.round(Number(value) || 0).toLocaleString("hu-HU", {
+    style: "currency",
+    currency: "HUF",
+    maximumFractionDigits: 0,
+  });
 
-const HomeScreen = () => {
-  const {profileId, user} = useAuth();
-  const [avatar, setAvatar] = useState(null);
-  const [username, setUsername] = useState("");
-  const [fullName, setFullName] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [createdAt, setCreatedAt] = useState("");
-  const [monthlyTotal, setMonthlyTotal] = useState(0);
-  const [activeSubscriptions, setActiveSubscriptions] = useState([]);
-  const [subscriptionsIn7Days, setSubscriptionsIn7Days] = useState([]);
-  const [mostExpensiveSubscription, setMostExpensiveSubscription] = useState(null);
-  const [mostExpensiveSubscriptionPrice, setMostExpensiveSubscriptionPrice] = useState(0);
-  const [allSubscriptions, setAllSubscriptions] = useState(0);
-  const [subscriptionValue, setSubscriptionValue] = useState(0);
-  const [categoryCount, setCategoryCount] = useState({});
+const parseDate = (value) => {
+  if (!value) return null;
+  if (value._seconds) return new Date(value._seconds * 1000);
 
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+};
 
-  
+const formatDate = (value) => {
+  const date = parseDate(value);
+  if (!date) return "Nincs";
 
-  const CHART_DATA = [
-    { id: 1, label: 'Streaming', value: categoryCount.streaming || 0, color: '#0ca9f2' },
-    { id: 2, label: 'Munka', value: categoryCount.work || 0, color: '#111111' },
-    { id: 3, label: 'AI tool', value: categoryCount['ai-tool'] || 0, color: '#7c3aed' },
-    { id: 4, label: 'Tárhely', value: categoryCount.hosting || 0, color: '#f97316' },
-    { id: 5, label: 'Mobil', value: categoryCount.mobile || 0, color: '#10b981' },
-    { id: 6, label: 'Bank', value: categoryCount.bank || 0, color: '#64748b' },
-    { id: 7, label: 'Játék', value: categoryCount.gaming || 0, color: '#ef4444' },
-    { id: 8, label: 'Egyéb', value: categoryCount.other || 0, color: '#f59e0b' },
-  ];
+  return date.toLocaleDateString("hu-HU", {
+    month: "short",
+    day: "numeric",
+  });
+};
 
-  const CHART_SETTINGS = {
-    margin: { right: 5 },
-    width: 200,
-    height: 200,
-    hideLegend: true,
-  };
-  // const monthlyPrice =
-  //   item.billing_cycle === 'yearly'
-  //     ? price / 12
-  //     : item.billing_cycle === 'weekly'
-  //       ? price * 4
-  //       : price;
+const formatRelativeDate = (value) => {
+  const date = parseDate(value);
+  if (!date) return "most";
 
-  // const categoryCode = item.category || 'other';
-  // const categoryTotal = summary.categoryTotals[categoryCode] || 0;
+  const diffDays = Math.floor((new Date() - date) / 86400000);
 
-  const monthlyPrice = (item) => {
-    const price = item.price;
-    return item.billing_cycle === 'yearly'
-      ? price / 12
-      : item.billing_cycle === 'weekly'
-        ? price * 4
-        : price;
-  }
+  if (diffDays <= 0) return "ma";
+  if (diffDays === 1) return "tegnap";
+  if (diffDays < 30) return `${diffDays} napja`;
 
-  useEffect(() => {
-    axios.get(import.meta.env.VITE_API_HOST + "/profile", {
-      headers: {
-        "Authorization": `Bearer ${localStorage.getItem("accessToken")}`,
-      },
-    })
-      .then((response) => {
-        setAvatar(response.data.data.avatar_url);
-        setUsername(response.data.data.username);
-        setFullName(response.data.data.full_name);
-        setFirstName(response.data.data.full_name.split(" ")[1]);
-        setEmail(response.data.data.email);
-        setCreatedAt(response.data.data.created_at);
-        console.log(fullName);
-      })
-      .catch((error) => {
-        console.error("Error fetching user profile:", error);
-      })
-    
-    axios.get(import.meta.env.VITE_API_HOST + "/subscriptions?userId=" + profileId, {
-      headers: {
-        "Authorization": `Bearer ${localStorage.getItem("accessToken")}`,
-      },
-    })
-      .then((response) => {
-        const subscriptions = response.data.data;
-        setAllSubscriptions(subscriptions.length);
-        const activeSubscriptionsList = subscriptions.filter(item => item.is_active === true);
-        setActiveSubscriptions(activeSubscriptionsList);
-        const subscriptionsIn7DaysList = activeSubscriptionsList.filter(item => {
-          const nextBillingDate = new Date(item.next_billing_date);
-          const today = new Date();
-          const sevenDaysFromNow = new Date(today);
-          sevenDaysFromNow.setDate(today.getDate() + 7);
-          return nextBillingDate <= sevenDaysFromNow;
-        });
-        setSubscriptionsIn7Days(subscriptionsIn7DaysList);
-        const totalMonthlyPrice = activeSubscriptionsList.reduce((total, item) => {
-          const monthlyPriceValue = monthlyPrice(item);
-          return total + monthlyPriceValue;
-        }, 0);
-        setMonthlyTotal(totalMonthlyPrice);
-        const mostExpensiveSubscription = activeSubscriptionsList.reduce((max, item) => {
-          return monthlyPrice(item) > monthlyPrice(max) ? item : max;
-        }, activeSubscriptionsList[0]);
-        setMostExpensiveSubscription(mostExpensiveSubscription);
-        setMostExpensiveSubscriptionPrice(monthlyPrice(mostExpensiveSubscription));
-        
+  return formatDate(value);
+};
 
-        const categoryCount = activeSubscriptionsList.reduce((acc, item) => {
-          const cat = item.category || "other";
-          acc[cat] = (acc[cat] || 0) + 1;
-          return acc;
-        }, {});
-        setCategoryCount(categoryCount);
-      })
-      .catch(error => {
-        console.error("Error fetching subscriptions:", error);
-      });
-  }, [profileId]);
+const getDaysUntil = (value) => {
+  const date = parseDate(value);
+  if (!date) return null;
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
+
+  return Math.ceil((date - today) / 86400000);
+};
+
+const getProfilePath = (user) => `/${user?.username || user?.id || "profile"}`;
+
+const getFirstName = (fullName) => {
+  if (!fullName) return "Szia";
+  return fullName.trim().split(/\s+/)[0] || "Szia";
+};
+
+const getMonthlyPrice = (subscription) => {
+  const price = Number(subscription?.price_huf ?? subscription?.price ?? 0);
+  const cycle = subscription?.billing_cycle;
+
+  if (cycle === "yearly") return price / 12;
+  if (cycle === "weekly") return price * 4;
+
+  return price;
+};
+
+const categoryLabels = {
+  streaming: "Streaming",
+  work: "Munka",
+  "ai-tool": "AI tool",
+  hosting: "Tárhely",
+  mobile: "Mobil",
+  bank: "Bank",
+  gaming: "Játék",
+  other: "Egyéb",
+};
+
+const feedMeta = {
+  recommendation: {
+    label: "Ajánlás",
+    color: "bg-blue-50 text-blue-600",
+    icon: <FiStar />,
+  },
+  tip: {
+    label: "Tipp",
+    color: "bg-orange-50 text-orange-600",
+    icon: <LuLightbulb />,
+  },
+  list: {
+    label: "Lista",
+    color: "bg-violet-50 text-violet-600",
+    icon: <FiBookmark />,
+  },
+  post: {
+    label: "Bejegyzés",
+    color: "bg-slate-100 text-slate-600",
+    icon: <FiMessageCircle />,
+  },
+  cancelled_subscription: {
+    label: "Lemondás",
+    color: "bg-emerald-50 text-emerald-600",
+    icon: <FiCheckCircle />,
+  },
+};
+
+const composerTypes = [
+  {
+    type: "recommendation",
+    label: "Előfizetés ajánlása",
+    helper: "Válassz egy saját előfizetést.",
+    icon: <FiStar />,
+  },
+  {
+    type: "tip",
+    label: "Tipp megosztása",
+    helper: "Írj egy gyors spórolási ötletet.",
+    icon: <LuLightbulb />,
+  },
+  {
+    type: "list",
+    label: "Lista létrehozása",
+    helper: "Ossz meg egy válogatást.",
+    icon: <FiBookmark />,
+  },
+  {
+    type: "post",
+    label: "Sima poszt",
+    helper: "Bármi, ami hasznos lehet.",
+    icon: <FiMessageCircle />,
+  },
+];
+
+const feedTabs = [
+  {
+    key: "for-you",
+    label: "Neked",
+    helper: "Saját és baráti posztok",
+    icon: <FiUsers />,
+  },
+  {
+    key: "discover",
+    label: "Felfedezés",
+    helper: "Nyilvános posztok mindenkinek",
+    icon: <FiGlobe />,
+  },
+];
+
+const QuickAction = ({ icon, title, text, onClick }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className="group flex w-full items-center gap-4 rounded-3xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-lg"
+  >
+    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-xl text-blue-600">
+      {icon}
+    </div>
+    <div className="min-w-0 flex-1">
+      <div className="font-black text-slate-950">{title}</div>
+      <div className="mt-1 text-sm text-slate-500">{text}</div>
+    </div>
+    <FiArrowRight className="text-slate-300 transition group-hover:translate-x-1 group-hover:text-blue-500" />
+  </button>
+);
+
+const FeedActivityCard = ({
+  activity,
+  comments,
+  commentsOpen,
+  commentDraft,
+  commentsLoading,
+  onLike,
+  onSave,
+  onToggleComments,
+  onCommentDraftChange,
+  onSubmitComment,
+}) => {
+  const meta = feedMeta[activity.type] || feedMeta.post;
+  const author = activity.author || {};
+  const authorName = author.full_name || author.username || "SpendFox felhasználó";
+  const title = activity.title || activity.subscription_name || activity.body || "Profil aktivitás";
+  const description = activity.body === title ? "" : activity.body;
 
   return (
-    <>
-      <div className="flex w-full flex-col items-center gap-6 px-4 py-12">
-        <div className="w-full max-w-7xl space-y-8 rounded-3xl bg-black p-8 shadow-2xl border border-zinc-800 gap-y-2">
-          <div className="relative">
-            {/* <div className="flex items-center rounded-3xl">
-              <img src={avatar} alt="Avatar" className="w-40 h-40 rounded-full" />
-            </div> */}
+    <article className="min-w-0 overflow-hidden rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:shadow-xl">
+      <div className="flex min-w-0 items-start gap-4">
+        <button
+          type="button"
+          onClick={() => {
+            window.location.href = getProfilePath(author);
+          }}
+          className="shrink-0"
+        >
+          {author.avatar_url ? (
+            <img
+              src={author.avatar_url}
+              alt={authorName}
+              className="h-12 w-12 rounded-full object-cover ring-4 ring-slate-50"
+            />
+          ) : (
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-50 text-lg font-black text-blue-600 ring-4 ring-slate-50">
+              {authorName.charAt(0)}
+            </div>
+          )}
+        </button>
 
-            <div className="flex flex-col ml-0 text-white">
-              <div className="text-3xl font-bold">
-                Szia, {firstName}!
-              </div>
-              <div className="mt-2 text-lg">
-                Itt láthatod az előfizetéseid összesítését.
-              </div>
-            </div>
-            
-            <div className="border border-zinc-400 rounded-2xl py-2 px-4 absolute top-0 right-0">
-              <div className="cursor-pointer flex flex-row justify-center items-center text-center text-white text-md">
-                <AiOutlineEdit className="text-2xl mr-2 text-white items-center justify-center" /> Profil szerkesztése
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-row items-center">
-            <AiOutlineCalendar className="text-3xl mr-3 text-white shrink-0" /> 
-            <div className="flex flex-col text-gray-300">
-              <div className=" text-gray-300 text-md mt-2 tracking-wider">
-                Csatlakozott
-              </div>
-              <div className="text-white text-lg font-bold tracking-wider">
-                {createdAt ? new Date(createdAt).toLocaleDateString() : "N/A"}
-              </div>
-            </div>
-            <div className="mx-6 h-10 w-[1px] bg-zinc-700 mt-2" />
-
-            <AiOutlineStar className="text-3xl mr-3 text-white shrink-0" /> 
-            <div className="flex flex-col text-gray-300">
-              <div className=" text-gray-300 text-md mt-2 tracking-wider">
-                Státusz
-              </div>
-              <div className="text-white text-lg font-bold tracking-wider">
-                Felhasználó
-              </div>
-            </div>
-            
-          </div>
-        </div>
-        
-        <div className="w-full max-w-7xl grid grid-cols-1 gap-4 md:grid-cols-10">
-          <div className="md:col-span-4 rounded-3xl border border-zinc-300 bg-gray-900 p-6 text-white shadow-md">
-            {/* <h3 className="mb-2 text-xl font-bold">1. Oszlop</h3>
-            <p>Ide jöhet az első ablak tartalma.</p> */}
-            <div className="text-gray-300 text-md">
-              Ebben a hónapban 
-              {/* {monthlyTotal}  */}
-            </div>
-            <div className="text-5xl font-bold mt-4">
-              {monthlyTotal.toLocaleString('hu-HU', { style: 'currency', currency: 'HUF' })}
-            </div>
-            <div className="text-white text-xl mt-3">
-              havi előfizetési költség
-            </div>
-            <svg viewBox="0 0 150 40" className="w-28 h-8 overflow-visible mt-7">
-              <polyline
-                fill="none"
-                stroke="#27272a"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                points="0,30 40,28 80,18 120,18"
-              />
-
-              <polyline
-                fill="none"
-                stroke="#818cf8"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                points="80,18 120,8"
-              />
-            </svg>
-            <div className="text-gray-300 text-md mt-2 flex-row grid grid-cols-2">
-              <div className="mr-2 text-left">
-                Éves becslés
-              </div>
-              <div className="text-right">
-                <div className="text-gray-300 text-md">
-                  Éves becslés
-                </div>
-                <div className="font-bold">
-                  {(monthlyTotal * 12).toLocaleString('hu-HU', { style: 'currency', currency: 'HUF' })}
-                </div>
-              </div>
-              {/* <div className="text-right font-bold">
-                {(monthlyTotal * 12).toLocaleString('hu-HU', { style: 'currency', currency: 'HUF' })}
-              </div> */}
-
-            </div>
-          </div>
-
-
-          <div className="md:col-span-2 rounded-2xl border border-zinc-300 bg-white p-6 text-black shadow-md">
-            <div className="flex h-16 w-16 bg-purple-100 rounded-2xl items-center justify-center">
-              {HiOutlineWallet && <HiOutlineWallet className="text-4xl text-purple-500 " />}
-            </div>
-            <div className="text-lg font-bold mt-8">
-              Aktív előfizetések
-            </div>
-            <div className="text-4xl font-bold mt-4">
-              {activeSubscriptions.length} db
-            </div>
-            <div className="text-gray-500 text-md mt-4">
-              összes aktív előfizetés
-            </div>
-          </div>
-
-          <div className="md:col-span-2 rounded-2xl border border-zinc-300 bg-white p-6 text-black shadow-md">
-            <div className="flex h-16 w-16 bg-orange-100 rounded-2xl items-center justify-center">
-              {HiOutlineCalendar && <HiOutlineCalendar className="text-4xl text-orange-500 " />}
-            </div>
-            <div className="text-lg font-bold mt-8">
-              7 napon belül
-            </div>
-            <div className="text-4xl font-bold mt-4">
-              {subscriptionsIn7Days.length} db
-            </div>
-            <div className="text-gray-500 text-md mt-4">
-              következő fizetések
-            </div>
-          </div>
-          
-          <div className="md:col-span-2 rounded-2xl border border-zinc-300 bg-white p-6 text-black shadow-md break-words">
-            <div className="flex h-16 w-16 bg-green-100 rounded-2xl items-center justify-center">
-              {HiOutlineStar && <HiOutlineStar className="text-4xl text-green-500 " />}
-            </div>
-            <div className="text-lg font-bold mt-8">
-              Legdrágább előfizetés
-            </div>
-            <div className="text-4xl font-bold mt-4">
-              {mostExpensiveSubscription ? mostExpensiveSubscription.name : "N/A"}
-            </div>
-            <div className="text-gray-500 text-md mt-4">
-              {mostExpensiveSubscriptionPrice.toLocaleString('hu-HU', { style: 'currency', currency: 'HUF' })} / hó
-            </div>
-          </div>
-        </div>
-
-        <div className="w-full max-w-7xl gap-4 grid grid-cols-2 md:grid-cols-10 ">
-          <div className="md:col-span-6 rounded-3xl border border-zinc-300 shadow-md bg-white p-6">
-            <div className="text-xl font-bold">
-              Következő fizetések
-            </div>
-            <div className="mt-5">
-              <SubscriptionTable subscriptions={activeSubscriptions} view={"home"} />
-            </div>
-            <div className="mx-auto max-w-xs mt-5 items-center justify-center flex bg-gray-100 hover:bg-gray-200 rounded-2xl py-2 px-4 cursor-pointer text-black font-bold"
-              onClick={() => window.location.href = "/subscriptions"}
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = getProfilePath(author);
+              }}
+              className="font-black text-slate-950 transition hover:text-blue-600"
             >
-              Összes megtekintése
-              <FaArrowRight className="text-md ml-4 text-black shrink-0" /> 
-            </div>
+              {authorName}
+            </button>
+            <span className="text-sm text-slate-400">·</span>
+            <span className="text-sm text-slate-500">{formatRelativeDate(activity.created_at)}</span>
+            <span className={`ml-auto flex items-center gap-2 rounded-full px-3 py-1 text-xs font-black ${meta.color}`}>
+              {meta.icon}
+              {meta.label}
+            </span>
           </div>
-          <div className="md:col-span-4 rounded-3xl border border-zinc-300 shadow-md bg-white p-6">
-            <div className="text-xl font-bold">
-              Kiadások kategóriánként
-            </div>
-            <div className="mt-5 relative flex items-center justify-center">
-              <PieChart
-                series={[{ innerRadius: 50, outerRadius: 100, data:CHART_DATA, }]}
-                {...CHART_SETTINGS}
-              />
-              <div className="absolute flex flex-col items-center justify-center pointer-events-none">
-                <div className="font-bold text-xl ">
-                  {monthlyTotal.toLocaleString('hu-HU', { style: 'currency', currency: 'HUF' })}
-                </div>
-                <div className="text-sm font-light text-gray-500">
-                  összesen
-                </div>
-              </div>
-            </div>
-            <div className="mt-6 flex flex-col gap-3">
-              {CHART_DATA.map((data) => (
-                data.value > 0 && (
-                  <div key={data.id} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="inline-block shrink-0 h-4 w-4 rounded-md" style={{ backgroundColor: data.color }} />
-                      <span className="font-medium">
-                        {data.label}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="font-semibold">
-                        {data.value} db
-                      </span>
-                      <span className="w-10 text-right text-gray-400">
-                        {allSubscriptions > 0 ? Math.round((data.value / allSubscriptions) * 100) : 0}%
-                      </span>
-                    </div>
-                  </div>
-                )
-              ))}
-            </div>
-          </div>
-        </div>
 
-        <div className="w-full max-w-7xl gap-4 grid grid-cols-1 md:grid-cols-10 ">
-          <div className="md:col-span-6 rounded-3xl border border-amber-100 bg-amber-50 p-6 flex flex-row items-center">
-            <div className="flex h-13 w-13 bg-amber-100 items-center justify-center rounded-2xl">
-              <CiBellOn className="text-4xl text-amber-500 items-center justify-center font-bold-4xl" />
-            </div>
-            <div className="ml-7">
-              <div className="font-bold text-black">
-                előfizetésed X nap múlva megújul.
-              </div>
-              <div className="text-sm text-gray-600 mt-1">
-                Augusztus valahányadika
-              </div>
-            </div>
-            <div className="ml-auto justify-end-safe cursor-pointer py-1 px-5 bg-orange-50 rounded-2xl font-bold ">
-              <div className="max-w-xl items-center justify-end flex text-orange-400 ">
-                Részletek
-                <MdOutlineKeyboardArrowRight className="ml-2 text-2xl" />
-              </div>
-            </div>
+          <div className="mt-3 max-w-full break-all text-xl font-black text-slate-950 [overflow-wrap:anywhere]">
+            {title}
           </div>
+          {description && (
+            <p className="mt-2 max-w-full whitespace-pre-wrap break-all text-sm leading-relaxed text-slate-600 [overflow-wrap:anywhere]">
+              {description}
+            </p>
+          )}
+
+          {activity.subscription_name && (
+            <div className="mt-4 flex flex-col gap-4 rounded-3xl bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm">
+                  {activity.logo_url ? (
+                    <img
+                      src={activity.logo_url}
+                      alt={activity.subscription_name}
+                      className="h-full w-full object-contain p-2"
+                    />
+                  ) : (
+                    <FiBookmark className="text-blue-600" />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <div className="truncate font-black text-slate-950">{activity.subscription_name}</div>
+                  <div className="mt-1 text-xs font-bold text-slate-500">
+                    {categoryLabels[activity.category] || activity.category || "Egyéb"}
+                  </div>
+                </div>
+              </div>
+
+              {activity.price_huf !== null && activity.price_huf !== undefined && (
+                <div className="rounded-2xl bg-white px-4 py-3 text-right shadow-sm">
+                  <div className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                    HUF érték
+                  </div>
+                  <div className="text-base font-black text-slate-950">
+                    {formatCurrency(activity.price_huf)}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {Array.isArray(activity.list_items) && activity.list_items.length > 0 && (
+            <div className="mt-4 rounded-3xl bg-slate-50 p-4">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
+                  Megosztott lista
+                </div>
+                <div className="rounded-full bg-white px-3 py-1 text-xs font-black text-slate-500 shadow-sm">
+                  {activity.list_items.length} elem
+                </div>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {activity.list_items.map((item) => (
+                  <div
+                    key={`${activity.id}-${item.id || item.name}`}
+                    className="flex min-w-0 items-center gap-3 rounded-2xl bg-white p-3 shadow-sm"
+                  >
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-blue-50 text-blue-600">
+                      {item.logo_url ? (
+                        <img
+                          src={item.logo_url}
+                          alt={item.name}
+                          className="h-full w-full object-contain p-2"
+                        />
+                      ) : (
+                        <FiBookmark />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-black text-slate-950">{item.name}</div>
+                      <div className="mt-1 text-xs font-bold text-slate-500">
+                        {categoryLabels[item.category] || item.category || "Egyéb"}
+                      </div>
+                    </div>
+                    {item.price_huf !== null && item.price_huf !== undefined && (
+                      <div className="shrink-0 text-right text-xs font-black text-slate-700">
+                        {formatCurrency(item.price_huf)}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="mt-5 flex items-center gap-5 border-t border-slate-100 pt-4 text-sm font-bold text-slate-500">
+            <button
+              type="button"
+              onClick={() => onLike(activity)}
+              className={`flex items-center gap-2 transition hover:text-blue-600 ${
+                activity.viewer_liked ? "text-blue-600" : ""
+              }`}
+            >
+              <FiStar />
+              Hasznos {activity.like_count ? `(${activity.like_count})` : ""}
+            </button>
+            <button
+              type="button"
+              onClick={() => onToggleComments(activity)}
+              className={`flex items-center gap-2 transition hover:text-blue-600 ${
+                commentsOpen ? "text-blue-600" : ""
+              }`}
+            >
+              <FiMessageCircle />
+              Hozzászólás {activity.comment_count ? `(${activity.comment_count})` : ""}
+            </button>
+            <button
+              type="button"
+              onClick={() => onSave(activity)}
+              className={`flex items-center gap-2 transition hover:text-blue-600 ${
+                activity.viewer_saved ? "text-blue-600" : ""
+              }`}
+            >
+              <FiBookmark />
+              {activity.viewer_saved ? "Mentve" : "Mentés"}
+            </button>
+            <a
+              href={`/post/${activity.id}`}
+              className="ml-auto inline-flex items-center gap-2 text-slate-700 transition hover:text-blue-600"
+            >
+              Részletek
+              <FiArrowRight />
+            </a>
+          </div>
+
+          {commentsOpen && (
+            <div className="mt-5 rounded-3xl bg-slate-50 p-4">
+              <div className="space-y-3">
+                {commentsLoading ? (
+                  <div className="rounded-2xl bg-white p-4 text-sm font-bold text-slate-500">
+                    Kommentek betöltése...
+                  </div>
+                ) : comments.length > 0 ? (
+                  comments.map((comment) => {
+                    const commentAuthor = comment.author || {};
+                    const commentAuthorName =
+                      commentAuthor.full_name || commentAuthor.username || "SpendFox felhasználó";
+
+                    return (
+                      <div
+                        key={comment.id}
+                        className="flex min-w-0 gap-3 overflow-hidden rounded-2xl bg-white p-3"
+                      >
+                        {commentAuthor.avatar_url ? (
+                          <img
+                            src={commentAuthor.avatar_url}
+                            alt={commentAuthorName}
+                            className="h-9 w-9 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-black text-blue-600">
+                            {commentAuthorName.charAt(0)}
+                          </div>
+                        )}
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <div className="truncate text-sm font-black text-slate-950">
+                            {commentAuthorName}
+                          </div>
+                          <div className="mt-1 max-w-full whitespace-pre-wrap break-all text-sm leading-relaxed text-slate-600 [overflow-wrap:anywhere]">
+                            {comment.body}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="rounded-2xl bg-white p-4 text-sm font-bold text-slate-500">
+                    Még nincs komment. Legyél te az első.
+                  </div>
+                )}
+              </div>
+
+              <form
+                onSubmit={(event) => onSubmitComment(event, activity)}
+                className="mt-4 flex flex-col gap-3 sm:flex-row"
+              >
+                <input
+                  value={commentDraft}
+                  onChange={(event) => onCommentDraftChange(activity.id, event.target.value)}
+                  placeholder="Írj egy kommentet..."
+                  className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                />
+                <button
+                  type="submit"
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-slate-800"
+                >
+                  Küldés
+                  <FiSend />
+                </button>
+              </form>
+            </div>
+          )}
         </div>
       </div>
-
-    </>
+    </article>
   );
-}
+};
+
+const EmptyFeed = () => (
+  <div className="rounded-[32px] border border-dashed border-slate-200 bg-white p-10 text-center shadow-sm">
+    <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl bg-blue-50 text-2xl text-blue-600">
+      <FiUsers />
+    </div>
+    <div className="mt-5 text-2xl font-black text-slate-950">Még csendes a feed</div>
+    <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-slate-500">
+      Küldj barátkérést vagy ossz meg egy ajánlást a profilodon. Ide jönnek majd a barátaid
+      tippjei, listái és előfizetés-ajánlásai.
+    </p>
+  </div>
+);
+
+const FeedComposerModal = ({
+  initialType,
+  subscriptions,
+  onClose,
+  onCreated,
+}) => {
+  const [type, setType] = useState(initialType);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [subscriptionId, setSubscriptionId] = useState("");
+  const [selectedListIds, setSelectedListIds] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const selectedType = composerTypes.find((item) => item.type === type) || composerTypes[0];
+  const ownSubscriptions = subscriptions.filter((item) => item.is_active !== false);
+  const selectedListSubscriptions = ownSubscriptions.filter((subscription) =>
+    selectedListIds.includes(String(subscription.id))
+  );
+  const canSubmit =
+    type === "recommendation"
+      ? Boolean(subscriptionId)
+      : type === "list"
+        ? selectedListIds.length > 0 && Boolean(title.trim())
+        : Boolean(title.trim() || body.trim());
+
+  const handleTypeChange = (nextType) => {
+    setType(nextType);
+    setError("");
+  };
+
+  const toggleListSubscription = (subscriptionIdValue) => {
+    const normalizedId = String(subscriptionIdValue);
+
+    setSelectedListIds((current) =>
+      current.includes(normalizedId)
+        ? current.filter((id) => id !== normalizedId)
+        : [...current, normalizedId]
+    );
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!canSubmit) {
+      setError(
+        type === "recommendation"
+          ? "Válassz egy előfizetést, amit ajánlanál."
+          : type === "list"
+            ? "Adj címet a listának, és válassz legalább egy előfizetést."
+            : "Írj legalább egy címet vagy rövid szöveget."
+      );
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+
+    const payload = {
+      type,
+      title: title.trim(),
+      body: body.trim(),
+    };
+
+    if (type === "recommendation") {
+      payload.subscription_id = Number(subscriptionId);
+    }
+
+    if (type === "list") {
+      payload.list_items = selectedListSubscriptions.map((subscription) => ({
+        id: subscription.id,
+        name: subscription.name,
+        category: subscription.category,
+        logo_url: subscription.logo_url,
+        price_huf: getMonthlyPrice(subscription),
+        currency: subscription.currency,
+        billing_cycle: subscription.billing_cycle,
+      }));
+    }
+
+    try {
+      await axios.post(`${API_HOST}/profile-activities`, payload, {
+        headers: getAuthHeaders(),
+      });
+      await onCreated();
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.error || "Nem sikerült létrehozni a posztot.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
+      <form
+        onSubmit={handleSubmit}
+        className="flex max-h-[calc(100vh-3rem)] w-full max-w-3xl flex-col overflow-hidden rounded-[36px] bg-white shadow-2xl"
+      >
+        <div className="shrink-0 border-b border-slate-100 p-5 sm:p-6">
+          <div className="flex items-start justify-between gap-6">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-blue-600">
+              {selectedType.icon}
+              Feed poszt
+            </div>
+            <h2 className="mt-4 text-3xl font-black text-slate-950">{selectedType.label}</h2>
+            <p className="mt-2 text-sm text-slate-500">{selectedType.helper}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-950"
+          >
+            <FiX />
+          </button>
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {composerTypes.map((item) => (
+              <button
+                type="button"
+                key={item.type}
+                onClick={() => handleTypeChange(item.type)}
+                className={`rounded-3xl border p-4 text-left transition ${
+                  type === item.type
+                    ? "border-blue-200 bg-blue-50 text-blue-700"
+                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                }`}
+              >
+                <div className="flex items-center gap-3 font-black">
+                  {item.icon}
+                  {item.label}
+                </div>
+                <div className="mt-2 text-sm text-slate-500">{item.helper}</div>
+              </button>
+            ))}
+          </div>
+
+          {type === "recommendation" && (
+            <label className="block">
+              <span className="text-sm font-black text-slate-700">Ajánlott előfizetés</span>
+              <select
+                value={subscriptionId}
+                onChange={(event) => setSubscriptionId(event.target.value)}
+                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-bold text-slate-950 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+              >
+                <option value="">Válassz a saját előfizetéseidből</option>
+                {ownSubscriptions.map((subscription) => (
+                  <option key={subscription.id} value={subscription.id}>
+                    {subscription.name} · {formatCurrency(getMonthlyPrice(subscription))}/hó
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          {type === "list" && (
+            <div>
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-black text-slate-700">Lista elemei</div>
+                  <div className="mt-1 text-sm text-slate-500">
+                    Válaszd ki, mely előfizetéseket szeretnéd megmutatni.
+                  </div>
+                </div>
+                <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-500">
+                  {selectedListIds.length} kiválasztva
+                </div>
+              </div>
+
+              <div className="mt-3 grid max-h-56 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+                {ownSubscriptions.length > 0 ? (
+                  ownSubscriptions.map((subscription) => {
+                    const checked = selectedListIds.includes(String(subscription.id));
+
+                    return (
+                      <button
+                        key={subscription.id}
+                        type="button"
+                        onClick={() => toggleListSubscription(subscription.id)}
+                        className={`flex items-center gap-3 rounded-3xl border p-3 text-left transition ${
+                          checked
+                            ? "border-blue-300 bg-blue-50 shadow-sm"
+                            : "border-slate-200 bg-white hover:border-slate-300"
+                        }`}
+                      >
+                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-50 text-blue-600">
+                          {subscription.logo_url ? (
+                            <img
+                              src={subscription.logo_url}
+                              alt={subscription.name}
+                              className="h-full w-full object-contain p-2"
+                            />
+                          ) : (
+                            <FiBookmark />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-black text-slate-950">
+                            {subscription.name}
+                          </div>
+                          <div className="mt-1 text-xs font-bold text-slate-500">
+                            {formatCurrency(getMonthlyPrice(subscription))}/hó
+                          </div>
+                        </div>
+                        <div
+                          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs ${
+                            checked
+                              ? "border-blue-600 bg-blue-600 text-white"
+                              : "border-slate-300 bg-white text-transparent"
+                          }`}
+                        >
+                          ✓
+                        </div>
+                      </button>
+                    );
+                  })
+                ) : (
+                  <div className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500 sm:col-span-2">
+                    Nincs aktív előfizetésed, amit listába tehetnél.
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <label className="block">
+            <span className="text-sm font-black text-slate-700">
+              {type === "recommendation"
+                ? "Saját megjegyzés"
+                : type === "list"
+                  ? "Lista címe"
+                  : "Cím"}
+            </span>
+            <input
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder={
+                type === "recommendation"
+                  ? "Pl. Nekem ez vált be a munkához"
+                  : type === "list"
+                    ? "Pl. AI tool stack munkához"
+                    : "Pl. Netflix helyett olcsóbb opciók"
+              }
+              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-4 text-sm font-bold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+            />
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-black text-slate-700">
+              {type === "list" ? "Miért ezt a listát ajánlod?" : "Leírás"}
+            </span>
+            <textarea
+              value={body}
+              onChange={(event) => setBody(event.target.value)}
+              rows={5}
+              placeholder={
+                type === "list"
+                  ? "Pl. Ezeket használom napi munkához, és eddig ez a kombó érte meg legjobban."
+                  : "Írd le röviden, miért hasznos, mikor érdemes kipróbálni, vagy mennyit lehet vele spórolni."
+              }
+              className="mt-2 w-full resize-none rounded-2xl border border-slate-200 px-4 py-4 text-sm font-medium leading-relaxed text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+            />
+          </label>
+
+          {error && (
+            <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
+              {error}
+            </div>
+          )}
+        </div>
+
+        <div className="shrink-0 border-t border-slate-100 bg-white/95 p-5 shadow-[0_-12px_28px_rgba(15,23,42,0.06)] backdrop-blur sm:p-6">
+          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50"
+          >
+            Mégse
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {submitting ? "Küldés..." : "Megosztás"}
+            <FiSend />
+          </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+const HomeScreen = () => {
+  const { profileId } = useAuth();
+  const [profile, setProfile] = useState(null);
+  const [subscriptions, setSubscriptions] = useState([]);
+  const [feedActivities, setFeedActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [feedScope, setFeedScope] = useState("for-you");
+  const [feedLoading, setFeedLoading] = useState(true);
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [composerType, setComposerType] = useState("recommendation");
+  const [openComments, setOpenComments] = useState({});
+  const [commentsByActivity, setCommentsByActivity] = useState({});
+  const [commentDrafts, setCommentDrafts] = useState({});
+  const [commentsLoading, setCommentsLoading] = useState({});
+
+  const openComposer = (type) => {
+    setComposerType(type);
+    setComposerOpen(true);
+  };
+
+  const refreshFeed = async (scope = feedScope) => {
+    const response = await axios.get(`${API_HOST}/feed`, {
+      headers: getAuthHeaders(),
+      params: { limit: 12, scope },
+    });
+
+    setFeedActivities(response.data?.data || []);
+  };
+
+  const handleFeedScopeChange = (scope) => {
+    setFeedScope(scope);
+    setFeedLoading(true);
+  };
+
+  const updateActivity = (activityId, updater) => {
+    setFeedActivities((currentActivities) =>
+      currentActivities.map((activity) =>
+        String(activity.id) === String(activityId) ? updater(activity) : activity
+      )
+    );
+  };
+
+  const handleLike = async (activity) => {
+    const previousLiked = Boolean(activity.viewer_liked);
+    const nextLikeCount = Math.max((activity.like_count || 0) + (previousLiked ? -1 : 1), 0);
+
+    updateActivity(activity.id, (currentActivity) => ({
+      ...currentActivity,
+      viewer_liked: !previousLiked,
+      like_count: nextLikeCount,
+    }));
+
+    try {
+      const response = await axios.post(`${API_HOST}/profile-activities/${activity.id}/like`, null, {
+        headers: getAuthHeaders(),
+      });
+      updateActivity(activity.id, (currentActivity) => ({
+        ...currentActivity,
+        viewer_liked: response.data?.data?.liked,
+        like_count: response.data?.data?.like_count,
+      }));
+    } catch (err) {
+      updateActivity(activity.id, (currentActivity) => ({
+        ...currentActivity,
+        viewer_liked: previousLiked,
+        like_count: activity.like_count || 0,
+      }));
+      console.error("Failed to like activity:", err);
+    }
+  };
+
+  const handleSave = async (activity) => {
+    const previousSaved = Boolean(activity.viewer_saved);
+
+    updateActivity(activity.id, (currentActivity) => ({
+      ...currentActivity,
+      viewer_saved: !previousSaved,
+    }));
+
+    try {
+      const response = await axios.post(`${API_HOST}/profile-activities/${activity.id}/save`, null, {
+        headers: getAuthHeaders(),
+      });
+      updateActivity(activity.id, (currentActivity) => ({
+        ...currentActivity,
+        viewer_saved: response.data?.data?.saved,
+      }));
+    } catch (err) {
+      updateActivity(activity.id, (currentActivity) => ({
+        ...currentActivity,
+        viewer_saved: previousSaved,
+      }));
+      console.error("Failed to save activity:", err);
+    }
+  };
+
+  const loadComments = async (activityId) => {
+    setCommentsLoading((current) => ({ ...current, [activityId]: true }));
+
+    try {
+      const response = await axios.get(`${API_HOST}/profile-activities/${activityId}/comments`, {
+        headers: getAuthHeaders(),
+      });
+      setCommentsByActivity((current) => ({
+        ...current,
+        [activityId]: response.data?.data || [],
+      }));
+    } catch (err) {
+      console.error("Failed to load comments:", err);
+    } finally {
+      setCommentsLoading((current) => ({ ...current, [activityId]: false }));
+    }
+  };
+
+  const handleToggleComments = async (activity) => {
+    const isOpen = Boolean(openComments[activity.id]);
+
+    setOpenComments((current) => ({
+      ...current,
+      [activity.id]: !isOpen,
+    }));
+
+    if (!isOpen && !commentsByActivity[activity.id]) {
+      await loadComments(activity.id);
+    }
+  };
+
+  const handleCommentDraftChange = (activityId, value) => {
+    setCommentDrafts((current) => ({
+      ...current,
+      [activityId]: value,
+    }));
+  };
+
+  const handleSubmitComment = async (event, activity) => {
+    event.preventDefault();
+
+    const body = String(commentDrafts[activity.id] || "").trim();
+
+    if (!body) return;
+
+    try {
+      const response = await axios.post(
+        `${API_HOST}/profile-activities/${activity.id}/comments`,
+        { body },
+        { headers: getAuthHeaders() }
+      );
+      const createdComment = response.data?.data;
+
+      setCommentsByActivity((current) => ({
+        ...current,
+        [activity.id]: [...(current[activity.id] || []), createdComment],
+      }));
+      setCommentDrafts((current) => ({ ...current, [activity.id]: "" }));
+      updateActivity(activity.id, (currentActivity) => ({
+        ...currentActivity,
+        comment_count: (currentActivity.comment_count || 0) + 1,
+      }));
+    } catch (err) {
+      console.error("Failed to create comment:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (!profileId) return;
+
+    let isMounted = true;
+
+    const headers = getAuthHeaders();
+
+    Promise.allSettled([
+      axios.get(`${API_HOST}/profile`, { headers }),
+      axios.get(`${API_HOST}/subscriptions?userId=${profileId}`, { headers }),
+    ])
+      .then(([profileResult, subscriptionsResult]) => {
+        if (!isMounted) return;
+
+        if (profileResult.status === "fulfilled") {
+          setProfile(profileResult.value.data?.data || null);
+        }
+
+        if (subscriptionsResult.status === "fulfilled") {
+          setSubscriptions(subscriptionsResult.value.data?.data || []);
+        }
+
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [profileId]);
+
+  useEffect(() => {
+    if (!profileId) return;
+
+    let isMounted = true;
+
+    axios
+      .get(`${API_HOST}/feed`, {
+        headers: getAuthHeaders(),
+        params: { limit: 12, scope: feedScope },
+      })
+      .then((response) => {
+        if (!isMounted) return;
+        setFeedActivities(response.data?.data || []);
+      })
+      .catch((error) => {
+        console.error("Error fetching feed:", error);
+      })
+      .finally(() => {
+        if (isMounted) setFeedLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [feedScope, profileId]);
+
+  const summary = useMemo(() => {
+    const active = subscriptions.filter((item) => item.is_active !== false);
+    const inactiveCount = subscriptions.length - active.length;
+    const monthlyTotal = active.reduce((total, item) => total + getMonthlyPrice(item), 0);
+    const upcoming = active
+      .map((item) => ({
+        ...item,
+        daysUntil: getDaysUntil(item.trial_enabled ? item.trial_end_date : item.next_billing_date),
+        nextDate: item.trial_enabled ? item.trial_end_date : item.next_billing_date,
+      }))
+      .filter((item) => item.daysUntil !== null && item.daysUntil >= 0)
+      .sort((a, b) => a.daysUntil - b.daysUntil)[0];
+
+    const categoryMap = active.reduce((acc, item) => {
+      const key = item.category || "other";
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+
+    const topCategories = Object.entries(categoryMap)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 5)
+      .map(([key, value]) => ({
+        key,
+        label: categoryLabels[key] || key,
+        value,
+      }));
+
+    return {
+      activeCount: active.length,
+      inactiveCount,
+      monthlyTotal,
+      yearlyTotal: monthlyTotal * 12,
+      upcoming,
+      topCategories,
+    };
+  }, [subscriptions]);
+
+  const firstName = getFirstName(profile?.full_name);
+  const upcomingLabel =
+    summary.upcoming?.daysUntil === 0
+      ? "ma"
+      : summary.upcoming?.daysUntil === 1
+        ? "holnap"
+        : summary.upcoming
+          ? `${summary.upcoming.daysUntil} napon belül`
+          : "nincs közelgő";
+
+  return (
+    <main className="min-h-screen bg-[#f5f7fb] px-4 py-10 text-slate-950 sm:px-6 lg:px-8">
+      {loading && (
+        <div className="fixed left-0 right-0 top-0 z-50 h-1 overflow-hidden bg-blue-100">
+          <div className="h-full w-1/2 animate-[homeLoader_1.1s_ease-in-out_infinite] rounded-full bg-blue-600" />
+        </div>
+      )}
+
+      <style>{`
+        @keyframes homeLoader {
+          0% { transform: translateX(-110%); }
+          100% { transform: translateX(220%); }
+        }
+      `}</style>
+
+      <div className="mx-auto flex w-full max-w-[92rem] flex-col gap-6">
+        <section className="rounded-[34px] border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-blue-600">
+                <FiZap />
+                Kezdőlap
+              </div>
+              <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-950 sm:text-5xl">
+                Szia, {firstName}. Nézzük, mi történt.
+              </h1>
+              <p className="mt-3 max-w-2xl text-base leading-relaxed text-slate-500">
+                Egy letisztult feed ajánlásokkal, spórolási tippekkel és a legfontosabb
+                pénzügyi jelzéseiddel.
+              </p>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3 lg:w-[34rem]">
+              <div className="rounded-3xl bg-slate-950 p-4 text-white">
+                <div className="text-xs font-bold text-slate-300">Havi költés</div>
+                <div className="mt-2 text-2xl font-black">{formatCurrency(summary.monthlyTotal)}</div>
+              </div>
+              <div className="rounded-3xl bg-blue-50 p-4 text-blue-700">
+                <div className="text-xs font-bold text-blue-500">Aktív</div>
+                <div className="mt-2 text-2xl font-black">{summary.activeCount} db</div>
+              </div>
+              <div className="rounded-3xl bg-orange-50 p-4 text-orange-700">
+                <div className="text-xs font-bold text-orange-500">Következő</div>
+                <div className="mt-2 truncate text-lg font-black">{upcomingLabel}</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+          <div className="space-y-5">
+            <div className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h2 className="text-2xl font-black text-slate-950">Feed</h2>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-500">
+                    Válts a baráti és a nyilvános tartalmak között.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    openComposer("post");
+                  }}
+                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-slate-800"
+                >
+                  Saját poszt
+                  <FiArrowRight />
+                </button>
+              </div>
+
+              <div className="mt-5 flex rounded-2xl bg-slate-100 p-1">
+                {feedTabs.map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => handleFeedScopeChange(tab.key)}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-black transition ${
+                      feedScope === tab.key
+                        ? "bg-white text-blue-600 shadow-sm"
+                        : "text-slate-500 hover:text-slate-950"
+                    }`}
+                  >
+                    {tab.icon}
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                {composerTypes.slice(0, 3).map((item) => (
+                  <button
+                    key={item.type}
+                    type="button"
+                    onClick={() => openComposer(item.type)}
+                    className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
+                  >
+                    {item.icon}
+                    {item.shortLabel || item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {feedLoading ? (
+              <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm">
+                <div className="h-4 w-40 animate-pulse rounded-full bg-slate-100" />
+                <div className="mt-6 space-y-3">
+                  <div className="h-20 animate-pulse rounded-3xl bg-slate-100" />
+                  <div className="h-20 animate-pulse rounded-3xl bg-slate-100" />
+                  <div className="h-20 animate-pulse rounded-3xl bg-slate-100" />
+                </div>
+              </div>
+            ) : feedActivities.length > 0 ? (
+              <div className="grid gap-4">
+                {feedActivities.map((activity) => (
+                  <FeedActivityCard
+                    key={activity.id}
+                    activity={activity}
+                    comments={commentsByActivity[activity.id] || []}
+                    commentsOpen={Boolean(openComments[activity.id])}
+                    commentDraft={commentDrafts[activity.id] || ""}
+                    commentsLoading={Boolean(commentsLoading[activity.id])}
+                    onLike={handleLike}
+                    onSave={handleSave}
+                    onToggleComments={handleToggleComments}
+                    onCommentDraftChange={handleCommentDraftChange}
+                    onSubmitComment={handleSubmitComment}
+                  />
+                ))}
+              </div>
+            ) : (
+              <EmptyFeed />
+            )}
+          </div>
+
+          <aside className="space-y-5">
+            <div className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-start gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-xl text-orange-600">
+                  <FiClock />
+                </div>
+                <div>
+                  <div className="text-lg font-black text-slate-950">Ma fontos</div>
+                  <div className="mt-1 text-sm leading-relaxed text-slate-500">
+                    {summary.upcoming
+                      ? `${summary.upcoming.name} következő fizetése: ${formatDate(summary.upcoming.nextDate)}.`
+                      : "Nincs közeli fizetésed, ma nyugodtabb napod van."}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-lg font-black text-slate-950">Leggyakoribb kategóriáid</div>
+                  <div className="mt-1 text-sm text-slate-500">Rövid áttekintés a saját listádból.</div>
+                </div>
+                <FiActivityFallback />
+              </div>
+
+              <div className="mt-5 flex flex-wrap gap-2">
+                {summary.topCategories.length > 0 ? (
+                  summary.topCategories.map((category) => (
+                    <span
+                      key={category.key}
+                      className="rounded-full bg-slate-100 px-4 py-2 text-sm font-black text-slate-700"
+                    >
+                      {category.label} · {category.value}
+                    </span>
+                  ))
+                ) : (
+                  <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">
+                    Még nincs kategorizált előfizetésed.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="text-lg font-black text-slate-950">Gyors műveletek</div>
+              <div className="mt-4 space-y-3">
+                <QuickAction
+                  icon={<FiPlus />}
+                  title="Új előfizetés"
+                  text="Add hozzá a következő szolgáltatást."
+                  onClick={() => {
+                    window.location.href = "/subscriptions";
+                  }}
+                />
+                <QuickAction
+                  icon={<FiUsers />}
+                  title="Profilom"
+                  text="Barátok, ajánlások és aktivitás."
+                  onClick={() => {
+                    window.location.href = "/profile";
+                  }}
+                />
+              </div>
+            </div>
+          </aside>
+        </section>
+      </div>
+
+      {composerOpen && (
+        <FeedComposerModal
+          initialType={composerType}
+          subscriptions={subscriptions}
+          onClose={() => setComposerOpen(false)}
+          onCreated={refreshFeed}
+        />
+      )}
+    </main>
+  );
+};
+
+const FiActivityFallback = () => (
+  <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-blue-50 text-xl text-blue-600">
+    <FiTrendingUp />
+  </div>
+);
 
 export default HomeScreen;

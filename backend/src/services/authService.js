@@ -1,6 +1,7 @@
 const { admin, db } = require('./firestoreClient');
 const { firebaseWebApiKey } = require('../config/env');
 const { getNextId } = require('./counterService');
+const { ensureUsernameAvailable } = require('./userService');
 
 const toAuthError = (err) => ({
   message: err.message || 'Authentication failed',
@@ -8,6 +9,18 @@ const toAuthError = (err) => ({
 
 const registerWithEmail = async ({ email, password, fullName, username, avatar_url }) => {
   try {
+    const usernameAvailability = await ensureUsernameAvailable(username);
+
+    if (usernameAvailability.error) {
+      return {
+        data: null,
+        error: usernameAvailability.error,
+        appUser: null,
+        appUserError: null,
+      };
+    }
+
+    const normalizedUsername = usernameAvailability.username;
     const nextUserId = await getNextId('users');
     const uid = String(nextUserId);
 
@@ -23,8 +36,11 @@ const registerWithEmail = async ({ email, password, fullName, username, avatar_u
       id: nextUserId,
       email: user.email,
       full_name: fullName || null,
-      username: username || null,
+      username: normalizedUsername || null,
+      username_lower: normalizedUsername || null,
       avatar_url: avatar_url || null,
+      public_profile_enabled: true,
+      profile_visibility: 'public',
       created_at: admin.firestore.FieldValue.serverTimestamp(),
       updated_at: admin.firestore.FieldValue.serverTimestamp(),
     };
@@ -42,7 +58,7 @@ const registerWithEmail = async ({ email, password, fullName, username, avatar_u
           email: user.email,
           user_metadata: {
             full_name: fullName || null,
-            username: username || null,
+            username: normalizedUsername || null,
             avatar_url: avatar_url || null,
           },
         },

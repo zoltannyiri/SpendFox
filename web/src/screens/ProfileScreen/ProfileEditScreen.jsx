@@ -36,6 +36,12 @@ const slugify = (value) =>
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+const normalizeUsername = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, "");
+
 const ProfileEditScreen = () => {
   const navigate = useNavigate();
   const { user, fetchProfile } = useAuth();
@@ -56,6 +62,8 @@ const ProfileEditScreen = () => {
   useEffect(() => {
     if (!user) return;
 
+    // Profile data arrives asynchronously from auth context, then hydrates the edit form.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm({
       full_name: user.full_name || "",
       username: user.username || "",
@@ -99,8 +107,9 @@ const ProfileEditScreen = () => {
         }
       );
 
-      await fetchProfile();
-      navigate("/profile");
+      const profileResponse = await fetchProfile();
+      const updatedUser = profileResponse?.data?.data;
+      navigate(`/${updatedUser?.username || form.username || "profile"}`);
     } catch (err) {
       setError(err.response?.data?.error || "Nem sikerült menteni a profilt.");
     } finally {
@@ -113,7 +122,7 @@ const ProfileEditScreen = () => {
       <div className="mx-auto max-w-6xl">
         <button
           type="button"
-          onClick={() => navigate("/profile")}
+          onClick={() => navigate(`/${user?.username || "profile"}`)}
           className="mb-6 inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-100"
         >
           <FiArrowLeft />
@@ -162,7 +171,7 @@ const ProfileEditScreen = () => {
                   <span className="text-sm font-bold text-slate-700">Felhasználónév</span>
                   <input
                     value={form.username}
-                    onChange={(event) => updateField("username", event.target.value)}
+                    onChange={(event) => updateField("username", normalizeUsername(event.target.value))}
                     className="mt-2 h-13 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none transition focus:border-blue-500"
                     placeholder="znyiri"
                   />

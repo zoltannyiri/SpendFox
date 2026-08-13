@@ -27,6 +27,22 @@ const toServiceError = (err) => ({
 const getPairKey = (firstUserId, secondUserId) =>
   [String(firstUserId), String(secondUserId)].sort().join('_');
 
+const areFriends = async (firstUserId, secondUserId) => {
+  if (!firstUserId || !secondUserId) {
+    return false;
+  }
+
+  if (String(firstUserId) === String(secondUserId)) {
+    return true;
+  }
+
+  const friendship = await friendsCollection
+    .doc(getPairKey(firstUserId, secondUserId))
+    .get();
+
+  return friendship.exists;
+};
+
 const sanitizeUser = (user) => {
   if (!user) {
     return null;
@@ -281,6 +297,7 @@ const removeFriend = async (currentUserId, friendId) => {
 };
 
 module.exports = {
+  areFriends,
   listFriends,
   listFriendRequests,
   removeFriend,

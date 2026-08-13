@@ -38,6 +38,28 @@ const requireAuth = async (req, res, next) => {
   }
 };
 
+const optionalAuth = async (req, res, next) => {
+  try {
+    const token = getBearerToken(req.headers.authorization);
+
+    if (!token) {
+      return next();
+    }
+
+    req.auth = await admin.auth().verifyIdToken(token);
+
+    return next();
+  } catch (err) {
+    console.log('[auth] optional verifyIdToken failed:', {
+      code: err.code,
+      message: err.message,
+    });
+
+    return next();
+  }
+};
+
 module.exports = {
+  optionalAuth,
   requireAuth,
 };

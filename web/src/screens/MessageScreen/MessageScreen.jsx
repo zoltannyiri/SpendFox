@@ -23,6 +23,8 @@ const appendUniqueMessage = (currentMessages, newMessage) => {
   return exists ? currentMessages : [...currentMessages, newMessage];
 };
 
+const getProfilePath = (user, fallbackId) => `/${user?.username || fallbackId}`;
+
 const formatMessageTime = (value) => {
   if (!value) return "";
 
@@ -183,7 +185,7 @@ const MessageScreen = () => {
 
           <button
             type="button"
-            onClick={() => navigate(`/profile/${userId}`)}
+            onClick={() => navigate(getProfilePath(participant, userId))}
             className="hidden items-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50 sm:flex"
           >
             <FiUser />
@@ -227,7 +229,9 @@ const MessageScreen = () => {
                           : "rounded-bl-md bg-white text-slate-900"
                       }`}
                     >
-                      <div className="text-sm leading-relaxed">{message.body}</div>
+                      <div className="whitespace-pre-wrap break-words text-sm leading-relaxed [overflow-wrap:anywhere]">
+                        {message.body}
+                      </div>
                       <div className={`mt-2 text-right text-[11px] ${isMine ? "text-blue-100" : "text-slate-400"}`}>
                         {formatMessageTime(message.created_at)}
                       </div>
@@ -240,11 +244,12 @@ const MessageScreen = () => {
         </div>
 
         <form onSubmit={sendMessage} className="flex gap-3 border-t border-slate-100 bg-white p-5">
-          <input
+          <textarea
             value={messageBody}
             onChange={(event) => setMessageBody(event.target.value)}
-            className="h-14 min-h-14 flex-1 rounded-2xl border border-slate-200 px-5 text-sm outline-none transition placeholder:text-slate-400 focus:border-blue-500"
+            className="min-h-14 max-h-40 flex-1 resize-none rounded-2xl border border-slate-200 px-5 py-4 text-sm leading-relaxed outline-none transition placeholder:text-slate-400 focus:border-blue-500"
             placeholder="Írj üzenetet..."
+            rows={1}
           />
           <button
             type="submit"

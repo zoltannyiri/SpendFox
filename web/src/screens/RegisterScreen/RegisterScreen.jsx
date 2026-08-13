@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 import AppLogo from "../../components/AppLogo";
+
+const normalizeUsername = (value) => value.trim().toLowerCase();
+const isValidUsername = (value) => /^[a-z][a-z0-9_]*$/.test(value);
 
 const RegisterScreen = () => {
   const [username, setUsername] = useState("");
@@ -10,16 +13,15 @@ const RegisterScreen = () => {
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [verifyPassword, setVerifyPassword] = useState("");
-  const [avatar, setAvatar] = useState(null);
+  const [avatar] = useState(null);
   const [error, setError] = useState("");
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
 
   const handleRegister = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    const normalizedUsername = normalizeUsername(username);
     const payload = {
-      username,
+      username: normalizedUsername,
       email,
       full_name: fullName,
       password,
@@ -27,27 +29,26 @@ const RegisterScreen = () => {
     }
     if (!username || !email || !fullName || !password || !verifyPassword) {
       setError("Kérlek töltsd ki az összes mezőt.");
-      setLoading(false);
       return;
     }
     if (password !== verifyPassword) {
       setError("A jelszavak nem egyeznek.");
-      setLoading(false);
       return;
     }
     if (email.length < 5 || !email.includes("@")) {
       setError("Érvénytelen e-mail cím.");
-      setLoading(false);
       return;
     }
-    if (username.length < 3) {
+    if (normalizedUsername.length < 3) {
       setError("A felhasználónév túl rövid.");
-      setLoading(false);
+      return;
+    }
+    if (!isValidUsername(normalizedUsername)) {
+      setError("A felhasználónév betűvel kezdődjön, és csak kisbetűt, számot vagy aláhúzást tartalmazhat.");
       return;
     }
     if (fullName.length < 3) {
       setError("A teljes név túl rövid.");
-      setLoading(false);
       return;
     }
     axios.post(`${import.meta.env.VITE_API_HOST}/auth/register`, payload)
@@ -60,9 +61,6 @@ const RegisterScreen = () => {
         console.error("Error during registration:", error.response.data);
         setError(error.response.data.error || error.response || "Hiba történt a regisztráció során.");
       })
-      .finally(() => {
-        setLoading(false);
-      });
   }
 
   return (
@@ -91,7 +89,7 @@ const RegisterScreen = () => {
             <input
               type="text"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={(e) => setUsername(normalizeUsername(e.target.value))}
               required
               className="w-full rounded-xl bg-zinc-900 border border-zinc-800 px-4 py-3 text-sm text-white placeholder-zinc-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition"
             />

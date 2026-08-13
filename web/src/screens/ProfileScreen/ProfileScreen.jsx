@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
-
-import { useAuth } from "../../auth/UseAuth";
 import { Avatar } from "primereact/avatar";
 import {
   FiBell,
@@ -18,13 +16,14 @@ import {
   FiMessageCircle,
   FiMapPin,
   FiMoreHorizontal,
-  FiShare2,
   FiShield,
   FiStar,
   FiUser,
   FiUsers,
 } from "react-icons/fi";
 import { LuLightbulb } from "react-icons/lu";
+
+import { useAuth } from "../../auth/UseAuth";
 
 const CATEGORY_META = {
   streaming: { label: "Streaming", color: "bg-violet-100 text-violet-700" },
@@ -44,9 +43,7 @@ const getAuthHeaders = () => ({
 const formatFirestoreDate = (value, options = {}) => {
   if (!value) return "N/A";
 
-  const date = value._seconds
-    ? new Date(value._seconds * 1000)
-    : new Date(value);
+  const date = value._seconds ? new Date(value._seconds * 1000) : new Date(value);
 
   if (Number.isNaN(date.getTime())) return "N/A";
 
@@ -89,6 +86,7 @@ const getNextPayment = (subscriptions) => {
 
 const getDaysUntil = (dateValue) => {
   if (!dateValue) return null;
+
   const date = new Date(dateValue);
   if (Number.isNaN(date.getTime())) return null;
 
@@ -97,6 +95,119 @@ const getDaysUntil = (dateValue) => {
   date.setHours(0, 0, 0, 0);
 
   return Math.ceil((date - today) / 86400000);
+};
+
+const getProfilePath = (user) => `/${user?.username || user?.id}`;
+
+const profileVisibilityLabels = {
+  public: "Publikus profil",
+  friends: "Csak barátok",
+  private: "Privát profil",
+};
+
+const billingCycleLabels = {
+  monthly: "hó",
+  yearly: "év",
+  weekly: "hét",
+};
+
+const activityTypeOptions = [
+  {
+    value: "recommendation",
+    label: "Előfizetés ajánlása",
+    shortLabel: "Ajánlás",
+    icon: <FiStar />,
+    buttonClass: "text-blue-600 hover:bg-blue-50",
+  },
+  {
+    value: "tip",
+    label: "Tipp megosztása",
+    shortLabel: "Tipp",
+    icon: <LuLightbulb />,
+    buttonClass: "text-orange-500 hover:bg-orange-50",
+  },
+  {
+    value: "list",
+    label: "Lista létrehozása",
+    shortLabel: "Lista",
+    icon: <FiList />,
+    buttonClass: "text-violet-600 hover:bg-violet-50",
+  },
+];
+
+const activityMeta = {
+  recommendation: {
+    badge: "Ajánlott előfizetés",
+    badgeClass: "bg-blue-50 text-blue-600",
+    icon: <FiStar className="text-blue-600" />,
+    action: "Részletek megtekintése",
+  },
+  tip: {
+    badge: "Spórolási tipp",
+    badgeClass: "bg-orange-50 text-orange-600",
+    icon: <LuLightbulb className="text-orange-500" />,
+    action: "Tipp részletei",
+  },
+  list: {
+    badge: "Megosztott lista",
+    badgeClass: "bg-violet-50 text-violet-600",
+    icon: <FiList className="text-violet-600" />,
+    action: "Lista megnyitása",
+  },
+  post: {
+    badge: "Bejegyzés",
+    badgeClass: "bg-slate-100 text-slate-700",
+    icon: <FiMessageCircle className="text-slate-600" />,
+  },
+  cancelled_subscription: {
+    badge: "Lemondott előfizetés",
+    badgeClass: "bg-red-50 text-red-600",
+    icon: <FiBookmark className="text-red-500" />,
+    action: "Megtakarítás megtekintése",
+  },
+};
+
+const getActivityMeta = (activity) => activityMeta[activity?.type] || activityMeta.post;
+
+const getActivityTitle = (activity) =>
+  activity?.title || activity?.subscription_name || activity?.body?.split("\n")[0] || "Profil aktivitás";
+
+const getActivityDescription = (activity) => {
+  if (!activity?.body) return "Nincs további leírás.";
+
+  const title = getActivityTitle(activity);
+  return activity.body === title ? "" : activity.body;
+};
+
+const getActivityCategoryLabel = (activity) =>
+  (CATEGORY_META[activity?.category] || CATEGORY_META.other).label;
+
+const getActivityPriceText = (activity) => {
+  if (activity?.price === null || activity?.price === undefined) {
+    return "";
+  }
+
+  const currency = activity.currency || "HUF";
+  const cycle = billingCycleLabels[activity.billing_cycle] || "hó";
+  const formattedPrice = Math.round(Number(activity.price) || 0).toLocaleString("hu-HU");
+
+  return `${formattedPrice} ${currency} / ${cycle}`;
+};
+
+const formatRelativeDate = (value) => {
+  if (!value) return "most";
+
+  const date = value._seconds ? new Date(value._seconds * 1000) : new Date(value);
+  if (Number.isNaN(date.getTime())) return "most";
+
+  const now = new Date();
+  const diffDays = Math.floor((now - date) / 86400000);
+
+  if (diffDays <= 0) return "ma";
+  if (diffDays === 1) return "tegnap";
+  if (diffDays < 30) return `${diffDays} napja`;
+
+  return formatFirestoreDate(value, { month: "short" });
 };
 
 const Card = ({ children, className = "" }) => (
@@ -137,7 +248,18 @@ const StatCard = ({ icon, label, value, hint, tone = "blue" }) => {
   );
 };
 
-const ActivityCard = ({ icon, badge, badgeClass, title, description, action, footer, accent }) => (
+const ActivityCard = ({
+  icon,
+  badge,
+  badgeClass,
+  title,
+  description,
+  action,
+  footer,
+  accent,
+  authorName,
+  activity,
+}) => (
   <Card className={`relative overflow-hidden p-6 ${accent || ""}`}>
     <FiBookmark className="absolute right-6 top-6 text-xl text-slate-400" />
     <div className="flex gap-5">
@@ -149,7 +271,7 @@ const ActivityCard = ({ icon, badge, badgeClass, title, description, action, foo
           <span className={`rounded-full px-3 py-1 text-xs font-bold ${badgeClass}`}>
             {badge}
           </span>
-          <span className="text-sm font-bold text-slate-950">Nyiri Zoltán</span>
+          <span className="text-sm font-bold text-slate-950">{authorName}</span>
           <span className="text-sm text-slate-400">·</span>
           <span className="text-sm text-slate-500">{footer}</span>
         </div>
@@ -157,11 +279,56 @@ const ActivityCard = ({ icon, badge, badgeClass, title, description, action, foo
           <div>
             <h3 className="text-2xl font-black text-slate-950">{title}</h3>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-slate-600">{description}</p>
+            {activity?.subscription_name && (
+              <div className="mt-5 flex flex-col gap-4 rounded-3xl border border-slate-100 bg-slate-50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-4">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white shadow-sm">
+                    {activity.logo_url ? (
+                      <img
+                        src={activity.logo_url}
+                        alt={activity.subscription_name}
+                        className="h-full w-full object-contain p-2"
+                      />
+                    ) : (
+                      <FiBookmark className="text-xl text-blue-600" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="truncate text-base font-black text-slate-950">
+                      {activity.subscription_name}
+                    </div>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-bold">
+                      <span className="rounded-full bg-white px-3 py-1 text-slate-600">
+                        {getActivityCategoryLabel(activity)}
+                      </span>
+                      {getActivityPriceText(activity) && (
+                        <span className="rounded-full bg-blue-50 px-3 py-1 text-blue-600">
+                          {getActivityPriceText(activity)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {activity.price_huf !== null && activity.price_huf !== undefined && (
+                  <div className="rounded-2xl bg-white px-4 py-3 text-right shadow-sm">
+                    <div className="text-xs font-bold uppercase tracking-wide text-slate-400">
+                      HUF érték
+                    </div>
+                    <div className="text-lg font-black text-slate-950">
+                      {formatCurrency(activity.price_huf)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
-          {action && (
-            <button className="rounded-2xl border border-slate-200 bg-slate-50 px-6 py-3 text-sm font-bold text-slate-800 transition hover:bg-slate-100">
+          {action && activity?.id && (
+            <a
+              href={`/post/${activity.id}`}
+              className="rounded-2xl border border-slate-200 bg-slate-50 px-6 py-3 text-sm font-bold text-slate-800 transition hover:bg-slate-100"
+            >
               {action}
-            </button>
+            </a>
           )}
         </div>
       </div>
@@ -169,12 +336,33 @@ const ActivityCard = ({ icon, badge, badgeClass, title, description, action, foo
   </Card>
 );
 
+const TopLoader = () => (
+  <div className="fixed left-0 right-0 top-[76px] z-50 h-1 overflow-hidden bg-blue-50">
+    <div className="h-full w-1/2 animate-[profile-loader_1.1s_ease-in-out_infinite] rounded-full bg-blue-600 shadow-[0_0_18px_rgba(37,99,235,0.55)]" />
+  </div>
+);
+
+const ProfileError = ({ message }) => (
+  <div className="min-h-screen bg-slate-50 px-5 pb-12 pt-10 text-slate-950">
+    <div className="mx-auto flex min-h-[70vh] max-w-[88rem] items-center justify-center">
+      <div className="rounded-[2rem] border border-red-100 bg-white px-10 py-12 text-center shadow-sm">
+        <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-2xl text-red-600">
+          !
+        </div>
+        <h1 className="mt-6 text-2xl font-black text-slate-950">Nem sikerült betölteni a profilt</h1>
+        <p className="mt-2 text-sm text-slate-500">{message}</p>
+      </div>
+    </div>
+  </div>
+);
+
 const ProfileScreen = () => {
-  const { profileId } = useAuth();
+  const { profileId, user } = useAuth();
   const navigate = useNavigate();
-  const { userId } = useParams();
-  const viewedProfileId = userId || profileId;
-  const isOwnProfile = String(viewedProfileId) === String(profileId);
+  const { username: routeUsername } = useParams();
+  const authProfileId = profileId || user?.id;
+  const viewedProfileLookup = routeUsername || authProfileId;
+
   const [userData, setUserData] = useState(null);
   const [subscriptions, setSubscriptions] = useState([]);
   const [friendList, setFriendList] = useState([]);
@@ -182,9 +370,18 @@ const ProfileScreen = () => {
   const [friendSearchQuery, setFriendSearchQuery] = useState("");
   const [friendSearchResults, setFriendSearchResults] = useState([]);
   const [friendMessage, setFriendMessage] = useState("");
+  const [profileAccessMessage, setProfileAccessMessage] = useState("");
+  const [loadedProfileLookup, setLoadedProfileLookup] = useState("");
+  const [profileError, setProfileError] = useState("");
+  const [activities, setActivities] = useState([]);
+  const [activityDraft, setActivityDraft] = useState("");
+  const [activityType, setActivityType] = useState("recommendation");
+  const [selectedRecommendationId, setSelectedRecommendationId] = useState("");
+  const [activitySaving, setActivitySaving] = useState(false);
+  const [activityError, setActivityError] = useState("");
 
-  const fetchFriends = () => {
-    return axios
+  const fetchFriends = () =>
+    axios
       .get(import.meta.env.VITE_API_HOST + "/friends", {
         headers: getAuthHeaders(),
       })
@@ -194,10 +391,9 @@ const ProfileScreen = () => {
       .catch((error) => {
         console.error("Error fetching friends:", error);
       });
-  };
 
-  const fetchFriendRequests = () => {
-    return axios
+  const fetchFriendRequests = () =>
+    axios
       .get(import.meta.env.VITE_API_HOST + "/friends/requests", {
         headers: getAuthHeaders(),
       })
@@ -207,36 +403,79 @@ const ProfileScreen = () => {
       .catch((error) => {
         console.error("Error fetching friend requests:", error);
       });
-  };
 
   useEffect(() => {
-    if (!viewedProfileId) return;
-
-    const headers = getAuthHeaders();
+    if (!viewedProfileLookup) return;
 
     axios
-      .get(import.meta.env.VITE_API_HOST + "/users/" + viewedProfileId, { headers })
+      .get(import.meta.env.VITE_API_HOST + "/users/" + viewedProfileLookup, {
+        headers: getAuthHeaders(),
+      })
       .then((response) => {
         setUserData(response.data.data);
+        setLoadedProfileLookup(String(viewedProfileLookup));
+        setProfileError("");
+        const permission = response.data.data?.viewer_permissions;
+        if (permission?.canViewFullProfile === false) {
+          setSubscriptions([]);
+          setActivities([]);
+          setProfileAccessMessage(
+            permission.visibility === "private"
+              ? "Ez a profil privát, ezért csak az alapadatok láthatók."
+              : "Ez a profil csak barátoknak látható. Küldj barátkérést a részletekhez."
+          );
+        } else {
+          setProfileAccessMessage("");
+        }
       })
       .catch((error) => {
         console.error("Error fetching user data:", error);
+        setLoadedProfileLookup(String(viewedProfileLookup));
+        setProfileError(error.response?.data?.error || "Próbáld meg újratölteni az oldalt.");
       });
+  }, [viewedProfileLookup]);
+
+  useEffect(() => {
+    if (!userData?.id || String(userData.id) !== String(authProfileId)) return;
+
+    fetchFriends();
+    fetchFriendRequests();
+  }, [userData?.id, authProfileId]);
+
+  useEffect(() => {
+    if (!userData?.id || userData.viewer_permissions?.canViewFullProfile === false) {
+      return;
+    }
 
     axios
-      .get(import.meta.env.VITE_API_HOST + "/subscriptions?userId=" + viewedProfileId, { headers })
+      .get(import.meta.env.VITE_API_HOST + "/subscriptions?userId=" + userData.id, {
+        headers: getAuthHeaders(),
+      })
       .then((response) => {
         setSubscriptions(response.data.data || []);
       })
       .catch((error) => {
         console.error("Error fetching subscriptions:", error);
       });
+  }, [userData?.id, userData?.viewer_permissions?.canViewFullProfile]);
 
-    if (isOwnProfile) {
-      fetchFriends();
-      fetchFriendRequests();
+  useEffect(() => {
+    if (!userData?.id || userData.viewer_permissions?.canViewFullProfile === false) {
+      return;
     }
-  }, [viewedProfileId, isOwnProfile]);
+
+    axios
+      .get(`${import.meta.env.VITE_API_HOST}/profile-activities/${userData.id}`, {
+        params: { limit: 20 },
+        headers: getAuthHeaders(),
+      })
+      .then((response) => {
+        setActivities(response.data.data || []);
+      })
+      .catch((error) => {
+        console.error("Error fetching profile activities:", error);
+      });
+  }, [userData?.id, userData?.viewer_permissions?.canViewFullProfile]);
 
   useEffect(() => {
     const query = friendSearchQuery.trim();
@@ -299,12 +538,66 @@ const ProfileScreen = () => {
       });
   };
 
+  const createActivity = () => {
+    const selectedSubscription = subscriptions.find(
+      (subscription) => String(subscription.id) === String(selectedRecommendationId)
+    );
+    const body =
+      activityDraft.trim() ||
+      (activityType === "recommendation" && selectedSubscription
+        ? `Ajánlom: ${selectedSubscription.name}`
+        : "");
+
+    if (!body) {
+      setActivityError("Írj valamit, amit megosztanál.");
+      return;
+    }
+
+    setActivitySaving(true);
+    setActivityError("");
+
+    axios
+      .post(
+        `${import.meta.env.VITE_API_HOST}/profile-activities`,
+        {
+          type: activityType,
+          body,
+          subscription_id:
+            activityType === "recommendation" && selectedRecommendationId
+              ? selectedRecommendationId
+              : undefined,
+          title:
+            activityType === "recommendation" && selectedSubscription
+              ? selectedSubscription.name
+              : undefined,
+        },
+        { headers: getAuthHeaders() }
+      )
+      .then((response) => {
+        setActivities((previous) => [response.data.data, ...previous]);
+        setActivityDraft("");
+        setActivityType("recommendation");
+        setSelectedRecommendationId("");
+      })
+      .catch((error) => {
+        setActivityError(error.response?.data?.error || "Nem sikerült megosztani az aktivitást.");
+      })
+      .finally(() => {
+        setActivitySaving(false);
+      });
+  };
+
   const profileName = userData?.full_name || "SpendFox felhasználó";
   const username = userData?.username || "felhasznalo";
+  const isOwnProfile =
+    String(userData?.id) === String(authProfileId) ||
+    Boolean(userData?.username && user?.username && userData.username === user.username);
   const bio =
     userData?.bio ||
     "Digitális minimalista. Szeretem az okos eszközöket, a jó kávét és az átlátható pénzügyeket.";
   const location = userData?.location || "Budapest, Magyarország";
+  const visibilityLabel = profileVisibilityLabels[userData?.profile_visibility] || "Publikus profil";
+
   const activeSubscriptions = useMemo(
     () => subscriptions.filter((item) => item.is_active !== false),
     [subscriptions]
@@ -314,6 +607,13 @@ const ProfileScreen = () => {
   const yearlyTotal = monthlyTotal * 12;
   const nextPayment = getNextPayment(activeSubscriptions);
   const daysUntilNextPayment = getDaysUntil(nextPayment?.next_billing_date);
+  const displayedFriends = friendList.map((item) => item.friend).filter(Boolean);
+  const canViewFullProfile = userData?.viewer_permissions?.canViewFullProfile !== false;
+  const isProfileLoading =
+    !viewedProfileLookup || loadedProfileLookup !== String(viewedProfileLookup);
+  const activeProfileError =
+    loadedProfileLookup === String(viewedProfileLookup) ? profileError : "";
+
   const topCategories = useMemo(() => {
     const counts = activeSubscriptions.reduce((acc, item) => {
       const category = item.category || "other";
@@ -329,11 +629,22 @@ const ProfileScreen = () => {
     return sorted.length ? sorted : ["streaming", "work", "ai-tool", "hosting", "other"];
   }, [activeSubscriptions]);
 
-  const displayedFriends = friendList.map((item) => item.friend).filter(Boolean);
+  if (isProfileLoading) {
+    return (
+      <div className="min-h-screen bg-slate-50 px-5 pb-12 pt-10 text-slate-950">
+        <TopLoader />
+        <div className="mx-auto max-w-[88rem]" />
+      </div>
+    );
+  }
+
+  if (activeProfileError) {
+    return <ProfileError message={activeProfileError} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 px-5 pb-12 pt-10 text-slate-950">
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto max-w-[88rem]">
         <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
           <div className="relative min-h-[360px] overflow-hidden bg-slate-950 px-10 py-12 text-white">
             <div className="pointer-events-none absolute inset-0">
@@ -374,13 +685,13 @@ const ProfileScreen = () => {
 
                   <div className="mt-7 inline-flex items-center gap-3 rounded-full border border-white/15 bg-white/5 px-5 py-3 text-sm text-slate-100">
                     <FiLock />
-                    Te döntöd el, mi publikus.
+                    {visibilityLabel}
                   </div>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-4 lg:w-64">
-                {isOwnProfile ? (
+              {isOwnProfile && (
+                <div className="flex flex-col gap-4 lg:w-64">
                   <button
                     type="button"
                     onClick={() => navigate("/profile/edit")}
@@ -389,29 +700,23 @@ const ProfileScreen = () => {
                     <FiEdit3 />
                     Profil szerkesztése
                   </button>
-                ) : (
                   <button
                     type="button"
-                    onClick={() => navigate("/profile")}
-                    className="flex items-center justify-center gap-3 rounded-2xl bg-blue-600 px-6 py-4 font-bold text-white shadow-lg shadow-blue-950/30 transition hover:bg-blue-500"
+                    className="mt-12 flex items-center justify-center gap-3 rounded-2xl border border-white/25 bg-white/5 px-6 py-3 text-sm font-bold text-white/90 backdrop-blur transition hover:bg-white/10"
                   >
-                    <FiUser />
-                    Saját profilom
+                    <FiEye />
+                    Nyilvános profil előnézete
                   </button>
-                )}
-                <button className="flex items-center justify-center gap-3 rounded-2xl border border-white/35 bg-white/5 px-6 py-4 font-bold text-white backdrop-blur transition hover:bg-white/10">
-                  <FiShare2 />
-                  Profil megosztása
-                </button>
-                <button className="mt-12 flex items-center justify-center gap-3 rounded-2xl border border-white/25 bg-white/5 px-6 py-3 text-sm font-bold text-white/90 backdrop-blur transition hover:bg-white/10">
-                  <FiEye />
-                  Nyilvános profil előnézete
-                </button>
-                <button className="flex items-center justify-center gap-3 rounded-2xl border border-white/25 bg-white/5 px-6 py-3 text-sm font-bold text-white/90 backdrop-blur transition hover:bg-white/10">
-                  <FiShield />
-                  Adatvédelmi beállítások
-                </button>
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/profile/edit")}
+                    className="flex items-center justify-center gap-3 rounded-2xl border border-white/25 bg-white/5 px-6 py-3 text-sm font-bold text-white/90 backdrop-blur transition hover:bg-white/10"
+                  >
+                    <FiShield />
+                    Adatvédelmi beállítások
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -419,7 +724,7 @@ const ProfileScreen = () => {
             {["Áttekintés", "Ajánlások", "Listák", "Barátok", "Rólam"].map((tab, index) => (
               <button
                 key={tab}
-                className={`border-b-2 py-6 transition ${
+                className={`cursor-pointer border-b-2 py-6 transition ${
                   index === 0
                     ? "border-blue-600 text-blue-600"
                     : "border-transparent hover:text-slate-950"
@@ -431,13 +736,17 @@ const ProfileScreen = () => {
           </div>
         </div>
 
+        {profileAccessMessage && (
+          <div className="mt-6 rounded-3xl border border-blue-100 bg-blue-50 px-6 py-5 text-sm font-bold text-blue-700">
+            {profileAccessMessage}
+          </div>
+        )}
+
         <div className="mt-6 grid gap-6 lg:grid-cols-[360px_1fr]">
           <aside className="space-y-6">
             <Card className="p-6">
               <SectionHeader icon={<FiUser />} title="Bemutatkozás" />
-              <p className="mt-5 text-base leading-relaxed text-slate-600">
-                {bio}
-              </p>
+              <p className="mt-5 text-base leading-relaxed text-slate-600">{bio}</p>
               <div className="mt-6 space-y-4 text-sm text-slate-600">
                 <div className="flex items-center gap-3">
                   <FiMapPin className="text-xl text-slate-500" />
@@ -577,13 +886,10 @@ const ProfileScreen = () => {
                   const friendName = friend.full_name || friend.username || friend.email || "Barát";
 
                   return (
-                    <div
-                      key={friend.id || friend.email}
-                      className="group relative min-w-0 text-center"
-                    >
+                    <div key={friend.id || friend.email} className="group relative min-w-0 text-center">
                       <button
                         type="button"
-                        onClick={() => navigate(`/profile/${friend.id}`)}
+                        onClick={() => navigate(getProfilePath(friend))}
                         className="block w-full"
                       >
                         {friend.avatar_url ? (
@@ -611,8 +917,8 @@ const ProfileScreen = () => {
                         <div className="absolute left-1/2 top-9 hidden w-36 -translate-x-1/2 overflow-hidden rounded-2xl border border-slate-200 bg-white text-left shadow-xl group-hover:block">
                           <button
                             type="button"
-                            onClick={() => navigate(`/profile/${friend.id}`)}
-                            className="flex w-full items-center gap-2 px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                            onClick={() => navigate(getProfilePath(friend))}
+                            className="flex w-full cursor-pointer items-center gap-2 px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
                           >
                             <FiUser />
                             Profil
@@ -620,7 +926,7 @@ const ProfileScreen = () => {
                           <button
                             type="button"
                             onClick={() => navigate(`/messages/${friend.id}`)}
-                            className="flex w-full items-center gap-2 px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                            className="flex w-full cursor-pointer items-center gap-2 px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
                           >
                             <FiMessageCircle />
                             Üzenetek
@@ -630,7 +936,7 @@ const ProfileScreen = () => {
 
                       <button
                         type="button"
-                        onClick={() => navigate(`/profile/${friend.id}`)}
+                        onClick={() => navigate(getProfilePath(friend))}
                         className="mt-2 block w-full truncate text-sm font-medium text-slate-700 transition hover:text-blue-600"
                       >
                         {friendName.split(" ")[0] || friendName}
@@ -704,98 +1010,176 @@ const ProfileScreen = () => {
           </aside>
 
           <main className="space-y-6">
-            <Card className="p-6">
-              <div className="flex items-center gap-4">
-                <Avatar
-                  image={userData?.avatar_url || undefined}
-                  label={!userData?.avatar_url ? profileName.charAt(0) : undefined}
-                  shape="circle"
+            {isOwnProfile && canViewFullProfile && (
+              <Card className="p-6">
+                <div className="flex items-center gap-4">
+                  <Avatar
+                    image={userData?.avatar_url || undefined}
+                    label={!userData?.avatar_url ? profileName.charAt(0) : undefined}
+                    shape="circle"
+                  />
+                  <div className="text-xl font-black text-slate-950">Gyors megosztás</div>
+                </div>
+                <textarea
+                  value={activityDraft}
+                  onChange={(event) => setActivityDraft(event.target.value)}
+                  className="mt-5 min-h-28 w-full resize-none rounded-2xl border border-slate-200 px-6 py-5 text-base outline-none transition placeholder:text-slate-400 focus:border-blue-500"
+                  placeholder="Ajánlj előfizetést, ossz meg listát vagy spórolási tippet"
                 />
-                <div className="text-xl font-black text-slate-950">Gyors megosztás</div>
-              </div>
-              <input
-                className="mt-5 h-16 w-full rounded-2xl border border-slate-200 px-6 text-base outline-none transition placeholder:text-slate-400 focus:border-blue-500"
-                placeholder="Ajánlj előfizetést, ossz meg listát vagy spórolási tippet"
-              />
-              <div className="mt-5 grid gap-4 md:grid-cols-3">
-                <button className="flex items-center justify-center gap-3 rounded-2xl border border-slate-200 px-5 py-4 font-bold text-blue-600 transition hover:bg-blue-50">
-                  <FiStar />
-                  Előfizetés ajánlása
-                </button>
-                <button className="flex items-center justify-center gap-3 rounded-2xl border border-slate-200 px-5 py-4 font-bold text-orange-500 transition hover:bg-orange-50">
-                  <LuLightbulb />
-                  Tipp megosztása
-                </button>
-                <button className="flex items-center justify-center gap-3 rounded-2xl border border-slate-200 px-5 py-4 font-bold text-violet-600 transition hover:bg-violet-50">
-                  <FiList />
-                  Lista létrehozása
-                </button>
-              </div>
-            </Card>
+                {activityError && (
+                  <div className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
+                    {activityError}
+                  </div>
+                )}
+                <div className="mt-5 grid gap-4 md:grid-cols-3">
+                  {activityTypeOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setActivityType(option.value)}
+                      className={`flex items-center justify-center gap-3 rounded-2xl border px-5 py-4 font-bold transition ${
+                        activityType === option.value
+                          ? "border-blue-500 bg-blue-50 text-blue-600"
+                          : `border-slate-200 ${option.buttonClass}`
+                      }`}
+                    >
+                      {option.icon}
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+                {activityType === "recommendation" && (
+                  <div className="mt-5 rounded-3xl border border-blue-100 bg-blue-50 p-4">
+                    <label className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
+                      Ajánlott előfizetés
+                    </label>
+                    <select
+                      value={selectedRecommendationId}
+                      onChange={(event) => setSelectedRecommendationId(event.target.value)}
+                      className="mt-3 h-12 w-full rounded-2xl border border-blue-100 bg-white px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-500"
+                    >
+                      <option value="">Csak szöveges ajánlás</option>
+                      {activeSubscriptions.map((subscription) => (
+                        <option key={subscription.id} value={subscription.id}>
+                          {subscription.name} · {formatCurrency(subscription.price_huf ?? subscription.price)}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="mt-3 text-sm leading-relaxed text-blue-700">
+                      Ha választasz előfizetést, a kártyán automatikusan megjelenik a logó,
+                      kategória, ár és HUF érték is.
+                    </p>
+                  </div>
+                )}
+                <div className="mt-5 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={createActivity}
+                    disabled={activitySaving}
+                    className="rounded-2xl bg-slate-950 px-7 py-4 text-sm font-black text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {activitySaving ? "Megosztás..." : "Megosztás"}
+                  </button>
+                </div>
+              </Card>
+            )}
 
-            <div className="grid gap-4 md:grid-cols-4">
-              <StatCard
-                icon={<FiCalendar className="text-2xl" />}
-                label="Havi költség"
-                value={formatCurrency(monthlyTotal)}
-                hint="Összes előfizetés"
-                tone="violet"
-              />
-              <StatCard
-                icon={<FiCheckCircle className="text-2xl" />}
-                label="Aktív előfizetések"
-                value={`${activeSubscriptions.length} db`}
-                hint={`${inactiveCount} inaktív`}
-                tone="green"
-              />
-              <StatCard
-                icon={<FiCalendar className="text-2xl" />}
-                label="Következő fizetés"
-                value={daysUntilNextPayment === null ? "Nincs" : `${daysUntilNextPayment} napon belül`}
-                hint={nextPayment ? `${nextPayment.name} · ${formatCurrency(nextPayment.price_huf ?? nextPayment.price)}` : "Nincs közelgő fizetés"}
-                tone="orange"
-              />
-              <StatCard
-                icon={<FiBell className="text-2xl" />}
-                label="Éves becslés"
-                value={formatCurrency(yearlyTotal)}
-                hint="becsült éves összeg"
-                tone="blue"
-              />
-            </div>
+            {canViewFullProfile ? (
+              <>
+                <div className="grid gap-4 md:grid-cols-4">
+                  <StatCard
+                    icon={<FiCalendar className="text-2xl" />}
+                    label="Havi költség"
+                    value={formatCurrency(monthlyTotal)}
+                    hint="Összes előfizetés"
+                    tone="violet"
+                  />
+                  <StatCard
+                    icon={<FiCheckCircle className="text-2xl" />}
+                    label="Aktív előfizetések"
+                    value={`${activeSubscriptions.length} db`}
+                    hint={`${inactiveCount} inaktív`}
+                    tone="green"
+                  />
+                  <StatCard
+                    icon={<FiCalendar className="text-2xl" />}
+                    label="Következő fizetés"
+                    value={daysUntilNextPayment === null ? "Nincs" : `${daysUntilNextPayment} napon belül`}
+                    hint={
+                      nextPayment
+                        ? `${nextPayment.name} · ${formatCurrency(nextPayment.price_huf ?? nextPayment.price)}`
+                        : "Nincs közelgő fizetés"
+                    }
+                    tone="orange"
+                  />
+                  <StatCard
+                    icon={<FiBell className="text-2xl" />}
+                    label="Éves becslés"
+                    value={formatCurrency(yearlyTotal)}
+                    hint="becsült éves összeg"
+                    tone="blue"
+                  />
+                </div>
 
-            <ActivityCard
-              icon={<span className="text-green-500">●</span>}
-              badge="Ajánlott előfizetés"
-              badgeClass="bg-blue-50 text-blue-600"
-              title="Spotify Premium"
-              description="Zene mindenhol, reklámok nélkül. Nekem bevált a napi rutinomban."
-              action="Részletek megtekintése"
-              footer="2 napja"
-            />
-            <ActivityCard
-              icon={<LuLightbulb className="text-orange-500" />}
-              badge="Spórolási tipp"
-              badgeClass="bg-orange-50 text-orange-600"
-              title="Netflix helyett olcsóbb opciók"
-              description="A Netflix drágul, de több jó alternatíva is van. Nézd meg, hol spórolhatsz akár 40%-ot havonta."
-              action="Tipp részletei"
-              footer="3 napja"
-            />
-            <ActivityCard
-              icon={<span className="text-2xl font-black text-white">sky</span>}
-              badge="Lemondott előfizetés"
-              badgeClass="bg-red-50 text-red-600"
-              title="SkyShowtime"
-              description="Már nem használom rendszeresen, ezért lemondtam."
-              action="Megtakarítottál 1 990 Ft / hó"
-              footer="5 napja"
-              accent="border-l-4 border-l-emerald-500"
-            />
+                {activities.length > 0 ? (
+                  activities.map((activity) => {
+                    const meta = getActivityMeta(activity);
 
-            <button className="w-full rounded-2xl border border-slate-200 bg-white py-4 text-sm font-bold text-slate-600 transition hover:bg-slate-50">
-              További aktivitások megtekintése⌄
-            </button>
+                    return (
+                      <ActivityCard
+                        key={activity.id}
+                        icon={meta.icon}
+                        badge={meta.badge}
+                        badgeClass={meta.badgeClass}
+                        title={getActivityTitle(activity)}
+                        description={getActivityDescription(activity)}
+                        action={meta.action}
+                        footer={formatRelativeDate(activity.created_at)}
+                        authorName={profileName}
+                        activity={activity}
+                        accent={
+                          activity.type === "cancelled_subscription"
+                            ? "border-l-4 border-l-emerald-500"
+                            : ""
+                        }
+                      />
+                    );
+                  })
+                ) : (
+                  <Card className="p-8 text-center">
+                    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-2xl text-blue-600">
+                      <FiMessageCircle />
+                    </div>
+                    <h2 className="mt-5 text-2xl font-black text-slate-950">
+                      Még nincs profil aktivitás
+                    </h2>
+                    <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-slate-500">
+                      Itt jelennek meg az ajánlások, listák, tippek és később a közösségi
+                      aktivitások is.
+                    </p>
+                  </Card>
+                )}
+
+                {activities.length >= 20 && (
+                  <button className="w-full rounded-2xl border border-slate-200 bg-white py-4 text-sm font-bold text-slate-600 transition hover:bg-slate-50">
+                    További aktivitások megtekintése →
+                  </button>
+                )}
+              </>
+            ) : (
+              <Card className="p-8 text-center">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-2xl text-blue-600">
+                  <FiLock />
+                </div>
+                <h2 className="mt-5 text-2xl font-black text-slate-950">
+                  A részletek nem nyilvánosak
+                </h2>
+                <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-slate-500">
+                  A felhasználó adatvédelmi beállítása alapján az előfizetési összkép,
+                  aktivitások és pénzügyi adatok csak engedélyezett nézőknek jelennek meg.
+                </p>
+              </Card>
+            )}
           </main>
         </div>
 

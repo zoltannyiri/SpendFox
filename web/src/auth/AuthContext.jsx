@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import React, { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useState, useEffect } from "react";
 import axios from "axios";
 
 export const AuthContext = createContext(null);
@@ -18,6 +18,7 @@ export const AuthProvider = ({ children }) => {
       })
         .then((response) => {
           setUser(response.data.data);
+          return response;
         })
         .catch((error) => {
           console.error("Error fetching user profile:", error);

@@ -1,27 +1,22 @@
 import { FaAndroid } from "react-icons/fa";
-import { useState } from "react";
-import axios from "axios";
 
 import AppLogo from "./AppLogo";
+import { useAuth } from "../auth/UseAuth";
 
 function Navbar() {
+  const { user } = useAuth();
+  const profilePath = `/${user?.username || "profile"}`;
   const menuItems = {
     "Kezdőlap": "/home",
     "Előfizetések": "/subscriptions",
-    "Profilom": "/profile",
+    "Profilom": profilePath,
     "Beállítások": "/settings"
   };
-  const [loading, setLoading] = useState(false);
-  const [androidFile, setAndroidFile] = useState(null);
 
   const downloadAndroidApp = (e) => {
-    setLoading(true);
     e.preventDefault();
     const apkUrl = `${import.meta.env.VITE_BACKEND_VPS_API}/app-version/android/apk`;
     window.location.href = apkUrl;
-    setTimeout(() => {
-      setLoading(false);
-    }, 1000);
   }
 
 
