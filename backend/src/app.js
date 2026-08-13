@@ -10,6 +10,8 @@ const pushRoutes = require('./routes/pushRoutes');
 const emailRoutes = require('./routes/emailRoutes');
 const appVersionRoutes = require('./routes/appVersionRoutes');
 const legalRoutes = require('./routes/legalRoutes');
+const friendRoutes = require('./routes/friendRoutes');
+const messageRoutes = require('./routes/messageRoutes');
 
 const app = express();
 
@@ -24,6 +26,8 @@ app.use('/api', profileRoutes);
 app.use('/api', pushRoutes);
 app.use('/api', emailRoutes);
 app.use('/api', appVersionRoutes);
+app.use('/api', friendRoutes);
+app.use('/api', messageRoutes);
 app.use(legalRoutes);
 
 module.exports = app;

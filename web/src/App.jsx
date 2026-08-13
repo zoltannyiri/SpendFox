@@ -1,9 +1,4 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
 import './App.css'
-import axios from "axios"
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 
 import Navbar from './components/Navbar'
@@ -12,7 +7,9 @@ import RegisterScreen from './screens/RegisterScreen/RegisterScreen'
 import Footer from './components/Footer'
 import LoginScreen from './screens/LoginScreen/LoginScreen'
 import HomeScreen from './screens/HomeScreen/HomeScreen'
-import { AuthProvider } from './auth/AuthContext'
+import ProfileScreen from './screens/ProfileScreen/ProfileScreen'
+import ProfileEditScreen from './screens/ProfileScreen/ProfileEditScreen'
+import MessageScreen from './screens/MessageScreen/MessageScreen'
 import { useAuth } from './auth/UseAuth'
 
 function App() {
@@ -31,6 +28,10 @@ function App() {
           <>
             <Route path="/home" element={<HomeScreen />} />
             <Route path="/subscriptions" element={<SubscriptionList />} />
+            <Route path="/profile" element={<ProfileScreen />} />
+            <Route path="/profile/:userId" element={<ProfileScreen />} />
+            <Route path="/profile/edit" element={<ProfileEditScreen />} />
+            <Route path="/messages/:userId" element={<MessageScreen />} />
             <Route path="*" element={<Navigate to="/home" replace />} />
           </>
         ) : (

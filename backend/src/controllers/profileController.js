@@ -18,13 +18,29 @@ const getProfile = async (req, res) => {
 const updateProfile = async (req, res) => {
   try {
     const { uid } = req.auth;
-    const { email, full_name, username, avatar_url, notification_settings } = req.body;
+    const {
+      email,
+      full_name,
+      username,
+      avatar_url,
+      bio,
+      location,
+      profile_slug,
+      public_profile_enabled,
+      profile_visibility,
+      notification_settings,
+    } = req.body;
 
     const payload = {
       email,
       full_name,
       username,
       avatar_url,
+      bio,
+      location,
+      profile_slug,
+      public_profile_enabled,
+      profile_visibility,
       notification_settings,
     };
 
