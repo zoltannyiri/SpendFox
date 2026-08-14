@@ -2,9 +2,11 @@ const { admin, db } = require('./firestoreClient');
 const { getNextId } = require('./counterService');
 const { convertPriceToHuf } = require('./exchangeRateService');
 const { resolveBrandLogoUrl } = require('./brandLogoService');
+const { enrichSubscriptionWithShare } = require('./subscriptionShareService');
 
 const subscriptionsCollection = db.collection('subscriptions');
 const exchangeRefreshCollection = db.collection('exchange_rate_refreshes');
+const shareInvitesCollection = db.collection('subscription_share_invites');
 const TARGET_CURRENCY = 'HUF';
 
 const cleanPayload = (payload) =>
@@ -139,6 +141,12 @@ const filterSubscriptions = (subscriptions, options) => {
 };
 
 const getPriceInHuf = (subscription) => {
+  const sharePrice = Number(subscription.my_share_price_huf);
+
+  if (!Number.isNaN(sharePrice)) {
+    return sharePrice;
+  }
+
   const convertedPrice = Number(subscription.price_huf);
 
   if (!Number.isNaN(convertedPrice)) {
@@ -196,18 +204,47 @@ const listSubscriptions = async (userId, options = {}) => {
     }
 
     const snapshot = await query.get();
-    const data = await Promise.all(snapshot.docs
+    let baseDocs = snapshot.docs;
+
+    if (userId) {
+      const sharedSnapshot = await shareInvitesCollection
+        .where('receiver_id', '==', String(userId))
+        .get();
+      const sharedSubscriptionIds = [
+        ...new Set(sharedSnapshot.docs
+          .map((doc) => doc.data())
+          .filter((invite) => invite.status === 'accepted')
+          .map((invite) => invite.subscription_id)
+          .filter(Boolean)),
+      ];
+      const sharedDocs = await Promise.all(
+        sharedSubscriptionIds.map((subscriptionId) =>
+          subscriptionsCollection.doc(String(subscriptionId)).get()
+        )
+      );
+      const existingDocIds = new Set(baseDocs.map((doc) => doc.id));
+
+      baseDocs = [
+        ...baseDocs,
+        ...sharedDocs.filter((doc) => doc.exists && !existingDocIds.has(doc.id)),
+      ];
+    }
+
+    const data = await Promise.all(baseDocs
       .filter((doc) => doc.id !== '_schema')
       .map(snapshotToSubscription)
       .map(enrichSubscriptionWithHufPrice));
+    const sharedData = await Promise.all(
+      data.map((subscription) => enrichSubscriptionWithShare(subscription, userId))
+    );
 
     if (userId) {
-      data.sort(
+      sharedData.sort(
         (a, b) => getTimestampMillis(b.created_at) - getTimestampMillis(a.created_at)
       );
     }
 
-    const filteredData = filterSubscriptions(data, options);
+    const filteredData = filterSubscriptions(sharedData, options);
     const pageData = limit
       ? filteredData.slice(cursor, cursor + limit)
       : filteredData;
@@ -360,7 +397,10 @@ const createSubscription = async (payload) => {
 
     const doc = await docRef.get();
 
-    return { data: snapshotToSubscription(doc), error: null };
+    const subscription = await enrichSubscriptionWithHufPrice(snapshotToSubscription(doc));
+    const sharedSubscription = await enrichSubscriptionWithShare(subscription);
+
+    return { data: sharedSubscription, error: null };
   } catch (err) {
     return { data: null, error: toServiceError(err) };
   }
@@ -392,7 +432,7 @@ const updateSubscription = async (id, payload) => {
   }
 };
 
-const getSubscriptionById = async (id) => {
+const getSubscriptionById = async (id, viewerId = null) => {
   try {
     const doc = await subscriptionsCollection.doc(id).get();
 
@@ -400,7 +440,10 @@ const getSubscriptionById = async (id) => {
       return { data: null, error: { message: 'Subscription not found' } };
     }
 
-    return { data: snapshotToSubscription(doc), error: null };
+    const subscription = await enrichSubscriptionWithHufPrice(snapshotToSubscription(doc));
+    const sharedSubscription = await enrichSubscriptionWithShare(subscription, viewerId);
+
+    return { data: sharedSubscription, error: null };
   } catch (err) {
     return { data: null, error: toServiceError(err) };
   }

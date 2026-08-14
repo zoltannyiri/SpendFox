@@ -42,6 +42,23 @@ const normalizeUsername = (value) =>
     .toLowerCase()
     .replace(/[^a-z0-9_]/g, "");
 
+const defaultNotificationSettings = {
+  feed_auto_share: {
+    subscription_created: false,
+    shared_subscription_created: false,
+    subscription_cancelled: false,
+  },
+};
+
+const mergeNotificationSettings = (settings = {}) => ({
+  ...defaultNotificationSettings,
+  ...settings,
+  feed_auto_share: {
+    ...defaultNotificationSettings.feed_auto_share,
+    ...(settings.feed_auto_share || {}),
+  },
+});
+
 const ProfileEditScreen = () => {
   const navigate = useNavigate();
   const { user, fetchProfile } = useAuth();
@@ -55,6 +72,7 @@ const ProfileEditScreen = () => {
     profile_slug: "",
     public_profile_enabled: false,
     profile_visibility: "private",
+    notification_settings: defaultNotificationSettings,
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -74,6 +92,7 @@ const ProfileEditScreen = () => {
       profile_slug: user.profile_slug || slugify(user.username || user.full_name),
       public_profile_enabled: Boolean(user.public_profile_enabled),
       profile_visibility: user.profile_visibility || "private",
+      notification_settings: mergeNotificationSettings(user.notification_settings),
     });
   }, [user]);
 
@@ -85,6 +104,23 @@ const ProfileEditScreen = () => {
         ? { profile_slug: slugify(value) }
         : {}),
     }));
+  };
+
+  const updateFeedAutoShare = (field, value) => {
+    setForm((previous) => {
+      const notificationSettings = mergeNotificationSettings(previous.notification_settings);
+
+      return {
+        ...previous,
+        notification_settings: {
+          ...notificationSettings,
+          feed_auto_share: {
+            ...notificationSettings.feed_auto_share,
+            [field]: value,
+          },
+        },
+      };
+    });
   };
 
   const handleSubmit = async (event) => {
@@ -299,6 +335,49 @@ const ProfileEditScreen = () => {
                   className="h-5 w-5 accent-blue-600"
                 />
               </label>
+
+              <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="font-black text-slate-950">Automatikus feed megosztás</div>
+                <div className="mt-1 text-sm leading-relaxed text-slate-500">
+                  Csak akkor jelenik meg aktivitás a feedben, ha ezt külön engedélyezed.
+                </div>
+
+                <div className="mt-5 space-y-4">
+                  {[
+                    {
+                      id: "subscription_created",
+                      title: "Új előfizetés",
+                      text: "Megosztás, amikor új előfizetést adsz hozzá.",
+                    },
+                    {
+                      id: "shared_subscription_created",
+                      title: "Közös előfizetés",
+                      text: "Megosztás, amikor közös előfizetést hozol létre.",
+                    },
+                    {
+                      id: "subscription_cancelled",
+                      title: "Lemondás",
+                      text: "Megosztás, amikor lemondasz vagy törölsz egy aktív előfizetést.",
+                    },
+                  ].map((item) => (
+                    <label
+                      key={item.id}
+                      className="flex cursor-pointer items-start justify-between gap-4 rounded-2xl bg-slate-50 p-4"
+                    >
+                      <span>
+                        <span className="block text-sm font-black text-slate-950">{item.title}</span>
+                        <span className="mt-1 block text-xs leading-relaxed text-slate-500">{item.text}</span>
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(form.notification_settings?.feed_auto_share?.[item.id])}
+                        onChange={(event) => updateFeedAutoShare(item.id, event.target.checked)}
+                        className="mt-1 h-5 w-5 shrink-0 accent-blue-600"
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
 
               {error && (
                 <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm font-bold text-red-600">

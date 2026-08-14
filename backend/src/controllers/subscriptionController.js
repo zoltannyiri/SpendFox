@@ -8,6 +8,19 @@ const {
 } = require('../services/subscriptionService');
 const { convertPriceToHuf } = require('../services/exchangeRateService');
 const { resolveBrandLogoUrl } = require('../services/brandLogoService');
+const {
+  getSubscriptionShareAccess,
+  inviteSubscriptionParticipant,
+  listUserShareInvites,
+  removeSubscriptionShareParticipant,
+  respondToSubscriptionShareInvite,
+  updateSubscriptionShareParticipant,
+} = require('../services/subscriptionShareService');
+const {
+  createSubscriptionShareMessage,
+  listSubscriptionShareMessages,
+} = require('../services/subscriptionShareChatService');
+const { createSubscriptionAutoActivity } = require('../services/profileActivityService');
 
 const formatDateOnly = (date) => {
   const year = date.getFullYear();
@@ -218,6 +231,11 @@ const createSubscription = async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
+    const activityType = data?.is_shared ? 'shared_subscription' : 'subscribed_subscription';
+    createSubscriptionAutoActivity(data.user_id, data, activityType).catch((activityError) => {
+      console.log('[feed] failed to create subscription activity', activityError);
+    });
+
     return res.json({ data });
   } catch (err) {
     return res.status(500).json({ error: 'Unexpected error' });
@@ -245,13 +263,223 @@ const refreshExchangeRates = async (req, res) => {
   }
 };
 
+const getSubscriptionShareInvites = async (req, res) => {
+  try {
+    const userId = req.auth?.uid;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Missing authenticated user' });
+    }
+
+    const { data, error } = await listUserShareInvites(userId);
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.json({ data });
+  } catch (err) {
+    return res.status(500).json({ error: 'Unexpected error' });
+  }
+};
+
+const inviteSubscriptionShare = async (req, res) => {
+  try {
+    const userId = req.auth?.uid;
+    const { id } = req.params;
+    const { receiver_id, share_price_huf } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Missing authenticated user' });
+    }
+
+    if (!receiver_id) {
+      return res.status(400).json({ error: 'receiver_id is required' });
+    }
+
+    const { data, error } = await inviteSubscriptionParticipant(userId, id, receiver_id, {
+      share_price_huf,
+    });
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    return res.json({ data });
+  } catch (err) {
+    return res.status(500).json({ error: 'Unexpected error' });
+  }
+};
+
+const updateSubscriptionShare = async (req, res) => {
+  try {
+    const userId = req.auth?.uid;
+    const { id, participantUserId } = req.params;
+    const fields = {};
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'share_price_huf')) {
+      fields.share_price_huf = req.body.share_price_huf;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'settlement_status')) {
+      fields.settlement_status = req.body.settlement_status;
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'settlement_note')) {
+      fields.settlement_note = req.body.settlement_note;
+    }
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Missing authenticated user' });
+    }
+
+    const { data, error } = await updateSubscriptionShareParticipant(userId, id, participantUserId, fields);
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    return res.json({ data });
+  } catch (err) {
+    return res.status(500).json({ error: 'Unexpected error' });
+  }
+};
+
+const removeSubscriptionShare = async (req, res) => {
+  try {
+    const userId = req.auth?.uid;
+    const { id, participantUserId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Missing authenticated user' });
+    }
+
+    const { data, error } = await removeSubscriptionShareParticipant(userId, id, participantUserId);
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    return res.json({ data });
+  } catch (err) {
+    return res.status(500).json({ error: 'Unexpected error' });
+  }
+};
+
+const getSubscriptionShareOverview = async (req, res) => {
+  try {
+    const userId = req.auth?.uid;
+    const { id } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Missing authenticated user' });
+    }
+
+    const access = await getSubscriptionShareAccess(userId, id);
+
+    if (!access.canAccess) {
+      return res.status(403).json({ error: 'You cannot access this shared subscription' });
+    }
+
+    const { data, error } = await getSubscriptionById(id, userId);
+
+    if (error) {
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.json({
+      data: {
+        subscription: data,
+        role: access.role,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ error: 'Unexpected error' });
+  }
+};
+
+const respondToSubscriptionShare = async (req, res) => {
+  try {
+    const userId = req.auth?.uid;
+    const { inviteId, action } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Missing authenticated user' });
+    }
+
+    const { data, error } = await respondToSubscriptionShareInvite(userId, inviteId, action);
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    return res.json({ data });
+  } catch (err) {
+    return res.status(500).json({ error: 'Unexpected error' });
+  }
+};
+
+const getSubscriptionShareMessages = async (req, res) => {
+  try {
+    const userId = req.auth?.uid;
+    const { id } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Missing authenticated user' });
+    }
+
+    const { data, error } = await listSubscriptionShareMessages(userId, id);
+
+    if (error) {
+      return res.status(error.status || 500).json({ error: error.message });
+    }
+
+    return res.json({ data });
+  } catch (err) {
+    return res.status(500).json({ error: 'Unexpected error' });
+  }
+};
+
+const sendSubscriptionShareMessage = async (req, res) => {
+  try {
+    const userId = req.auth?.uid;
+    const { id } = req.params;
+    const { body, message } = req.body;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Missing authenticated user' });
+    }
+
+    const { data, error } = await createSubscriptionShareMessage(userId, id, body || message);
+
+    if (error) {
+      return res.status(error.status || 500).json({ error: error.message });
+    }
+
+    return res.json({ data });
+  } catch (err) {
+    return res.status(500).json({ error: 'Unexpected error' });
+  }
+};
+
 const deleteSubscription = async (req, res) => {
   try {
     const { id } = req.params;
+    const { data: currentSubscription } = await getSubscriptionById(id);
     const { data, error } = await deleteSubscriptionRecord(id);
 
     if (error) {
       return res.status(500).json({ error: error.message });
+    }
+
+    if (currentSubscription?.user_id && currentSubscription.is_active !== false) {
+      createSubscriptionAutoActivity(
+        currentSubscription.user_id,
+        currentSubscription,
+        'cancelled_subscription'
+      ).catch((activityError) => {
+        console.log('[feed] failed to create subscription delete activity', activityError);
+      });
     }
 
     return res.json({ message: `Subscription with ID ${id} deleted successfully` });
@@ -330,6 +558,16 @@ const updateSubscription = async (req, res) => {
       return res.status(500).json({ error: error.message });
     }
 
+    if (currentSubscription.is_active !== false && data?.is_active === false) {
+      createSubscriptionAutoActivity(data.user_id, data, 'cancelled_subscription').catch((activityError) => {
+        console.log('[feed] failed to create subscription cancellation activity', activityError);
+      });
+    } else if (currentSubscription.is_shared !== true && data?.is_shared === true) {
+      createSubscriptionAutoActivity(data.user_id, data, 'shared_subscription').catch((activityError) => {
+        console.log('[feed] failed to create shared subscription activity', activityError);
+      });
+    }
+
     return res.json({ data });
   } catch (err) {
     return res.status(500).json({ error: 'Unexpected error' });
@@ -343,4 +581,12 @@ module.exports = {
   deleteSubscription,
   updateSubscription,
   refreshExchangeRates,
+  getSubscriptionShareInvites,
+  inviteSubscriptionShare,
+  removeSubscriptionShare,
+  getSubscriptionShareOverview,
+  respondToSubscriptionShare,
+  getSubscriptionShareMessages,
+  sendSubscriptionShareMessage,
+  updateSubscriptionShare,
 };

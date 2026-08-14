@@ -5,10 +5,8 @@ import axios from 'axios';
 import { Column } from 'primereact/column';
 import { useAuth } from "../auth/UseAuth";
 import { Badge } from 'primereact/badge';
-import { Sidebar } from 'primereact/sidebar';
-import { Calendar } from 'primereact/calendar';
+import { useNavigate } from 'react-router-dom';
 
-import SubscriptionForm from '../screens/SubscriptionScreen/SubscriptionForm';
 import SubscriptionLogo from './SubscriptionLogo';
 
 const CATEGORY_META = {
@@ -25,16 +23,38 @@ const CATEGORY_META = {
 const SubscriptionTable = (props) => {
   const [loading, setLoading] = useState(false);
   const { profileId } = useAuth();
+  const navigate = useNavigate();
   const [subscriptions, setSubscriptions] = useState(null);
+  const [expandedRows, setExpandedRows] = useState(null);
   const categoryOptions = Object.values(CATEGORY_META);
-  const [visibleForm, setVisibleForm] = useState(false);
-  const [subscriptionId, setSubscriptionId] = useState(null);
 
 
   const formatDate = (dateString) => {
+    if (!dateString) {
+      return '-';
+    }
+
     const options = { year: 'numeric', month: 'short', day: '2-digit' };
     return new Date(dateString).toLocaleDateString(undefined, options);
   }
+
+  const formatMoney = (value, currency = 'HUF') => {
+    return Number(value || 0).toLocaleString('hu-HU', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: currency === 'HUF' ? 0 : 2,
+    });
+  };
+
+  const formatBillingCycle = (value) => {
+    const labels = {
+      monthly: 'Havi',
+      yearly: 'Éves',
+      weekly: 'Heti',
+    };
+
+    return labels[value] || value || '-';
+  };
 
   const normalizeBrandName = (value) => {
     return String(value || '')
@@ -101,7 +121,8 @@ const SubscriptionTable = (props) => {
     return (
       <>
         <div className="flex justify-center gap-2">
-          <button className="p-button p-component p-button-text p-button-plain" onClick={() => {
+          <button className="p-button p-component p-button-text p-button-plain cursor-pointer" onClick={(event) => {
+            event.stopPropagation();
             if (props.onEdit) {
               props.onEdit(rowData.id);
             }
@@ -110,16 +131,16 @@ const SubscriptionTable = (props) => {
 
             </span>
           </button>
-          <button className="p-button p-component p-button-text p-button-plain" onClick={() => {
+          <button className="p-button p-component p-button-text p-button-plain cursor-pointer" onClick={(event) => {
+            event.stopPropagation();
             window.confirm("Biztosan törölni szeretnéd az előfizetést?") &&
             axios.delete(import.meta.env.VITE_API_HOST + "/subscriptions/" + rowData.id, {
               headers: {
                 Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
               },
             })
-              .then(response => {
+              .then(() => {
                 props.onRefresh();
-                // setVisibleForm(true);
             }) 
               .catch(error => {
                 console.error("Error fetching subscription:", error);
@@ -132,55 +153,151 @@ const SubscriptionTable = (props) => {
     )
   }
 
-  const fetchSubscriptions = () => {
-    axios.get(import.meta.env.VITE_API_HOST + "/subscriptions?userId=" + profileId, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-      },
-    })
-    .then(response => {
-      setSubscriptions(response.data.data);
-      // setAllSubscriptions(response.data.data.length);
-      // const activeSubscriptionsList = response.data.data.filter(item => item.is_active === true);
-      // setActiveSubscriptions(activeSubscriptionsList);
-      // const subscriptionsInLastMonthList = activeSubscriptionsList.filter(item => {
-      //     const last30days = new Date();
-      //     last30days.setDate(last30days.getDate() - 30);
-      //     return last30days <= new Date(item.next_billing_date) && new Date(item.next_billing_date) <= new Date();
-      //   });
-      // setSubscriptionsInLastMonth(subscriptionsInLastMonthList);
-      
-      // const today = new Date();
-      // today.setHours(0, 0, 0, 0);
-      // const sevenDaysFromNow = new Date();
-      // sevenDaysFromNow.setDate(sevenDaysFromNow.getDate() + 7);
-      // sevenDaysFromNow.setHours(23, 59, 59, 999);
-      // const subscriptionsIn7DaysList = activeSubscriptionsList.filter(item => {
-      //   const nextBillingDate = new Date(item.next_billing_date);
-      //   return nextBillingDate >= today && nextBillingDate <= sevenDaysFromNow;
-      // });
-      // setSubscriptionsIn7Days(subscriptionsIn7DaysList);
-      //   const totalMonthlyPrice = activeSubscriptionsList.reduce((total, item) => {
-      //     const monthlyPriceValue = monthlyPrice(item);
-      //     return total + monthlyPriceValue;
-      //   }, 0);
-      // const totalMonthlyPrice = activeSubscriptionsList.reduce((total, item) => {
-      //     const monthlyPriceValue = monthlyPrice(item);
-      //     return total + monthlyPriceValue;
-      //   }, 0);
-      // setMonthlyTotal(totalMonthlyPrice);
-      // const mostExpensiveSubscription = activeSubscriptionsList.reduce((max, item) => {
-      //   return monthlyPrice(item) > monthlyPrice(max) ? item : max;
-      // }, activeSubscriptionsList[0]);
-      // setMostExpensiveSubscription(mostExpensiveSubscription);
-      // setMostExpensiveSubscriptionPrice(monthlyPrice(mostExpensiveSubscription));
-      setLoading(false);
-    })
-    .catch(error => {
-      console.error("Error fetching subscriptions:", error);
-      setLoading(false);
+  const priceBodyTemplate = (rowData) => {
+    const amount = Number(rowData.my_share_price_huf ?? rowData.price_huf ?? rowData.price ?? 0);
+
+    return (
+      <div className="font-bold text-black">
+        {amount.toLocaleString('hu-HU', { style: 'currency', currency: 'HUF' })}
+        {rowData.is_shared && (
+          <div className="mt-1 text-xs font-medium text-blue-600">
+            Saját részed
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const detailItem = (label, value) => (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+        {label}
+      </div>
+      <div className="mt-2 break-words text-base font-extrabold text-slate-950">
+        {value}
+      </div>
+    </div>
+  );
+
+  const rowExpansionTemplate = (rowData) => {
+    const fullPrice = Number(rowData.price_huf ?? rowData.price ?? 0);
+    const ownShare = Number(rowData.my_share_price_huf ?? rowData.price_huf ?? rowData.price ?? 0);
+    const categoryMeta = (rowData.category && CATEGORY_META[rowData.category]) || CATEGORY_META.other;
+    const participants = rowData.participants || [];
+    const acceptedParticipants = participants.filter((participant) => participant.status === 'accepted' || participant.is_owner);
+
+    return (
+      <div className="rounded-b-3xl bg-slate-50 px-5 py-5">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+          {detailItem('Számlázási ciklus', formatBillingCycle(rowData.billing_cycle))}
+          {detailItem('Következő fizetés', formatDate(rowData.next_billing_date))}
+          {detailItem('Teljes összeg', formatMoney(fullPrice))}
+          {detailItem(rowData.is_shared ? 'Saját részed' : 'Fizetendő összeg', formatMoney(ownShare))}
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+              Kategória
+            </div>
+            <div className="mt-3 flex items-center gap-2">
+              <span
+                className="h-3 w-3 rounded-full"
+                style={{ backgroundColor: categoryMeta.color }}
+              />
+              <span className="font-bold text-slate-950">
+                {categoryMeta.label}
+              </span>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+              Állapot
+            </div>
+            <div className="mt-3">
+              {rowData.is_active ? (
+                <Badge value="Aktív" severity="success" />
+              ) : (
+                <Badge value="Inaktív" severity="warning" />
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-4">
+            <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+              Próbaidő
+            </div>
+            <div className="mt-2 font-bold text-slate-950">
+              {rowData.trial_enabled ? `Vége: ${formatDate(rowData.trial_end_date)}` : 'Nincs beállítva'}
+            </div>
+          </div>
+        </div>
+
+        {rowData.is_shared && (
+          <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="font-extrabold text-slate-950">
+                  Megosztott előfizetés
+                </div>
+                <div className="mt-1 text-sm text-slate-600">
+                  Elfogadott résztvevők: {acceptedParticipants.length || rowData.accepted_participant_count || 1} fő
+                </div>
+              </div>
+              <div className="rounded-full bg-white px-4 py-2 text-sm font-bold text-blue-700 shadow-sm">
+                {formatMoney(ownShare)} / fő
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                navigate(`/subscriptions/${rowData.id}/share`);
+              }}
+              className="mt-4 cursor-pointer rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white transition hover:bg-blue-500"
+            >
+              Közös oldal megnyitása
+            </button>
+
+            {participants.length > 0 && (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {participants.map((participant) => (
+                  <span
+                    key={`${rowData.id}-${participant.user_id || participant.id || participant.email}`}
+                    className="rounded-full bg-white px-3 py-1 text-sm font-semibold text-slate-700 shadow-sm"
+                  >
+                    {participant.full_name || participant.username || participant.email || 'Résztvevő'}
+                    {participant.is_owner ? ' · tulaj' : ''}
+                    {!participant.is_owner && participant.status === 'pending' ? ' · függőben' : ''}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const toggleExpandedRow = (rowData) => {
+    if (props.view === 'home') {
+      return;
+    }
+
+    setExpandedRows((currentRows) => {
+      const nextRows = { ...(currentRows || {}) };
+
+      if (nextRows[rowData.id]) {
+        delete nextRows[rowData.id];
+      } else {
+        nextRows[rowData.id] = true;
+      }
+
+      return nextRows;
     });
-  }; 
+  };
 
   useEffect(() => {
     axios.get(import.meta.env.VITE_API_HOST + "/subscriptions?userId=" + profileId, {
@@ -190,7 +307,6 @@ const SubscriptionTable = (props) => {
     })
     .then(response => {
       setSubscriptions(response.data.data);
-      setSubscriptionId(response.data.data.id);
       setLoading(false);
     })
     .catch(error => {
@@ -202,13 +318,9 @@ const SubscriptionTable = (props) => {
 
   return (
         <>
-        {/* <Sidebar visible={visibleForm} position="right" onHide={() => setVisibleForm(false)} className="mt-40 rounded-3xl mr-10 mb-30" style={{width: '30%'}}>
-          <SubscriptionForm onSuccess={fetchSubscriptions} onClose={() => setVisibleForm(false)} subscriptionId={subscriptionId} />
-        </Sidebar> */}
-
-
         <DataTable
           value={props.view !== "home" ? (props.subscriptions || subscriptions) : props.subscriptions?.slice(0, 3)}
+          dataKey="id"
           showHeader={props.view !== "home"}
           paginator={props.view !== "home"}
           loading={loading}
@@ -218,13 +330,28 @@ const SubscriptionTable = (props) => {
           responsiveLayout="scroll"
           emptyMessage="Nincs előfizetés"
           // stripedRows
-          selectionMode={"single"}  
+          selectionMode={"single"}
+          expandedRows={props.view !== "home" ? expandedRows : null}
+          onRowToggle={(event) => setExpandedRows(event.data)}
+          rowExpansionTemplate={props.view !== "home" ? rowExpansionTemplate : undefined}
+          onRowClick={(event) => {
+            const target = event.originalEvent?.target;
+
+            if (target?.closest?.('button, a, input, .p-row-toggler')) {
+              return;
+            }
+
+            toggleExpandedRow(event.data);
+          }}
           className={
             props.view === "home" 
               ? "[&_.p-datatable-thead]:!hidden [&_.p-datatable-tbody>tr:last-child>td]:!border-b-0" 
-              : ""
+              : "[&_.p-datatable-tbody>tr]:cursor-default [&_.p-row-toggler]:cursor-pointer"
           }
         >
+          {props.view !== "home" && (
+            <Column expander className="w-12" />
+          )}
           <Column field="name" header="Szolgáltatás" sortable filter showFilterMenu={false} className="text-black font-bold" body={(rowData) => {
             const logoUrl = resolveBrandLogoUrl(rowData.name);
             return (
@@ -245,13 +372,23 @@ const SubscriptionTable = (props) => {
           }}></Column>
           {/* <Column field="start_date" header="Előfizetés kezdete" sortable body={(rowData) => formatDate(rowData.start_date)}></Column> */}
           <Column field="next_billing_date" header="Következő előfizetés kezdete" sortable body={(rowData) => formatDate(rowData.next_billing_date)}></Column>
+          <Column field="is_shared" header="Megosztás" body={(rowData) => (
+            rowData.is_shared ? (
+              <Badge
+                value={`${rowData.accepted_participant_count || 1} fő`}
+                severity="info"
+              />
+            ) : (
+              <span className="text-sm text-slate-400">-</span>
+            )
+          )}></Column>
           
           {props.view !== "home" && (
             <Column field="is_active" header="Állapot" sortable body={(rowData) => 
               (rowData.is_active ? <Badge value="Sikeres" severity="success" /> : <Badge value="Függőben" severity="warning" />)
             }></Column>
           )}
-          <Column field="price_huf" header="Összeg" sortable bodyClassName="font-bold text-black"></Column>
+          <Column field="price_huf" header="Összeg" sortable body={priceBodyTemplate}></Column>
           <Column body={actionBodyTemplate} header="Műveletek" className="text-center"></Column>
         </DataTable>
         </>

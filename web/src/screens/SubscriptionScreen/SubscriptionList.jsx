@@ -44,6 +44,7 @@ const SubscriptionList = () => {
   const [allSubscriptions, setAllSubscriptions] = useState(0);
   const [subscriptionId, setSubscriptionId] = useState(null);
   const [visible, setVisible] = useState(false);
+  const [shareInvites, setShareInvites] = useState({ incoming: [], outgoing: [] });
 
   
 
@@ -127,7 +128,7 @@ const SubscriptionList = () => {
   }
 
   const monthlyPrice = (item) => {
-    const price = item.price;
+    const price = Number(item.my_share_price_huf ?? item.price_huf ?? item.price ?? 0);
     return item.billing_cycle === 'yearly'
       ? price / 12
       : item.billing_cycle === 'weekly'
@@ -135,11 +136,38 @@ const SubscriptionList = () => {
         : price;
   }
 
+  const authHeaders = {
+    Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+  };
+
+  const fetchShareInvites = () => {
+    return axios.get(import.meta.env.VITE_API_HOST + "/subscriptions/share-invites", {
+      headers: authHeaders,
+    })
+    .then(response => {
+      setShareInvites(response.data?.data || { incoming: [], outgoing: [] });
+    })
+    .catch(error => {
+      console.error("Error fetching share invites:", error);
+    });
+  };
+
+  const respondToShareInvite = (inviteId, action) => {
+    axios.post(import.meta.env.VITE_API_HOST + `/subscriptions/share-invites/${inviteId}/${action}`, null, {
+      headers: authHeaders,
+    })
+    .then(() => {
+      fetchShareInvites();
+      fetchSubscriptions();
+    })
+    .catch(error => {
+      console.error("Error responding to share invite:", error);
+    });
+  };
+
   const fetchSubscriptions = () => {
     axios.get(import.meta.env.VITE_API_HOST + "/subscriptions?userId=" + profileId, {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-      },
+      headers: authHeaders,
     })
     .then(response => {
       setSubscriptions(response.data.data);
@@ -189,6 +217,7 @@ const SubscriptionList = () => {
   useEffect(() => {
     if (profileId) {
       fetchSubscriptions();
+      fetchShareInvites();
     }
   }, [profileId]);
 
@@ -199,8 +228,8 @@ const SubscriptionList = () => {
       </Sidebar>
 
 
-      <div className="flex w-full flex-col items-center gap-6 px-4 py-12">
-        <div className="w-full max-w-7xl space-y-8 rounded-3xl bg-black p-8 shadow-2xl border border-zinc-800 gap-y-2">
+      <div className="flex w-full flex-col items-center gap-6 px-4 py-12 xl:px-8">
+        <div className="w-full max-w-[1700px] space-y-8 rounded-3xl bg-black p-8 shadow-2xl border border-zinc-800 gap-y-2">
           <div className="relative">
 
             <div className="flex flex-col ml-0 text-white">
@@ -233,7 +262,54 @@ const SubscriptionList = () => {
           </div> */}
         </div>
 
-        <div className="w-full max-w-7xl grid grid-cols-1 gap-4 md:grid-cols-10">
+        <div className="w-full max-w-[1700px] grid grid-cols-1 gap-4 md:grid-cols-10">
+          {shareInvites.incoming?.length > 0 && (
+            <div className="md:col-span-10 rounded-3xl border border-blue-100 bg-blue-50 p-5 shadow-sm">
+              <div className="text-lg font-bold text-slate-950">Megosztott előfizetés meghívók</div>
+              <div className="mt-1 text-sm text-slate-600">
+                Ezek akkor kerülnek bele a havi költségedbe, ha elfogadod őket.
+              </div>
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                {shareInvites.incoming.map((invite) => {
+                  const ownerName = invite.owner?.full_name || invite.owner?.username || "Egy barátod";
+                  const subscription = invite.subscription || {};
+
+                  return (
+                    <div
+                      key={invite.id}
+                      className="flex items-center justify-between gap-4 rounded-2xl bg-white p-4 shadow-sm"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate font-bold text-slate-950">
+                          {subscription.name || "Előfizetés"}
+                        </div>
+                        <div className="mt-1 text-sm text-slate-500">
+                          {ownerName} meghívott közös fizetésre
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => respondToShareInvite(invite.id, "accept")}
+                          className="rounded-xl bg-blue-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-blue-700"
+                        >
+                          Elfogadás
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => respondToShareInvite(invite.id, "decline")}
+                          className="rounded-xl bg-slate-100 px-3 py-2 text-sm font-bold text-slate-700 transition hover:bg-slate-200"
+                        >
+                          Elutasítás
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="md:col-span-4 rounded-3xl border border-zinc-300 bg-gray-900 p-6 text-white shadow-md">
             <div className="text-gray-300 text-md">
               Ebben a hónapban 
@@ -331,8 +407,8 @@ const SubscriptionList = () => {
           </div>
         </div>
         
-        <div className="w-full max-w-7xl grid grid-cols-2 gap-4 md:grid-cols-10">
-          <div className="md:col-span-7 w-full max-w-7xl space-y-8 rounded-3xl  p-8 shadow-2xl border border-zinc-300 gap-y-2">
+        <div className="w-full max-w-[1700px] grid grid-cols-1 gap-4 xl:grid-cols-12">
+          <div className="w-full space-y-8 rounded-3xl border border-zinc-300 p-8 shadow-2xl gap-y-2 xl:col-span-9">
             <h1 className="text-xl font-bold">Fizetések</h1>
             <SubscriptionTable 
               subscriptions={subscriptions} 
@@ -343,7 +419,7 @@ const SubscriptionList = () => {
                 setVisible(true);
             }}/>
           </div>
-          <div className="md:col-span-3 w-full max-w-7xl space-y-8 rounded-3xl gap-y-2">
+          <div className="w-full space-y-8 rounded-3xl gap-y-2 xl:col-span-3">
             <div className="rounded-3xl border border-zinc-300 bg-white p-6 text-black shadow-md">
               <div className="text-lg font-bold">
                 Állapot szerinti bontás

@@ -12,7 +12,6 @@ import {
   FiStar,
   FiTrendingUp,
   FiUsers,
-  FiX,
   FiZap,
 } from "react-icons/fi";
 import { LuLightbulb } from "react-icons/lu";
@@ -117,6 +116,16 @@ const feedMeta = {
     color: "bg-violet-50 text-violet-600",
     icon: <FiBookmark />,
   },
+  subscribed_subscription: {
+    label: "Új előfizetés",
+    color: "bg-emerald-50 text-emerald-600",
+    icon: <FiCheckCircle />,
+  },
+  shared_subscription: {
+    label: "Közös előfizetés",
+    color: "bg-cyan-50 text-cyan-600",
+    icon: <FiUsers />,
+  },
   post: {
     label: "Bejegyzés",
     color: "bg-slate-100 text-slate-600",
@@ -129,32 +138,6 @@ const feedMeta = {
   },
 };
 
-const composerTypes = [
-  {
-    type: "recommendation",
-    label: "Előfizetés ajánlása",
-    helper: "Válassz egy saját előfizetést.",
-    icon: <FiStar />,
-  },
-  {
-    type: "tip",
-    label: "Tipp megosztása",
-    helper: "Írj egy gyors spórolási ötletet.",
-    icon: <LuLightbulb />,
-  },
-  {
-    type: "list",
-    label: "Lista létrehozása",
-    helper: "Ossz meg egy válogatást.",
-    icon: <FiBookmark />,
-  },
-  {
-    type: "post",
-    label: "Sima poszt",
-    helper: "Bármi, ami hasznos lehet.",
-    icon: <FiMessageCircle />,
-  },
-];
 
 const feedTabs = [
   {
@@ -462,305 +445,6 @@ const EmptyFeed = () => (
   </div>
 );
 
-const FeedComposerModal = ({
-  initialType,
-  subscriptions,
-  onClose,
-  onCreated,
-}) => {
-  const [type, setType] = useState(initialType);
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [subscriptionId, setSubscriptionId] = useState("");
-  const [selectedListIds, setSelectedListIds] = useState([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-
-  const selectedType = composerTypes.find((item) => item.type === type) || composerTypes[0];
-  const ownSubscriptions = subscriptions.filter((item) => item.is_active !== false);
-  const selectedListSubscriptions = ownSubscriptions.filter((subscription) =>
-    selectedListIds.includes(String(subscription.id))
-  );
-  const canSubmit =
-    type === "recommendation"
-      ? Boolean(subscriptionId)
-      : type === "list"
-        ? selectedListIds.length > 0 && Boolean(title.trim())
-        : Boolean(title.trim() || body.trim());
-
-  const handleTypeChange = (nextType) => {
-    setType(nextType);
-    setError("");
-  };
-
-  const toggleListSubscription = (subscriptionIdValue) => {
-    const normalizedId = String(subscriptionIdValue);
-
-    setSelectedListIds((current) =>
-      current.includes(normalizedId)
-        ? current.filter((id) => id !== normalizedId)
-        : [...current, normalizedId]
-    );
-  };
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
-    if (!canSubmit) {
-      setError(
-        type === "recommendation"
-          ? "Válassz egy előfizetést, amit ajánlanál."
-          : type === "list"
-            ? "Adj címet a listának, és válassz legalább egy előfizetést."
-            : "Írj legalább egy címet vagy rövid szöveget."
-      );
-      return;
-    }
-
-    setSubmitting(true);
-    setError("");
-
-    const payload = {
-      type,
-      title: title.trim(),
-      body: body.trim(),
-    };
-
-    if (type === "recommendation") {
-      payload.subscription_id = Number(subscriptionId);
-    }
-
-    if (type === "list") {
-      payload.list_items = selectedListSubscriptions.map((subscription) => ({
-        id: subscription.id,
-        name: subscription.name,
-        category: subscription.category,
-        logo_url: subscription.logo_url,
-        price_huf: getMonthlyPrice(subscription),
-        currency: subscription.currency,
-        billing_cycle: subscription.billing_cycle,
-      }));
-    }
-
-    try {
-      await axios.post(`${API_HOST}/profile-activities`, payload, {
-        headers: getAuthHeaders(),
-      });
-      await onCreated();
-      onClose();
-    } catch (err) {
-      setError(err.response?.data?.error || "Nem sikerült létrehozni a posztot.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/60 px-4 py-6 backdrop-blur-sm">
-      <form
-        onSubmit={handleSubmit}
-        className="flex max-h-[calc(100vh-3rem)] w-full max-w-3xl flex-col overflow-hidden rounded-[36px] bg-white shadow-2xl"
-      >
-        <div className="shrink-0 border-b border-slate-100 p-5 sm:p-6">
-          <div className="flex items-start justify-between gap-6">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-xs font-black uppercase tracking-[0.2em] text-blue-600">
-              {selectedType.icon}
-              Feed poszt
-            </div>
-            <h2 className="mt-4 text-3xl font-black text-slate-950">{selectedType.label}</h2>
-            <p className="mt-2 text-sm text-slate-500">{selectedType.helper}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-100 text-slate-500 transition hover:bg-slate-200 hover:text-slate-950"
-          >
-            <FiX />
-          </button>
-          </div>
-        </div>
-
-        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {composerTypes.map((item) => (
-              <button
-                type="button"
-                key={item.type}
-                onClick={() => handleTypeChange(item.type)}
-                className={`rounded-3xl border p-4 text-left transition ${
-                  type === item.type
-                    ? "border-blue-200 bg-blue-50 text-blue-700"
-                    : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
-                }`}
-              >
-                <div className="flex items-center gap-3 font-black">
-                  {item.icon}
-                  {item.label}
-                </div>
-                <div className="mt-2 text-sm text-slate-500">{item.helper}</div>
-              </button>
-            ))}
-          </div>
-
-          {type === "recommendation" && (
-            <label className="block">
-              <span className="text-sm font-black text-slate-700">Ajánlott előfizetés</span>
-              <select
-                value={subscriptionId}
-                onChange={(event) => setSubscriptionId(event.target.value)}
-                className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm font-bold text-slate-950 outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-              >
-                <option value="">Válassz a saját előfizetéseidből</option>
-                {ownSubscriptions.map((subscription) => (
-                  <option key={subscription.id} value={subscription.id}>
-                    {subscription.name} · {formatCurrency(getMonthlyPrice(subscription))}/hó
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-
-          {type === "list" && (
-            <div>
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-black text-slate-700">Lista elemei</div>
-                  <div className="mt-1 text-sm text-slate-500">
-                    Válaszd ki, mely előfizetéseket szeretnéd megmutatni.
-                  </div>
-                </div>
-                <div className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-500">
-                  {selectedListIds.length} kiválasztva
-                </div>
-              </div>
-
-              <div className="mt-3 grid max-h-56 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
-                {ownSubscriptions.length > 0 ? (
-                  ownSubscriptions.map((subscription) => {
-                    const checked = selectedListIds.includes(String(subscription.id));
-
-                    return (
-                      <button
-                        key={subscription.id}
-                        type="button"
-                        onClick={() => toggleListSubscription(subscription.id)}
-                        className={`flex items-center gap-3 rounded-3xl border p-3 text-left transition ${
-                          checked
-                            ? "border-blue-300 bg-blue-50 shadow-sm"
-                            : "border-slate-200 bg-white hover:border-slate-300"
-                        }`}
-                      >
-                        <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-50 text-blue-600">
-                          {subscription.logo_url ? (
-                            <img
-                              src={subscription.logo_url}
-                              alt={subscription.name}
-                              className="h-full w-full object-contain p-2"
-                            />
-                          ) : (
-                            <FiBookmark />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-black text-slate-950">
-                            {subscription.name}
-                          </div>
-                          <div className="mt-1 text-xs font-bold text-slate-500">
-                            {formatCurrency(getMonthlyPrice(subscription))}/hó
-                          </div>
-                        </div>
-                        <div
-                          className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs ${
-                            checked
-                              ? "border-blue-600 bg-blue-600 text-white"
-                              : "border-slate-300 bg-white text-transparent"
-                          }`}
-                        >
-                          ✓
-                        </div>
-                      </button>
-                    );
-                  })
-                ) : (
-                  <div className="rounded-2xl bg-slate-50 p-4 text-sm font-bold text-slate-500 sm:col-span-2">
-                    Nincs aktív előfizetésed, amit listába tehetnél.
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          <label className="block">
-            <span className="text-sm font-black text-slate-700">
-              {type === "recommendation"
-                ? "Saját megjegyzés"
-                : type === "list"
-                  ? "Lista címe"
-                  : "Cím"}
-            </span>
-            <input
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              placeholder={
-                type === "recommendation"
-                  ? "Pl. Nekem ez vált be a munkához"
-                  : type === "list"
-                    ? "Pl. AI tool stack munkához"
-                    : "Pl. Netflix helyett olcsóbb opciók"
-              }
-              className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-4 text-sm font-bold text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-            />
-          </label>
-
-          <label className="block">
-            <span className="text-sm font-black text-slate-700">
-              {type === "list" ? "Miért ezt a listát ajánlod?" : "Leírás"}
-            </span>
-            <textarea
-              value={body}
-              onChange={(event) => setBody(event.target.value)}
-              rows={5}
-              placeholder={
-                type === "list"
-                  ? "Pl. Ezeket használom napi munkához, és eddig ez a kombó érte meg legjobban."
-                  : "Írd le röviden, miért hasznos, mikor érdemes kipróbálni, vagy mennyit lehet vele spórolni."
-              }
-              className="mt-2 w-full resize-none rounded-2xl border border-slate-200 px-4 py-4 text-sm font-medium leading-relaxed text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
-            />
-          </label>
-
-          {error && (
-            <div className="rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
-              {error}
-            </div>
-          )}
-        </div>
-
-        <div className="shrink-0 border-t border-slate-100 bg-white/95 p-5 shadow-[0_-12px_28px_rgba(15,23,42,0.06)] backdrop-blur sm:p-6">
-          <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-2xl border border-slate-200 px-5 py-3 text-sm font-black text-slate-600 transition hover:bg-slate-50"
-          >
-            Mégse
-          </button>
-          <button
-            type="submit"
-            disabled={submitting}
-            className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 text-sm font-black text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {submitting ? "Küldés..." : "Megosztás"}
-            <FiSend />
-          </button>
-          </div>
-        </div>
-      </form>
-    </div>
-  );
-};
-
 const HomeScreen = () => {
   const { profileId } = useAuth();
   const [profile, setProfile] = useState(null);
@@ -769,26 +453,10 @@ const HomeScreen = () => {
   const [loading, setLoading] = useState(true);
   const [feedScope, setFeedScope] = useState("for-you");
   const [feedLoading, setFeedLoading] = useState(true);
-  const [composerOpen, setComposerOpen] = useState(false);
-  const [composerType, setComposerType] = useState("recommendation");
   const [openComments, setOpenComments] = useState({});
   const [commentsByActivity, setCommentsByActivity] = useState({});
   const [commentDrafts, setCommentDrafts] = useState({});
   const [commentsLoading, setCommentsLoading] = useState({});
-
-  const openComposer = (type) => {
-    setComposerType(type);
-    setComposerOpen(true);
-  };
-
-  const refreshFeed = async (scope = feedScope) => {
-    const response = await axios.get(`${API_HOST}/feed`, {
-      headers: getAuthHeaders(),
-      params: { limit: 12, scope },
-    });
-
-    setFeedActivities(response.data?.data || []);
-  };
 
   const handleFeedScopeChange = (scope) => {
     setFeedScope(scope);
@@ -1089,16 +757,6 @@ const HomeScreen = () => {
                     Válts a baráti és a nyilvános tartalmak között.
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => {
-                    openComposer("post");
-                  }}
-                  className="inline-flex items-center justify-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-slate-800"
-                >
-                  Saját poszt
-                  <FiArrowRight />
-                </button>
               </div>
 
               <div className="mt-5 flex rounded-2xl bg-slate-100 p-1">
@@ -1119,19 +777,6 @@ const HomeScreen = () => {
                 ))}
               </div>
 
-              <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                {composerTypes.slice(0, 3).map((item) => (
-                  <button
-                    key={item.type}
-                    type="button"
-                    onClick={() => openComposer(item.type)}
-                    className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-black text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-600"
-                  >
-                    {item.icon}
-                    {item.shortLabel || item.label}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {feedLoading ? (
@@ -1235,14 +880,6 @@ const HomeScreen = () => {
         </section>
       </div>
 
-      {composerOpen && (
-        <FeedComposerModal
-          initialType={composerType}
-          subscriptions={subscriptions}
-          onClose={() => setComposerOpen(false)}
-          onCreated={refreshFeed}
-        />
-      )}
     </main>
   );
 };

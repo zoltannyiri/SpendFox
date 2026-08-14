@@ -45,7 +45,13 @@ const SubscriptionForm = ({ onSuccess, onClose, subscriptionId }) => {
   const [loading, setLoading] = useState();
   const [formData, setFormData] = useState({});
   const [currency, setCurrency] = useState([]);
+  const [friends, setFriends] = useState([]);
+  const [selectedShareUserIds, setSelectedShareUserIds] = useState([]);
+  const [shareMessage, setShareMessage] = useState("");
   const [isNextBillingDateDisabled, setIsNextBillingDateDisabled] = useState(true);
+  const authHeaders = {
+    Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+  };
   const changeNextBillingDateState=()=>{
     setIsNextBillingDateDisabled(!isNextBillingDateDisabled);
   }
@@ -92,8 +98,40 @@ const SubscriptionForm = ({ onSuccess, onClose, subscriptionId }) => {
     return `${year}-${month}-${day}`;
   };
 
+  const syncShareInvites = async (savedSubscriptionId, isShared) => {
+    if (!isShared || selectedShareUserIds.length === 0) {
+      return;
+    }
+
+    await Promise.all(
+      selectedShareUserIds.map((receiverId) =>
+        axios.post(
+          import.meta.env.VITE_API_HOST + `/subscriptions/${savedSubscriptionId}/share/invite`,
+          { receiver_id: receiverId },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              ...authHeaders,
+            },
+          }
+        )
+      )
+    );
+  };
+
+  const toggleShareUser = (userId) => {
+    const normalizedId = String(userId);
+
+    setSelectedShareUserIds((currentIds) =>
+      currentIds.includes(normalizedId)
+        ? currentIds.filter((id) => id !== normalizedId)
+        : [...currentIds, normalizedId]
+    );
+  };
+
   const onSubmit = (data) => {
     setLoading(true);
+    setShareMessage("");
     if (subscriptionId) {
       const payload = {
         ...data,
@@ -103,10 +141,15 @@ const SubscriptionForm = ({ onSuccess, onClose, subscriptionId }) => {
       axios.patch(import.meta.env.VITE_API_HOST + `/subscriptions/${subscriptionId}`, payload, {
         headers: {
           'Content-Type': 'application/json',
+          ...authHeaders,
         },
       })
-        .then((response) => {
-          const subscriptionData = response.data.data.id;
+        .then(async (response) => {
+          const savedSubscriptionId = response.data.data.id;
+          await syncShareInvites(savedSubscriptionId, data.is_shared);
+          if (data.is_shared && selectedShareUserIds.length > 0) {
+            setShareMessage("A megosztási meghívók elküldve.");
+          }
           if (onSuccess) {
             onSuccess();
           }
@@ -126,10 +169,15 @@ const SubscriptionForm = ({ onSuccess, onClose, subscriptionId }) => {
       axios.post(import.meta.env.VITE_API_HOST + `/subscriptions`, { ...data, user_id: profileId, start_date: formatDateToLocalISO(data.start_date)}, {
         headers: {
           'Content-Type': 'application/json',
+          ...authHeaders,
         },
       })
-        .then((response) => {
-          const subscriptionData = response.data.data.id;
+        .then(async (response) => {
+          const savedSubscriptionId = response.data.data.id;
+          await syncShareInvites(savedSubscriptionId, data.is_shared);
+          if (data.is_shared && selectedShareUserIds.length > 0) {
+            setShareMessage("A megosztási meghívók elküldve.");
+          }
           if (onSuccess) {
             onSuccess();
           }
@@ -162,12 +210,30 @@ const SubscriptionForm = ({ onSuccess, onClose, subscriptionId }) => {
   }, []);
 
   useEffect(() => {
+    axios.get(import.meta.env.VITE_API_HOST + `/friends`, {
+      headers: authHeaders,
+    })
+      .then((response) => {
+        setFriends(response.data?.data || []);
+      })
+      .catch(error => {
+        console.log("Error fetching friends:", error);
+      });
+  }, []);
+
+  useEffect(() => {
     if (!subscriptionId) {
       return;
     }
     axios.get(import.meta.env.VITE_API_HOST + `/subscriptions/${subscriptionId}`)
       .then((response) => {
-        setFormData(response.data.data);
+        const subscription = response.data.data;
+        setFormData(subscription);
+        setSelectedShareUserIds(
+          (subscription.participants || [])
+            .filter((participant) => !participant.is_owner)
+            .map((participant) => String(participant.user_id))
+        );
       })
       .catch(error => {
         console.log("Error fetching subscription data:", error);
@@ -186,7 +252,7 @@ const SubscriptionForm = ({ onSuccess, onClose, subscriptionId }) => {
       <div className="font-bold text-2xl text-black">
         {subscriptionId ? "Előfizetés szerkesztése" : "Új előfizetés hozzáadása"}
       </div>
-      <Form onSubmit={onSubmit} initialValues={formData} render={({ handleSubmit }) => (
+      <Form onSubmit={onSubmit} initialValues={formData} render={({ handleSubmit, values }) => (
         <form onSubmit={handleSubmit} className="p-fluid mt-10">
           <div className="grid grid-cols-1 md:grid-cols-10 gap-4 mb-5">
             <div className="md:col-span-10">
@@ -403,6 +469,73 @@ const SubscriptionForm = ({ onSuccess, onClose, subscriptionId }) => {
               )} />
             </div>
           </div>
+
+          {values.is_shared && (
+            <div className="grid grid-cols-1 md:grid-cols-10 gap-4 mb-5">
+              <div className="md:col-span-10">
+                <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                  <div className="font-bold text-black">Résztvevők meghívása</div>
+                  <div className="mt-1 text-sm text-gray-500">
+                    Csak barátokat tudsz meghívni. Elfogadás után a költség egyenlően oszlik meg.
+                  </div>
+
+                  {friends.length > 0 ? (
+                    <div className="mt-4 grid grid-cols-1 gap-3">
+                      {friends.map((friendship) => {
+                        const friend = friendship.friend || {};
+                        const friendName = friend.full_name || friend.username || friend.email || "Barát";
+                        const checked = selectedShareUserIds.includes(String(friend.id));
+
+                        return (
+                          <button
+                            key={friendship.id || friend.id}
+                            type="button"
+                            onClick={() => toggleShareUser(friend.id)}
+                            className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-left transition ${
+                              checked
+                                ? "border-blue-400 bg-blue-50"
+                                : "border-slate-200 bg-white hover:border-blue-200"
+                            }`}
+                          >
+                            <span className="flex min-w-0 items-center gap-3">
+                              {friend.avatar_url ? (
+                                <img
+                                  src={friend.avatar_url}
+                                  alt={friendName}
+                                  className="h-10 w-10 shrink-0 rounded-full object-cover"
+                                />
+                              ) : (
+                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 font-bold text-blue-700">
+                                  {friendName.charAt(0)}
+                                </span>
+                              )}
+                              <span className="min-w-0">
+                                <span className="block truncate font-bold text-slate-950">{friendName}</span>
+                                <span className="block truncate text-sm text-slate-500">@{friend.username || friend.id}</span>
+                              </span>
+                            </span>
+                            <span className={`h-5 w-5 rounded-full border ${
+                              checked ? "border-blue-600 bg-blue-600" : "border-slate-300 bg-white"
+                            }`} />
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="mt-4 rounded-2xl bg-white p-4 text-sm font-medium text-slate-500">
+                      Még nincs barátod, akit meghívhatnál.
+                    </div>
+                  )}
+
+                  {shareMessage && (
+                    <div className="mt-3 rounded-2xl bg-green-50 p-3 text-sm font-bold text-green-700">
+                      {shareMessage}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 md:grid-cols-10 gap-4 mb-5">
             <div className="md:col-span-10">

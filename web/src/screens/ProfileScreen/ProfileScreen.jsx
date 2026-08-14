@@ -111,30 +111,6 @@ const billingCycleLabels = {
   weekly: "hét",
 };
 
-const activityTypeOptions = [
-  {
-    value: "recommendation",
-    label: "Előfizetés ajánlása",
-    shortLabel: "Ajánlás",
-    icon: <FiStar />,
-    buttonClass: "text-blue-600 hover:bg-blue-50",
-  },
-  {
-    value: "tip",
-    label: "Tipp megosztása",
-    shortLabel: "Tipp",
-    icon: <LuLightbulb />,
-    buttonClass: "text-orange-500 hover:bg-orange-50",
-  },
-  {
-    value: "list",
-    label: "Lista létrehozása",
-    shortLabel: "Lista",
-    icon: <FiList />,
-    buttonClass: "text-violet-600 hover:bg-violet-50",
-  },
-];
-
 const activityMeta = {
   recommendation: {
     badge: "Ajánlott előfizetés",
@@ -153,6 +129,18 @@ const activityMeta = {
     badgeClass: "bg-violet-50 text-violet-600",
     icon: <FiList className="text-violet-600" />,
     action: "Lista megnyitása",
+  },
+  subscribed_subscription: {
+    badge: "Új előfizetés",
+    badgeClass: "bg-emerald-50 text-emerald-600",
+    icon: <FiCheckCircle className="text-emerald-600" />,
+    action: "Előfizetés részletei",
+  },
+  shared_subscription: {
+    badge: "Közös előfizetés",
+    badgeClass: "bg-cyan-50 text-cyan-600",
+    icon: <FiUsers className="text-cyan-600" />,
+    action: "Közös oldal megnyitása",
   },
   post: {
     badge: "Bejegyzés",
@@ -374,11 +362,6 @@ const ProfileScreen = () => {
   const [loadedProfileLookup, setLoadedProfileLookup] = useState("");
   const [profileError, setProfileError] = useState("");
   const [activities, setActivities] = useState([]);
-  const [activityDraft, setActivityDraft] = useState("");
-  const [activityType, setActivityType] = useState("recommendation");
-  const [selectedRecommendationId, setSelectedRecommendationId] = useState("");
-  const [activitySaving, setActivitySaving] = useState(false);
-  const [activityError, setActivityError] = useState("");
 
   const fetchFriends = () =>
     axios
@@ -535,55 +518,6 @@ const ProfileScreen = () => {
       })
       .catch((error) => {
         setFriendMessage(error.response?.data?.error || "Nem sikerült kezelni a barátkérést.");
-      });
-  };
-
-  const createActivity = () => {
-    const selectedSubscription = subscriptions.find(
-      (subscription) => String(subscription.id) === String(selectedRecommendationId)
-    );
-    const body =
-      activityDraft.trim() ||
-      (activityType === "recommendation" && selectedSubscription
-        ? `Ajánlom: ${selectedSubscription.name}`
-        : "");
-
-    if (!body) {
-      setActivityError("Írj valamit, amit megosztanál.");
-      return;
-    }
-
-    setActivitySaving(true);
-    setActivityError("");
-
-    axios
-      .post(
-        `${import.meta.env.VITE_API_HOST}/profile-activities`,
-        {
-          type: activityType,
-          body,
-          subscription_id:
-            activityType === "recommendation" && selectedRecommendationId
-              ? selectedRecommendationId
-              : undefined,
-          title:
-            activityType === "recommendation" && selectedSubscription
-              ? selectedSubscription.name
-              : undefined,
-        },
-        { headers: getAuthHeaders() }
-      )
-      .then((response) => {
-        setActivities((previous) => [response.data.data, ...previous]);
-        setActivityDraft("");
-        setActivityType("recommendation");
-        setSelectedRecommendationId("");
-      })
-      .catch((error) => {
-        setActivityError(error.response?.data?.error || "Nem sikerült megosztani az aktivitást.");
-      })
-      .finally(() => {
-        setActivitySaving(false);
       });
   };
 
@@ -1010,80 +944,6 @@ const ProfileScreen = () => {
           </aside>
 
           <main className="space-y-6">
-            {isOwnProfile && canViewFullProfile && (
-              <Card className="p-6">
-                <div className="flex items-center gap-4">
-                  <Avatar
-                    image={userData?.avatar_url || undefined}
-                    label={!userData?.avatar_url ? profileName.charAt(0) : undefined}
-                    shape="circle"
-                  />
-                  <div className="text-xl font-black text-slate-950">Gyors megosztás</div>
-                </div>
-                <textarea
-                  value={activityDraft}
-                  onChange={(event) => setActivityDraft(event.target.value)}
-                  className="mt-5 min-h-28 w-full resize-none rounded-2xl border border-slate-200 px-6 py-5 text-base outline-none transition placeholder:text-slate-400 focus:border-blue-500"
-                  placeholder="Ajánlj előfizetést, ossz meg listát vagy spórolási tippet"
-                />
-                {activityError && (
-                  <div className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
-                    {activityError}
-                  </div>
-                )}
-                <div className="mt-5 grid gap-4 md:grid-cols-3">
-                  {activityTypeOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => setActivityType(option.value)}
-                      className={`flex items-center justify-center gap-3 rounded-2xl border px-5 py-4 font-bold transition ${
-                        activityType === option.value
-                          ? "border-blue-500 bg-blue-50 text-blue-600"
-                          : `border-slate-200 ${option.buttonClass}`
-                      }`}
-                    >
-                      {option.icon}
-                      {option.label}
-                    </button>
-                  ))}
-                </div>
-                {activityType === "recommendation" && (
-                  <div className="mt-5 rounded-3xl border border-blue-100 bg-blue-50 p-4">
-                    <label className="text-xs font-black uppercase tracking-[0.18em] text-blue-600">
-                      Ajánlott előfizetés
-                    </label>
-                    <select
-                      value={selectedRecommendationId}
-                      onChange={(event) => setSelectedRecommendationId(event.target.value)}
-                      className="mt-3 h-12 w-full rounded-2xl border border-blue-100 bg-white px-4 text-sm font-bold text-slate-800 outline-none transition focus:border-blue-500"
-                    >
-                      <option value="">Csak szöveges ajánlás</option>
-                      {activeSubscriptions.map((subscription) => (
-                        <option key={subscription.id} value={subscription.id}>
-                          {subscription.name} · {formatCurrency(subscription.price_huf ?? subscription.price)}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="mt-3 text-sm leading-relaxed text-blue-700">
-                      Ha választasz előfizetést, a kártyán automatikusan megjelenik a logó,
-                      kategória, ár és HUF érték is.
-                    </p>
-                  </div>
-                )}
-                <div className="mt-5 flex justify-end">
-                  <button
-                    type="button"
-                    onClick={createActivity}
-                    disabled={activitySaving}
-                    className="rounded-2xl bg-slate-950 px-7 py-4 text-sm font-black text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {activitySaving ? "Megosztás..." : "Megosztás"}
-                  </button>
-                </div>
-              </Card>
-            )}
-
             {canViewFullProfile ? (
               <>
                 <div className="grid gap-4 md:grid-cols-4">

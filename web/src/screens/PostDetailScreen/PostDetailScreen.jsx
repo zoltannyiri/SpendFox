@@ -9,6 +9,7 @@ import {
   FiSend,
   FiStar,
   FiUser,
+  FiUsers,
 } from "react-icons/fi";
 import { LuLightbulb } from "react-icons/lu";
 
@@ -79,6 +80,16 @@ const activityMeta = {
     badge: "Lemondott előfizetés",
     icon: <FiCheckCircle />,
     tone: "bg-emerald-50 text-emerald-600",
+  },
+  subscribed_subscription: {
+    badge: "Új előfizetés",
+    icon: <FiCheckCircle />,
+    tone: "bg-emerald-50 text-emerald-600",
+  },
+  shared_subscription: {
+    badge: "Közös előfizetés",
+    icon: <FiUsers />,
+    tone: "bg-cyan-50 text-cyan-600",
   },
   post: {
     badge: "Bejegyzés",

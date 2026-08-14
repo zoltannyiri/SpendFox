@@ -10,7 +10,15 @@ const activityLikesCollection = db.collection('profile_activity_likes');
 const activitySavesCollection = db.collection('profile_activity_saves');
 const activityCommentsCollection = db.collection('profile_activity_comments');
 
-const allowedTypes = new Set(['recommendation', 'tip', 'list', 'post', 'cancelled_subscription']);
+const allowedTypes = new Set([
+  'recommendation',
+  'tip',
+  'list',
+  'post',
+  'subscribed_subscription',
+  'shared_subscription',
+  'cancelled_subscription',
+]);
 
 const toServiceError = (err) => ({
   message: err.message || 'Firestore operation failed',
@@ -347,6 +355,66 @@ const createProfileActivity = async (userId, payload) => {
   }
 };
 
+const getAutoShareSettings = (user) => {
+  const settings = user?.notification_settings?.feed_auto_share || {};
+
+  return {
+    subscription_created: settings.subscription_created === true,
+    subscription_cancelled: settings.subscription_cancelled === true,
+    shared_subscription_created: settings.shared_subscription_created === true,
+  };
+};
+
+const getAutoActivityBody = (type, subscription) => {
+  const name = subscription?.name || 'egy előfizetés';
+
+  if (type === 'cancelled_subscription') {
+    return `Lemondtam ezt az előfizetést: ${name}.`;
+  }
+
+  if (type === 'shared_subscription') {
+    return `Létrehoztam egy közös előfizetést: ${name}.`;
+  }
+
+  return `Előfizettem erre: ${name}.`;
+};
+
+const createSubscriptionAutoActivity = async (userId, subscription, type) => {
+  try {
+    const { data: user, error } = await getUserById(userId);
+
+    if (error || !user) {
+      return { data: null, error };
+    }
+
+    const settings = getAutoShareSettings(user);
+    const shouldShare =
+      (type === 'subscribed_subscription' && settings.subscription_created) ||
+      (type === 'shared_subscription' && settings.shared_subscription_created) ||
+      (type === 'cancelled_subscription' && settings.subscription_cancelled);
+
+    if (!shouldShare) {
+      return { data: null, error: null, skipped: true };
+    }
+
+    return createProfileActivity(userId, {
+      type,
+      title: subscription?.name || null,
+      body: getAutoActivityBody(type, subscription),
+      subscription_id: subscription?.id,
+      subscription_name: subscription?.name,
+      category: subscription?.category,
+      logo_url: subscription?.logo_url || resolveBrandLogoUrl(subscription?.name),
+      price: subscription?.price,
+      price_huf: subscription?.price_huf,
+      currency: subscription?.currency,
+      billing_cycle: subscription?.billing_cycle,
+    });
+  } catch (err) {
+    return { data: null, error: toServiceError(err) };
+  }
+};
+
 const toggleActivityLike = async (userId, activityId) => {
   try {
     const normalizedUserId = toNumericId(userId);
@@ -519,6 +587,7 @@ const createActivityComment = async (userId, activityId, payload) => {
 
 module.exports = {
   createActivityComment,
+  createSubscriptionAutoActivity,
   createProfileActivity,
   getProfileActivityById,
   listActivityComments,
