@@ -23,12 +23,71 @@ import AnimatedScreen from '../../components/layout/AnimatedScreen';
 
 const storage = new MMKV();
 
+const visibilityOptions = [
+  {
+    id: 'private',
+    label: 'Privát',
+    description: 'Csak te látod a profilod részleteit.',
+  },
+  {
+    id: 'friends',
+    label: 'Barátok',
+    description: 'Csak az elfogadott barátaid láthatják.',
+  },
+  {
+    id: 'public',
+    label: 'Nyilvános',
+    description: 'Megosztható SpendFox profilként is látható.',
+  },
+];
+
+const feedAutoShareOptions = [
+  {
+    id: 'subscription_created',
+    title: 'Új előfizetés',
+    text: 'Automatikus feed aktivitás, amikor új előfizetést adsz hozzá.',
+  },
+  {
+    id: 'shared_subscription_created',
+    title: 'Közös előfizetés',
+    text: 'Automatikus aktivitás, amikor közös előfizetést hozol létre.',
+  },
+  {
+    id: 'subscription_cancelled',
+    title: 'Lemondás',
+    text: 'Automatikus aktivitás, amikor lemondasz egy aktív előfizetést.',
+  },
+];
+
+const defaultFeedAutoShare = {
+  subscription_created: false,
+  shared_subscription_created: false,
+  subscription_cancelled: false,
+};
+
+function mergeNotificationSettings(settings = {}) {
+  return {
+    ...(settings || {}),
+    feed_auto_share: {
+      ...defaultFeedAutoShare,
+      ...(settings?.feed_auto_share || {}),
+    },
+  };
+}
+
 export default function ProfileSettingsForm() {
   const navigation = useNavigation();
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [avatarUrl, setAvatarUrl] = useState('');
+  const [bio, setBio] = useState('');
+  const [location, setLocation] = useState('');
+  const [profileVisibility, setProfileVisibility] = useState('private');
+  const [publicProfileEnabled, setPublicProfileEnabled] = useState(false);
+  const [notificationSettings, setNotificationSettings] = useState(() =>
+    mergeNotificationSettings()
+  );
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState('');
 
@@ -61,6 +120,25 @@ export default function ProfileSettingsForm() {
     setUsername(profile?.username || profile?.user_metadata?.username || '');
     setEmail(profile?.email || '');
     setAvatarUrl(profile?.avatar_url || profile?.user_metadata?.avatar_url || '');
+    setBio(profile?.bio || '');
+    setLocation(profile?.location || '');
+    setProfileVisibility(profile?.profile_visibility || 'private');
+    setPublicProfileEnabled(Boolean(profile?.public_profile_enabled));
+    setNotificationSettings(mergeNotificationSettings(profile?.notification_settings));
+  };
+
+  const updateFeedAutoShare = (field, value) => {
+    setNotificationSettings((previous) => {
+      const merged = mergeNotificationSettings(previous);
+
+      return {
+        ...merged,
+        feed_auto_share: {
+          ...merged.feed_auto_share,
+          [field]: value,
+        },
+      };
+    });
   };
 
   const handleSave = async () => {
@@ -78,6 +156,11 @@ export default function ProfileSettingsForm() {
         username: username.trim() || null,
         email: email.trim(),
         avatar_url: avatarUrl.trim() || null,
+        bio: bio.trim() || null,
+        location: location.trim() || null,
+        public_profile_enabled: publicProfileEnabled,
+        profile_visibility: profileVisibility,
+        notification_settings: notificationSettings,
       };
 
       const response = await axios.patch('/profile', payload);
@@ -272,6 +355,98 @@ export default function ProfileSettingsForm() {
                 returnKeyType="done"
               />
             </View>
+
+            <View className="mt-5">
+              <FieldLabel label="Bemutatkozás" />
+              <TextInput
+                className="min-h-28 rounded-2xl bg-[#f7f8fa] px-4 py-4 text-base font-semibold leading-6 text-black"
+                placeholder="Írj pár mondatot magadról..."
+                placeholderTextColor="#9b9ba1"
+                multiline
+                maxLength={260}
+                value={bio}
+                onChangeText={setBio}
+                textAlignVertical="top"
+              />
+              <Text className="mt-2 text-right text-xs font-bold text-neutral-400">
+                {bio.length}/260
+              </Text>
+            </View>
+
+            <View className="mt-5">
+              <FieldLabel label="Hely" />
+              <TextInput
+                className="h-14 rounded-2xl bg-[#f7f8fa] px-4 text-base font-semibold text-black"
+                placeholder="Budapest, Magyarország"
+                placeholderTextColor="#9b9ba1"
+                value={location}
+                onChangeText={setLocation}
+                returnKeyType="done"
+              />
+            </View>
+          </View>
+
+          <View className="mt-6 rounded-[28px] bg-white p-4" style={cardShadow}>
+            <Text className="text-base font-extrabold text-black">Profil láthatóság</Text>
+            <Text className="mt-1 text-sm font-semibold leading-5 text-neutral-500">
+              Beállíthatod, mennyi profiladatot lássanak mások.
+            </Text>
+
+            <View className="mt-4">
+              {visibilityOptions.map((option) => {
+                const active = profileVisibility === option.id;
+
+                return (
+                  <Pressable
+                    key={option.id}
+                    className={`mb-3 rounded-2xl border px-4 py-4 ${
+                      active ? 'border-[#0ca9f2] bg-[#eef7ff]' : 'border-neutral-100 bg-[#f7f8fa]'
+                    }`}
+                    onPress={() => setProfileVisibility(option.id)}
+                  >
+                    <View className="flex-row items-center justify-between">
+                      <Text className="text-sm font-extrabold text-black">{option.label}</Text>
+                      <View
+                        className={`h-5 w-5 rounded-full border ${
+                          active ? 'border-[#0ca9f2] bg-[#0ca9f2]' : 'border-neutral-300'
+                        }`}
+                      />
+                    </View>
+                    <Text className="mt-1 text-xs font-semibold leading-5 text-neutral-500">
+                      {option.description}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            <ToggleRow
+              title="Nyilvános profil link"
+              text="A profilod külön linkként is megosztható legyen."
+              value={publicProfileEnabled}
+              onChange={setPublicProfileEnabled}
+            />
+          </View>
+
+          <View className="mt-6 rounded-[28px] bg-white p-4" style={cardShadow}>
+            <Text className="text-base font-extrabold text-black">
+              Automatikus feed megosztás
+            </Text>
+            <Text className="mt-1 text-sm font-semibold leading-5 text-neutral-500">
+              Csak akkor jelenik meg aktivitás a feedben, ha ezt külön engedélyezed.
+            </Text>
+
+            <View className="mt-4">
+              {feedAutoShareOptions.map((option) => (
+                <ToggleRow
+                  key={option.id}
+                  title={option.title}
+                  text={option.text}
+                  value={Boolean(notificationSettings?.feed_auto_share?.[option.id])}
+                  onChange={(value) => updateFeedAutoShare(option.id, value)}
+                />
+              ))}
+            </View>
           </View>
 
           <Pressable
@@ -305,6 +480,27 @@ const cardShadow = {
 function FieldLabel({ label }) {
   return (
     <Text className="mb-2 text-sm font-extrabold text-neutral-700">{label}</Text>
+  );
+}
+
+function ToggleRow({ title, text, value, onChange }) {
+  return (
+    <Pressable
+      className="mb-3 flex-row items-center justify-between rounded-2xl bg-[#f7f8fa] px-4 py-4"
+      onPress={() => onChange(!value)}
+    >
+      <View className="flex-1 pr-4">
+        <Text className="text-sm font-extrabold text-black">{title}</Text>
+        <Text className="mt-1 text-xs font-semibold leading-5 text-neutral-500">{text}</Text>
+      </View>
+      <View
+        className={`h-7 w-12 justify-center rounded-full px-1 ${
+          value ? 'items-end bg-[#0ca9f2]' : 'items-start bg-neutral-300'
+        }`}
+      >
+        <View className="h-5 w-5 rounded-full bg-white" />
+      </View>
+    </Pressable>
   );
 }
 

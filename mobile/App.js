@@ -21,6 +21,7 @@ import HomeScreen from './src/screens/homescreen/HomeScreen';
 import ProfileScreen from './src/screens/profilescreen/ProfileScreen';
 import SubscriptionsScreen from './src/screens/subscriptionscreen/SubscriptionsScreen';
 import SubscriptionsFormScreen from './src/screens/subscriptionscreen/SubscriptionsFormScreen';
+import SubscriptionShareScreen from './src/screens/subscriptionscreen/SubscriptionShareScreen';
 import ProfileSettingsScreen from './src/screens/profilesettingsscreen/ProfileSettingsScreen';
 import ProfileSettingsForm from './src/screens/profilesettingsscreen/ProfileSettingsForm';
 import { setupPushListeners, syncPushTokenVersion } from './src/services/push/PushTokenService';
@@ -392,6 +393,14 @@ class App extends Component {
                     component={SubscriptionsFormScreen}
                     options={{
                       title: 'Előfizetés hozzáadása',
+                      headerShown: false,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="SubscriptionShare"
+                    component={SubscriptionShareScreen}
+                    options={{
+                      title: 'Közös előfizetés',
                       headerShown: false,
                     }}
                   />

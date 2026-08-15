@@ -342,6 +342,12 @@ export default function SubscriptionsScreen({ navigation }) {
                             subscription: item,
                           })
                         }
+                        onOpenShare={() =>
+                          navigation.navigate('SubscriptionShare', {
+                            subscription: item,
+                            subscriptionId: item.id,
+                          })
+                        }
                       />
                     ) : null}
                   </React.Fragment>
@@ -476,7 +482,7 @@ function FilterChip({ active, label, onPress }) {
   );
 }
 
-function SubscriptionDetailCard({ subscription, onClose, onEdit }) {
+function SubscriptionDetailCard({ subscription, onClose, onEdit, onOpenShare }) {
   const currency = subscription.currency || 'HUF';
   const annualPrice = getAnnualPriceInHuf(subscription);
   const nextBillingDate = getNextBillingDate(subscription, startOfDay(new Date()));
@@ -528,6 +534,27 @@ function SubscriptionDetailCard({ subscription, onClose, onEdit }) {
         </Text>
       </View> */}
 
+      {subscription.is_shared ? (
+        <View className="mt-2 rounded-2xl bg-[#eef7ff] px-4 py-4">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1 pr-4">
+              <Text className="text-sm font-extrabold text-black">Megosztott előfizetés</Text>
+              <Text className="mt-1 text-xs font-semibold leading-5 text-neutral-500">
+                Résztvevők, saját részek, státuszok és közös chat.
+              </Text>
+            </View>
+            <Text className="rounded-full bg-white px-3 py-2 text-xs font-extrabold text-[#0ca9f2]">
+              {subscription.accepted_participant_count || 1} fő
+            </Text>
+          </View>
+          <Pressable className="mt-4 rounded-2xl bg-[#0ca9f2] py-4" onPress={onOpenShare}>
+            <Text className="text-center text-sm font-extrabold text-white">
+              Közös oldal megnyitása
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       <Pressable className="mt-4 rounded-2xl bg-black py-4" onPress={onEdit}>
         <Text className="text-center text-sm font-extrabold text-white">Módosítás</Text>
       </Pressable>
@@ -556,8 +583,9 @@ function SubscriptionCard({ subscription, isOpen, onOpenDetails }) {
   const trialEndDate = subscription.trial_enabled && subscription.trial_end_date
     ? parseDateValue(subscription.trial_end_date)
     : null;
-  const nextBilling = subscription.next_billing_date
-    ? `Következő fizetés: ${formatDateOnly(parseDateValue(subscription.next_billing_date))}`
+  const computedNextBillingDate = getNextBillingDate(subscription, startOfDay(new Date()));
+  const nextBilling = computedNextBillingDate
+    ? `Következő fizetés: ${formatDateOnly(computedNextBillingDate)}`
     : '';
   const trialLabel = trialEndDate
     ? `Próbaidő vége: ${formatDateOnly(trialEndDate)}`
@@ -738,7 +766,15 @@ function getNextBillingDate(item, today) {
   }
 
   if (item.billing_cycle === 'monthly') {
-    return getNextMonthlyBillingDate(billingDate, today);
+    return getNextDateByCycle(billingDate, today, 'month');
+  }
+
+  if (item.billing_cycle === 'yearly') {
+    return getNextDateByCycle(billingDate, today, 'year');
+  }
+
+  if (item.billing_cycle === 'weekly') {
+    return getNextWeeklyBillingDate(billingDate, today);
   }
 
   const date = startOfDay(billingDate);
@@ -746,19 +782,37 @@ function getNextBillingDate(item, today) {
   return date >= today ? date : null;
 }
 
-function getNextMonthlyBillingDate(sourceDate, today) {
-  const paymentDay = sourceDate.getDate();
-  let candidate = createDateWithClampedDay(
-    today.getFullYear(),
-    today.getMonth(),
-    paymentDay
-  );
+function getNextDateByCycle(sourceDate, today, cycle) {
+  const source = startOfDay(sourceDate);
+  let candidate = source;
 
   if (candidate <= today) {
-    candidate = createDateWithClampedDay(
-      today.getFullYear(),
-      today.getMonth() + 1,
-      paymentDay
+    do {
+      candidate = cycle === 'year'
+        ? createDateWithClampedDay(
+          candidate.getFullYear() + 1,
+          candidate.getMonth(),
+          source.getDate()
+        )
+        : createDateWithClampedDay(
+          candidate.getFullYear(),
+          candidate.getMonth() + 1,
+          source.getDate()
+        );
+    } while (candidate <= today);
+  }
+
+  return candidate;
+}
+
+function getNextWeeklyBillingDate(sourceDate, today) {
+  let candidate = startOfDay(sourceDate);
+
+  while (candidate <= today) {
+    candidate = new Date(
+      candidate.getFullYear(),
+      candidate.getMonth(),
+      candidate.getDate() + 7
     );
   }
 
