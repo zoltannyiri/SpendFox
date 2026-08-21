@@ -22,15 +22,26 @@ import ProfileScreen from './src/screens/profilescreen/ProfileScreen';
 import SubscriptionsScreen from './src/screens/subscriptionscreen/SubscriptionsScreen';
 import SubscriptionsFormScreen from './src/screens/subscriptionscreen/SubscriptionsFormScreen';
 import SubscriptionShareScreen from './src/screens/subscriptionscreen/SubscriptionShareScreen';
+import SubscriptionJoinScreen from './src/screens/subscriptionscreen/SubscriptionJoinScreen';
 import ProfileSettingsScreen from './src/screens/profilesettingsscreen/ProfileSettingsScreen';
 import ProfileSettingsForm from './src/screens/profilesettingsscreen/ProfileSettingsForm';
 import { setupPushListeners, syncPushTokenVersion } from './src/services/push/PushTokenService';
+import InAppNotificationBanner from './src/components/notification/InAppNotificationBanner';
 
 const Stack = createNativeStackNavigator();
 const navigationRef = createNavigationContainerRef();
 const storage = new MMKV();
 const API_BASE = process.env.REACT_APP_API_HOST ?? 'http://192.168.0.2:5000/api';
 let refreshRequest = null;
+
+const linking = {
+  prefixes: ['spendfox://'],
+  config: {
+    screens: {
+      SubscriptionJoin: 'subscription-share/:token',
+    },
+  },
+};
 
 const getTodayKey = () => new Date().toISOString().slice(0, 10);
 const TOKEN_REFRESH_WINDOW_MS = 5 * 60 * 1000;
@@ -150,11 +161,16 @@ class App extends Component {
     window.App = this;
     this.state = {
       userToken: storage.getString('userToken') || null,
+      foregroundNotification: null,
     };
+    this.notificationTimer = null;
   }
 
   componentDidMount() {
-    this.unsubscribePushListeners = setupPushListeners();
+    this.unsubscribePushListeners = setupPushListeners({
+      onForegroundNotification: this.showForegroundNotification,
+      onNotificationOpen: this.handlePushNotificationOpen,
+    });
     this.backSubscription = BackHandler.addEventListener(
       'hardwareBackPress',
       this.handleHardwareBack
@@ -173,6 +189,10 @@ class App extends Component {
   }
 
   componentWillUnmount() {
+    if (this.notificationTimer) {
+      clearTimeout(this.notificationTimer);
+    }
+
     this.unsubscribePushListeners?.();
     this.backSubscription?.remove?.();
     this.appStateSubscription?.remove?.();
@@ -183,6 +203,35 @@ class App extends Component {
       this.syncPushTokenVersionIfAvailable();
       this.refreshExchangeRatesIfNeeded();
     }
+  };
+
+  showForegroundNotification = (notification) => {
+    if (this.notificationTimer) {
+      clearTimeout(this.notificationTimer);
+    }
+
+    this.setState({ foregroundNotification: notification });
+
+    this.notificationTimer = setTimeout(() => {
+      this.setState({ foregroundNotification: null });
+      this.notificationTimer = null;
+    }, 5200);
+  };
+
+  closeForegroundNotification = () => {
+    if (this.notificationTimer) {
+      clearTimeout(this.notificationTimer);
+      this.notificationTimer = null;
+    }
+
+    this.setState({ foregroundNotification: null });
+  };
+
+  handleForegroundNotificationAction = () => {
+    const { foregroundNotification } = this.state;
+
+    this.closeForegroundNotification();
+    foregroundNotification?.onAction?.();
   };
 
   handleHardwareBack = () => {
@@ -216,6 +265,7 @@ class App extends Component {
       if (this.state.userToken) {
         this.syncPushTokenVersionIfAvailable();
         this.refreshExchangeRatesIfNeeded();
+        this.openPendingNotificationTarget();
       }
 
       return;
@@ -226,6 +276,7 @@ class App extends Component {
       this.setState({ userToken: token });
       this.syncPushTokenVersionIfAvailable();
       this.refreshExchangeRatesIfNeeded();
+      this.openPendingNotificationTarget();
     } catch (err) {
       console.log('Failed to restore session:', err?.message || err);
       storage.delete('userToken');
@@ -251,9 +302,64 @@ class App extends Component {
       storage.set('appUser', JSON.stringify(normalizeAppUser(user)));
     }
 
-    this.setState({ userToken: token });
+    this.setState({ userToken: token }, () => {
+      this.openPendingShareInvite();
+      this.openPendingNotificationTarget();
+    });
     this.syncPushTokenVersionIfAvailable();
     this.refreshExchangeRatesIfNeeded();
+  };
+
+  openPendingShareInvite = () => {
+    const pendingShareToken = storage.getString('pendingShareToken');
+
+    if (!pendingShareToken) {
+      return;
+    }
+
+    storage.delete('pendingShareToken');
+    setTimeout(() => {
+      if (navigationRef.isReady()) {
+        navigationRef.navigate('SubscriptionJoin', { token: pendingShareToken });
+      }
+    }, 0);
+  };
+
+  openPendingNotificationTarget = () => {
+    const pendingSubscriptionId = storage.getString('pendingShareSubscriptionId');
+
+    if (!pendingSubscriptionId) {
+      return;
+    }
+
+    storage.delete('pendingShareSubscriptionId');
+    setTimeout(() => {
+      if (navigationRef.isReady()) {
+        navigationRef.navigate('SubscriptionShare', {
+          subscriptionId: pendingSubscriptionId,
+        });
+      }
+    }, 0);
+  };
+
+  handlePushNotificationOpen = (remoteMessage) => {
+    const data = remoteMessage?.data || {};
+
+    if (data.type === 'subscription_share_message' && data.subscriptionId) {
+      if (!this.state.userToken) {
+        storage.set('pendingShareSubscriptionId', String(data.subscriptionId));
+        return;
+      }
+
+      if (!navigationRef.isReady()) {
+        storage.set('pendingShareSubscriptionId', String(data.subscriptionId));
+        return;
+      }
+
+      navigationRef.navigate('SubscriptionShare', {
+        subscriptionId: String(data.subscriptionId),
+      });
+    }
   };
 
   syncPushTokenVersionIfAvailable = async () => {
@@ -321,13 +427,17 @@ class App extends Component {
   };
 
   render() {
-    const { userToken } = this.state;
+    const { foregroundNotification, userToken } = this.state;
 
     return (
       <GestureHandlerRootView style={styles.root}>
         <NativeBaseProvider>
           <StatusBar barStyle="light-content" backgroundColor="#19386e" />
-          <NavigationContainer ref={navigationRef}>
+          <NavigationContainer
+            ref={navigationRef}
+            linking={linking}
+            onReady={this.openPendingNotificationTarget}
+          >
             <Stack.Navigator
               screenOptions={() => ({
                 headerShown: true,
@@ -359,6 +469,14 @@ class App extends Component {
                       title: 'Register',
                       headerShown: false,
                       headerLeft: undefined,
+                    }}
+                  />
+                  <Stack.Screen
+                    name="SubscriptionJoin"
+                    component={SubscriptionJoinScreen}
+                    options={{
+                      title: 'Meghívó',
+                      headerShown: false,
                     }}
                   />
                 </>
@@ -405,6 +523,14 @@ class App extends Component {
                     }}
                   />
                   <Stack.Screen
+                    name="SubscriptionJoin"
+                    component={SubscriptionJoinScreen}
+                    options={{
+                      title: 'Meghívó',
+                      headerShown: false,
+                    }}
+                  />
+                  <Stack.Screen
                     name="ProfileSettingsScreen"
                     component={ProfileSettingsScreen}
                     options={{
@@ -424,6 +550,11 @@ class App extends Component {
               )}
             </Stack.Navigator>
           </NavigationContainer>
+          <InAppNotificationBanner
+            notification={foregroundNotification}
+            onAction={this.handleForegroundNotificationAction}
+            onClose={this.closeForegroundNotification}
+          />
         </NativeBaseProvider>
       </GestureHandlerRootView>
     );

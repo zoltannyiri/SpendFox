@@ -1,4 +1,5 @@
 const { admin, db } = require('../src/services/firestoreClient');
+const { sendAppUpdateNotifications } = require('../src/services/appUpdateNotificationService');
 
 const DEFAULT_APK_URL = '/app-version/android/apk';
 const DEFAULT_MESSAGE = 'Új SpendFox verzió érhető el.';
@@ -44,7 +45,7 @@ const setAppVersion = async () => {
   const versionName = options.versionName ? String(options.versionName) : null;
 
   if (!Number.isInteger(versionCode) || versionCode <= 0 || !versionName) {
-    console.error('Usage: node scripts/setAppVersion.js <versionCode> <versionName> [--force true] [--message "..."]');
+    console.error('Usage: node scripts/setAppVersion.js <versionCode> <versionName> [--force true] [--message "..."] [--notify false]');
     console.error('Example: node scripts/setAppVersion.js 2 1.1');
     process.exitCode = 1;
     return;
@@ -65,6 +66,15 @@ const setAppVersion = async () => {
 
   console.log('Android app version updated:');
   console.log(JSON.stringify({ ...payload, updated_at: 'serverTimestamp()' }, null, 2));
+
+  if (toBoolean(options.notify, true)) {
+    const notificationResult = await sendAppUpdateNotifications();
+
+    console.log('Android app update notifications:');
+    console.log(JSON.stringify(notificationResult, null, 2));
+  } else {
+    console.log('Android app update notifications skipped.');
+  }
 };
 
 setAppVersion()

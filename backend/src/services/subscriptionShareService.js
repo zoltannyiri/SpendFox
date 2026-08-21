@@ -1,10 +1,13 @@
+const crypto = require('crypto');
 const { admin, db } = require('./firestoreClient');
 const { getNextId } = require('./counterService');
 const { areFriends } = require('./friendService');
 const { getUserById } = require('./userService');
+const { sendPushToUser } = require('./pushTokenService');
 
 const subscriptionsCollection = db.collection('subscriptions');
 const shareInvitesCollection = db.collection('subscription_share_invites');
+const shareLinksCollection = db.collection('subscription_share_links');
 
 const toNumericId = (value) => {
   const numericValue = Number(value);
@@ -21,6 +24,11 @@ const toServiceError = (err) => ({
 });
 
 const snapshotToInvite = (doc) => ({
+  id: Number(doc.id) || doc.id,
+  ...doc.data(),
+});
+
+const snapshotToShareLink = (doc) => ({
   id: Number(doc.id) || doc.id,
   ...doc.data(),
 });
@@ -302,8 +310,210 @@ const inviteSubscriptionParticipant = async (currentUserId, subscriptionId, rece
     });
 
     const doc = await inviteRef.get();
+    const enrichedInvite = await enrichInvite(snapshotToInvite(doc));
 
-    return { data: await enrichInvite(snapshotToInvite(doc)), error: null };
+    sendShareInvitePush(enrichedInvite).catch((err) => {
+      console.log('[push] failed to send shared invite notification:', err?.message || err);
+    });
+
+    return { data: enrichedInvite, error: null };
+  } catch (err) {
+    return { data: null, error: toServiceError(err) };
+  }
+};
+
+const sendShareInvitePush = async (invite) => {
+  if (!invite?.receiver_id) {
+    return;
+  }
+
+  const ownerName =
+    invite?.owner?.full_name ||
+    invite?.owner?.username ||
+    invite?.owner?.email ||
+    'Valaki';
+  const subscriptionName = invite?.subscription?.name || 'közös előfizetés';
+
+  await sendPushToUser({
+    uid: invite.receiver_id,
+    title: 'Új közös előfizetés meghívó',
+    body: `${ownerName} meghívott: ${subscriptionName}`,
+    data: {
+      type: 'subscription_share_invite',
+      subscriptionId: String(invite.subscription_id || ''),
+      inviteId: String(invite.id || ''),
+    },
+  });
+};
+
+const getOrCreateSubscriptionShareLink = async (currentUserId, subscriptionId) => {
+  try {
+    const subscription = await getSubscriptionOrThrow(subscriptionId);
+
+    if (String(subscription.user_id) !== String(currentUserId)) {
+      return { data: null, error: { message: 'Only the owner can create share links' } };
+    }
+
+    const existingSnapshot = await shareLinksCollection
+      .where('subscription_id', '==', String(subscriptionId))
+      .get();
+    const existingLink = existingSnapshot.docs
+      .map(snapshotToShareLink)
+      .find((link) => String(link.owner_user_id) === String(currentUserId) && link.active === true);
+
+    if (existingLink) {
+      return { data: existingLink, error: null };
+    }
+
+    const id = await getNextId('subscription_share_links');
+    const token = crypto.randomBytes(24).toString('hex');
+    const shareLink = {
+      id,
+      token,
+      subscription_id: String(subscriptionId),
+      owner_user_id: String(currentUserId),
+      active: true,
+      used_count: 0,
+      created_at: admin.firestore.FieldValue.serverTimestamp(),
+      updated_at: admin.firestore.FieldValue.serverTimestamp(),
+    };
+
+    await shareLinksCollection.doc(String(id)).set(shareLink);
+
+    return { data: shareLink, error: null };
+  } catch (err) {
+    return { data: null, error: toServiceError(err) };
+  }
+};
+
+const getSubscriptionShareLinkPreview = async (currentUserId, token) => {
+  try {
+    const linkSnapshot = await shareLinksCollection
+      .where('token', '==', String(token))
+      .limit(1)
+      .get();
+
+    const link = linkSnapshot.empty ? null : snapshotToShareLink(linkSnapshot.docs[0]);
+
+    if (!link || link.active !== true) {
+      return { data: null, error: { message: 'Share link not found' } };
+    }
+
+    const subscription = await getSubscriptionOrThrow(link.subscription_id);
+    const ownerResult = await getUserById(link.owner_user_id);
+    const access = await getSubscriptionShareAccess(currentUserId, subscription.id);
+
+    return {
+      data: {
+        token: link.token,
+        role: access.role,
+        can_access: access.canAccess,
+        already_joined: access.canAccess,
+        subscription: {
+          id: subscription.id,
+          name: subscription.name,
+          billing_cycle: subscription.billing_cycle,
+          price_huf: getPriceInHuf(subscription),
+          currency: subscription.currency,
+          category: subscription.category,
+          logo_url: subscription.logo_url,
+        },
+        owner: sanitizeUser(ownerResult.data),
+      },
+      error: null,
+    };
+  } catch (err) {
+    return { data: null, error: toServiceError(err) };
+  }
+};
+
+const joinSubscriptionShareLink = async (currentUserId, token) => {
+  try {
+    const linkSnapshot = await shareLinksCollection
+      .where('token', '==', String(token))
+      .limit(1)
+      .get();
+
+    const linkDoc = linkSnapshot.empty ? null : linkSnapshot.docs[0];
+    const link = linkDoc ? snapshotToShareLink(linkDoc) : null;
+
+    if (!link || link.active !== true) {
+      return { data: null, error: { message: 'Share link not found' } };
+    }
+
+    const subscription = await getSubscriptionOrThrow(link.subscription_id);
+
+    if (String(subscription.user_id) === String(currentUserId)) {
+      const enrichedSubscription = await enrichSubscriptionWithShare(subscription, currentUserId);
+
+      return {
+        data: {
+          subscription: enrichedSubscription,
+          role: 'owner',
+          already_joined: true,
+        },
+        error: null,
+      };
+    }
+
+    const existingSnapshot = await shareInvitesCollection
+      .where('subscription_id', '==', String(subscription.id))
+      .where('receiver_id', '==', String(currentUserId))
+      .get();
+    const existingInviteDoc = existingSnapshot.docs
+      .map((doc) => ({ doc, invite: snapshotToInvite(doc) }))
+      .find(({ invite }) => ['pending', 'accepted'].includes(invite.status));
+    const alreadyJoined = existingInviteDoc?.invite?.status === 'accepted';
+
+    if (existingInviteDoc) {
+      if (!alreadyJoined) {
+        await existingInviteDoc.doc.ref.update({
+          status: 'accepted',
+          invite_type: 'link',
+          link_token: link.token,
+          accepted_at: admin.firestore.FieldValue.serverTimestamp(),
+          updated_at: admin.firestore.FieldValue.serverTimestamp(),
+        });
+      }
+    } else {
+      const inviteId = await getNextId('subscription_share_invites');
+      await shareInvitesCollection.doc(String(inviteId)).set({
+        id: inviteId,
+        subscription_id: String(subscription.id),
+        owner_user_id: String(subscription.user_id),
+        receiver_id: String(currentUserId),
+        status: 'accepted',
+        invite_type: 'link',
+        link_token: link.token,
+        settlement_status: 'pending',
+        accepted_at: admin.firestore.FieldValue.serverTimestamp(),
+        created_at: admin.firestore.FieldValue.serverTimestamp(),
+        updated_at: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    }
+
+    await db.runTransaction(async (transaction) => {
+      transaction.update(subscriptionsCollection.doc(String(subscription.id)), {
+        is_shared: true,
+        owner_user_id: toNumericId(subscription.user_id),
+        updated_at: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      transaction.update(linkDoc.ref, {
+        ...(alreadyJoined ? {} : { used_count: admin.firestore.FieldValue.increment(1) }),
+        updated_at: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    });
+
+    const enrichedSubscription = await enrichSubscriptionWithShare(subscription, currentUserId);
+
+    return {
+      data: {
+        subscription: enrichedSubscription,
+        role: 'participant',
+        already_joined: alreadyJoined,
+      },
+      error: null,
+    };
   } catch (err) {
     return { data: null, error: toServiceError(err) };
   }
@@ -473,7 +683,10 @@ const respondToSubscriptionShareInvite = async (currentUserId, inviteId, action)
 module.exports = {
   enrichSubscriptionWithShare,
   getSubscriptionShareAccess,
+  getOrCreateSubscriptionShareLink,
+  getSubscriptionShareLinkPreview,
   inviteSubscriptionParticipant,
+  joinSubscriptionShareLink,
   listUserShareInvites,
   removeSubscriptionShareParticipant,
   respondToSubscriptionShareInvite,

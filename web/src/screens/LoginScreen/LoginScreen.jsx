@@ -1,12 +1,11 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 
 import { useAuth } from "../../auth/UseAuth";
 import AppLogo from "../../components/AppLogo";
 
 const LoginScreen = () => {
-  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
@@ -14,6 +13,7 @@ const LoginScreen = () => {
   const { fetchProfile } = useAuth();
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -34,7 +34,7 @@ const LoginScreen = () => {
       localStorage.setItem("accessToken", response.data.data.session.access_token);
       
       await fetchProfile();
-      navigate("/home");
+      navigate(location.pathname.startsWith("/subscription-share/") ? location.pathname : "/home");
     } catch (err) {
       console.error("Error during login:", err?.response?.data || err);
       setError(err?.response?.data?.error || "Hiba történt a bejelentkezés során.");
@@ -90,9 +90,10 @@ const LoginScreen = () => {
           {/* Bejelentkezés gomb */}
           <button
             type="submit"
-            className="cursor-pointer w-full rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 active:scale-[0.98]"
+            disabled={loading}
+            className="cursor-pointer w-full rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Bejelentkezés
+            {loading ? "Belépés..." : "Bejelentkezés"}
           </button>
           {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
         </form>

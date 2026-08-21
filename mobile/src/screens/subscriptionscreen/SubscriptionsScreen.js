@@ -489,6 +489,8 @@ function SubscriptionDetailCard({ subscription, onClose, onEdit, onOpenShare }) 
   const categoryLabel = getCategoryLabel(subscription.category);
   const rate = Number(subscription.exchange_rate_to_huf);
   const hasRate = currency !== 'HUF' && !Number.isNaN(rate) && rate > 0;
+  const sharedParticipantCount = getSharedParticipantCount(subscription);
+  const mySharePrice = getSharedSharePrice(subscription);
   const trialEndDate = subscription.trial_enabled && subscription.trial_end_date
     ? parseDateValue(subscription.trial_end_date)
     : null;
@@ -542,9 +544,12 @@ function SubscriptionDetailCard({ subscription, onClose, onEdit, onOpenShare }) 
               <Text className="mt-1 text-xs font-semibold leading-5 text-neutral-500">
                 Résztvevők, saját részek, státuszok és közös chat.
               </Text>
+              <Text className="mt-2 text-xs font-extrabold text-[#0ca9f2]">
+                Saját részed: {formatMoney(mySharePrice)}
+              </Text>
             </View>
             <Text className="rounded-full bg-white px-3 py-2 text-xs font-extrabold text-[#0ca9f2]">
-              {subscription.accepted_participant_count || 1} fő
+              {sharedParticipantCount} fő
             </Text>
           </View>
           <Pressable className="mt-4 rounded-2xl bg-[#0ca9f2] py-4" onPress={onOpenShare}>
@@ -580,6 +585,8 @@ function SubscriptionCard({ subscription, isOpen, onOpenDetails }) {
   const categoryLabel = getCategoryLabel(subscription.category);
   const billingCycle = getBillingCycleLabel(subscription.billing_cycle);
   const logoUrl = subscription.logo_url;
+  const sharedParticipantCount = getSharedParticipantCount(subscription);
+  const mySharePrice = getSharedSharePrice(subscription);
   const trialEndDate = subscription.trial_enabled && subscription.trial_end_date
     ? parseDateValue(subscription.trial_end_date)
     : null;
@@ -636,7 +643,14 @@ function SubscriptionCard({ subscription, isOpen, onOpenDetails }) {
           </Text>
         ) : null}
         {subscription.is_shared ? (
-          <Text className="mt-1 text-xs font-bold text-[#0ca9f2]">Megosztott</Text>
+          <>
+            <Text className="mt-1 text-xs font-bold text-[#0ca9f2]">
+              Közös · {sharedParticipantCount} fő
+            </Text>
+            <Text className="mt-1 text-xs font-bold text-neutral-500">
+              Saját részed {formatMoney(mySharePrice)}
+            </Text>
+          </>
         ) : null}
         <Text className="mt-2 text-xs font-extrabold text-neutral-400">
           {isOpen ? 'Bezár' : 'Részletek'}
@@ -704,6 +718,40 @@ function getPriceInHuf(item) {
   }
 
   return 0;
+}
+
+function getSharedParticipantCount(item) {
+  const explicitCount = Number(
+    item.accepted_participant_count ??
+      item.participant_count ??
+      item.shared_participant_count
+  );
+
+  if (!Number.isNaN(explicitCount) && explicitCount > 0) {
+    return explicitCount;
+  }
+
+  if (Array.isArray(item.participants) && item.participants.length > 0) {
+    return item.participants.filter(
+      (participant) => participant.status === 'accepted' || participant.is_owner
+    ).length;
+  }
+
+  return item.is_shared ? 2 : 1;
+}
+
+function getSharedSharePrice(item) {
+  const sharePrice = Number(item.my_share_price_huf ?? item.share_price_huf);
+
+  if (!Number.isNaN(sharePrice) && sharePrice >= 0) {
+    return sharePrice;
+  }
+
+  if (item.is_shared) {
+    return getPriceInHuf(item) / Math.max(getSharedParticipantCount(item), 1);
+  }
+
+  return getPriceInHuf(item);
 }
 
 function getAnnualPriceInHuf(item) {

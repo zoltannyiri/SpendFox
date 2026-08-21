@@ -1,5 +1,5 @@
 import messaging from '@react-native-firebase/messaging';
-import { Alert, PermissionsAndroid, Platform } from 'react-native';
+import { PermissionsAndroid, Platform } from 'react-native';
 import axios from 'axios';
 import { APP_VERSION } from '../../config/appVersion';
 import { downloadAndInstallUpdate } from '../appUpdate/ApkUpdateService';
@@ -44,32 +44,56 @@ export async function syncPushTokenVersion() {
   }
 }
 
-export function setupPushListeners() {
+export function setupPushListeners({ onForegroundNotification, onNotificationOpen } = {}) {
   const unsubscribeMessage = messaging().onMessage(async (remoteMessage) => {
     const title = remoteMessage?.notification?.title ?? 'SpendFox';
     const body =
       remoteMessage?.notification?.body ??
       'Új értesítés érkezett a SpendFoxtól.';
     const downloadUrl = remoteMessage?.data?.downloadUrl;
+    const openableNotificationTypes = ['subscription_share_message'];
 
     if (remoteMessage?.data?.type === 'app_update' && downloadUrl) {
-      Alert.alert(title, body, [
-        { text: 'Később', style: 'cancel' },
-        {
-          text: 'Letöltés',
-          onPress: () =>
-            downloadAndInstallUpdate({
-              apkUrl: downloadUrl,
-              versionCode: remoteMessage?.data?.versionCode,
-              versionName: remoteMessage?.data?.versionName,
-            }, { showStartedAlert: true }),
-        },
-      ]);
+      onForegroundNotification?.({
+        id: remoteMessage?.messageId || `${Date.now()}`,
+        title,
+        body,
+        actionLabel: 'Letöltés',
+        onAction: () =>
+          downloadAndInstallUpdate({
+            apkUrl: downloadUrl,
+            versionCode: remoteMessage?.data?.versionCode,
+            versionName: remoteMessage?.data?.versionName,
+          }, { showStartedAlert: true }),
+      });
       return;
     }
 
-    Alert.alert(title, body);
+    onForegroundNotification?.({
+      id: remoteMessage?.messageId || `${Date.now()}`,
+      title,
+      body,
+      actionLabel: openableNotificationTypes.includes(remoteMessage?.data?.type) ? 'Megnyitás' : undefined,
+      onAction: openableNotificationTypes.includes(remoteMessage?.data?.type)
+        ? () => onNotificationOpen?.(remoteMessage)
+        : undefined,
+    });
   });
+
+  const unsubscribeNotificationOpen = messaging().onNotificationOpenedApp((remoteMessage) => {
+    onNotificationOpen?.(remoteMessage);
+  });
+
+  messaging()
+    .getInitialNotification()
+    .then((remoteMessage) => {
+      if (remoteMessage) {
+        onNotificationOpen?.(remoteMessage);
+      }
+    })
+    .catch((err) => {
+      console.log('Initial push notification handling failed:', err?.message || err);
+    });
 
   const unsubscribeTokenRefresh = messaging().onTokenRefresh(async (newToken) => {
     try {
@@ -81,6 +105,7 @@ export function setupPushListeners() {
 
   return () => {
     unsubscribeMessage();
+    unsubscribeNotificationOpen();
     unsubscribeTokenRefresh();
   };
 }

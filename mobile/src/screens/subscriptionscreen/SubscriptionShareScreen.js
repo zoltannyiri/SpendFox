@@ -1,10 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
+  Share,
   StatusBar,
   Text,
   TextInput,
@@ -17,6 +20,7 @@ import { MMKV } from 'react-native-mmkv';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import CurvedHeader, { HeaderIconButton } from '../../components/layout/CurvedHeader';
 import AnimatedScreen from '../../components/layout/AnimatedScreen';
+import useKeyboardSafeScroll from '../../hooks/useKeyboardSafeScroll';
 
 const storage = new MMKV();
 const COLORS = {
@@ -38,14 +42,26 @@ export default function SubscriptionShareScreen() {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState('');
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [inviteLink, setInviteLink] = useState(null);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const {
+    scrollRef,
+    contentContainerStyle,
+    scrollToEndAfterKeyboard,
+  } = useKeyboardSafeScroll({
+    defaultBottomPadding: 128,
+    keyboardBottomPadding: 340,
+  });
 
   const participants = useMemo(() => subscription?.participants || [], [subscription]);
   const acceptedParticipants = participants.filter(
     (participant) => participant.status === 'accepted' || participant.is_owner
   );
-  const settledCount = participants.filter(
+  const settledCount = acceptedParticipants.filter(
     (participant) => participant.settlement_status === 'settled'
   ).length;
+  const isOwner = role === 'owner';
 
   const loadOverview = useCallback(async () => {
     if (!subscriptionId) {
@@ -68,19 +84,23 @@ export default function SubscriptionShareScreen() {
     }
   }, [subscriptionId]);
 
-  const loadMessages = useCallback(async () => {
+  const loadMessages = useCallback(async ({ silent = false } = {}) => {
     if (!subscriptionId) {
       return;
     }
 
     try {
-      setMessagesLoading(true);
+      if (!silent) {
+        setMessagesLoading(true);
+      }
       const response = await axios.get(`/subscriptions/${subscriptionId}/share/messages`);
       setMessages(response.data?.data || []);
     } catch (err) {
       console.log('Failed to load shared messages:', err?.response?.data || err?.message);
     } finally {
-      setMessagesLoading(false);
+      if (!silent) {
+        setMessagesLoading(false);
+      }
     }
   }, [subscriptionId]);
 
@@ -88,6 +108,18 @@ export default function SubscriptionShareScreen() {
     loadOverview();
     loadMessages();
   }, [loadOverview, loadMessages]);
+
+  useEffect(() => {
+    if (!subscriptionId || loading) {
+      return undefined;
+    }
+
+    const intervalId = setInterval(() => {
+      loadMessages({ silent: true });
+    }, 4000);
+
+    return () => clearInterval(intervalId);
+  }, [loadMessages, loading, subscriptionId]);
 
   const updateSettlement = async (participantUserId, settlementStatus) => {
     try {
@@ -117,12 +149,53 @@ export default function SubscriptionShareScreen() {
       await axios.post(`/subscriptions/${subscriptionId}/share/messages`, { body: cleanBody });
       setMessageBody('');
       await loadMessages();
+      scrollToEndAfterKeyboard();
     } catch (err) {
       console.log('Failed to send shared message:', err?.response?.data || err?.message);
       setErrorText(err?.response?.data?.error || 'Nem sikerült elküldeni az üzenetet.');
     } finally {
       setSaving(false);
     }
+  };
+
+  const loadInviteLink = async () => {
+    if (!subscriptionId || inviteLoading) {
+      return;
+    }
+
+    try {
+      setInviteLoading(true);
+      setErrorText('');
+      const response = await axios.post(`/subscriptions/${subscriptionId}/share/link`);
+      const token = response.data?.data?.token;
+
+      if (!token) {
+        throw new Error('Missing invite token');
+      }
+
+      const deepLink = `spendfox://subscription-share/${token}`;
+      setInviteLink({
+        token,
+        deepLink,
+        qrUrl: `https://api.qrserver.com/v1/create-qr-code/?size=260x260&margin=16&data=${encodeURIComponent(deepLink)}`,
+      });
+      setInviteModalOpen(true);
+    } catch (err) {
+      console.log('Failed to create invite link:', err?.response?.data || err?.message);
+      setErrorText(err?.response?.data?.error || 'Nem sikerült létrehozni a meghívót.');
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const shareInviteLink = async () => {
+    if (!inviteLink?.deepLink) {
+      return;
+    }
+
+    await Share.share({
+      message: `Csatlakozz ehhez a SpendFox közös előfizetéshez: ${inviteLink.deepLink}`,
+    });
   };
 
   return (
@@ -133,8 +206,10 @@ export default function SubscriptionShareScreen() {
       <StatusBar barStyle="light-content" backgroundColor={COLORS.navy} />
 
       <ScrollView
+        ref={scrollRef}
         className="flex-1"
         contentContainerClassName="pb-32"
+        contentContainerStyle={contentContainerStyle}
         keyboardShouldPersistTaps="handled"
         automaticallyAdjustKeyboardInsets
         showsVerticalScrollIndicator={false}
@@ -146,6 +221,13 @@ export default function SubscriptionShareScreen() {
             <HeaderIconButton onPress={() => navigation.goBack()} dark>
               <BackIcon />
             </HeaderIconButton>
+          }
+          right={
+            isOwner ? (
+              <HeaderIconButton onPress={loadInviteLink} dark>
+                {inviteLoading ? <ActivityIndicator color="#fff" size="small" /> : <QrIcon />}
+              </HeaderIconButton>
+            ) : null
           }
           compact
         />
@@ -165,28 +247,50 @@ export default function SubscriptionShareScreen() {
             </View>
           ) : (
             <>
-              <View className="rounded-[30px] bg-white p-5" style={cardShadow}>
-                <Text className="text-xs font-extrabold uppercase tracking-[2px] text-[#0ca9f2]">
-                  Megosztott előfizetés
-                </Text>
-                <Text className="mt-2 text-3xl font-extrabold text-black">
-                  {subscription?.name || 'Előfizetés'}
-                </Text>
-                <Text className="mt-2 text-sm font-semibold text-neutral-500">
-                  {acceptedParticipants.length} résztvevő · saját részed {formatMoney(subscription?.my_share_price_huf)}
-                </Text>
-
-                <View className="mt-5 flex-row">
-                  <SummaryBox label="Teljes összeg" value={formatMoney(subscription?.price_huf)} />
-                  <View className="w-3" />
-                  <SummaryBox label="Rendezve" value={`${settledCount}/${participants.length}`} />
+              <View className="overflow-hidden rounded-[32px] bg-white" style={cardShadow}>
+                <View className="bg-[#eaf7ff] px-5 pb-5 pt-5">
+                  <Text className="text-xs font-extrabold uppercase tracking-[2px] text-[#0b84c6]">
+                    Megosztott előfizetés
+                  </Text>
+                  <Text className="mt-2 text-3xl font-extrabold text-black">
+                    {subscription?.name || 'Előfizetés'}
+                  </Text>
+                  <Text className="mt-2 text-sm font-semibold leading-5 text-[#4f6274]">
+                    {acceptedParticipants.length} résztvevő kezeli együtt. Fizetés nem történik az appon belül, itt csak a részeket és státuszokat követitek.
+                  </Text>
                 </View>
+
+                <View className="p-5">
+                  <View className="mt-5 flex-row">
+                    <SummaryBox label="Saját részed" value={formatMoney(subscription?.my_share_price_huf)} highlighted />
+                    <View className="w-3" />
+                    <SummaryBox label="Rendezve" value={`${settledCount}/${Math.max(acceptedParticipants.length, 1)}`} />
+                  </View>
+
+                  <View className="mt-3 flex-row">
+                    <SummaryBox label="Teljes összeg" value={formatMoney(subscription?.price_huf)} />
+                    <View className="w-3" />
+                    <SummaryBox label="Szereped" value={isOwner ? 'Tulajdonos' : 'Résztvevő'} />
+                  </View>
+                </View>
+
+                {isOwner ? (
+                  <Pressable
+                    className="mx-5 mb-5 rounded-2xl bg-black px-4 py-4"
+                    disabled={inviteLoading}
+                    onPress={loadInviteLink}
+                  >
+                    <Text className="text-center text-sm font-extrabold text-white">
+                      QR meghívó megnyitása
+                    </Text>
+                  </Pressable>
+                ) : null}
               </View>
 
               <View className="mt-6 rounded-[30px] bg-white p-5" style={cardShadow}>
                 <Text className="text-lg font-extrabold text-black">Résztvevők</Text>
-                <Text className="mt-1 text-sm font-semibold text-neutral-500">
-                  Itt látszik, ki mennyivel száll be. Fizetés nem történik az appon belül.
+                <Text className="mt-1 text-sm font-semibold leading-5 text-neutral-500">
+                  Itt látszik, ki mennyivel száll be és ki rendezte már a részét.
                 </Text>
 
                 <View className="mt-4">
@@ -293,7 +397,7 @@ export default function SubscriptionShareScreen() {
                             {getUserName(message.sender)} · {formatTime(message.created_at)}
                           </Text>
                           <Text
-                            className={`mt-1 text-sm font-semibold leading-5 ${
+                            className={`mt-1 shrink text-sm font-semibold leading-5 ${
                               isMine ? 'text-white' : 'text-black'
                             }`}
                           >
@@ -313,6 +417,7 @@ export default function SubscriptionShareScreen() {
                     multiline
                     value={messageBody}
                     onChangeText={setMessageBody}
+                    onFocus={scrollToEndAfterKeyboard}
                   />
                   <Pressable
                     className={`rounded-xl px-4 py-3 ${
@@ -329,6 +434,53 @@ export default function SubscriptionShareScreen() {
           )}
         </AnimatedScreen>
       </ScrollView>
+      <Modal
+        visible={inviteModalOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setInviteModalOpen(false)}
+      >
+        <View className="flex-1 justify-end bg-black/45 px-5 pb-8">
+          <View className="rounded-[32px] bg-white p-5" style={cardShadow}>
+            <View className="flex-row items-start justify-between">
+              <View className="flex-1 pr-4">
+                <Text className="text-xs font-extrabold uppercase tracking-[2px] text-[#0ca9f2]">
+                  QR meghívó
+                </Text>
+                <Text className="mt-2 text-2xl font-extrabold text-black">
+                  Csatlakozás közös előfizetéshez
+                </Text>
+                <Text className="mt-2 text-sm font-semibold leading-5 text-neutral-500">
+                  A másik fél olvassa be a QR-t, vagy küldd át neki a linket. Belépés után automatikusan csatlakozhat.
+                </Text>
+              </View>
+              <Pressable
+                className="h-11 w-11 items-center justify-center rounded-2xl bg-[#f2f4f7]"
+                onPress={() => setInviteModalOpen(false)}
+              >
+                <Text className="text-lg font-extrabold text-black">×</Text>
+              </Pressable>
+            </View>
+
+            {inviteLink?.qrUrl ? (
+              <View className="mt-5 items-center rounded-[28px] bg-[#f7f8fa] p-5">
+                <Image
+                  source={{ uri: inviteLink.qrUrl }}
+                  className="h-[260px] w-[260px] rounded-3xl"
+                  resizeMode="contain"
+                />
+                <Text className="mt-4 text-center text-xs font-bold text-neutral-500">
+                  {inviteLink.deepLink}
+                </Text>
+              </View>
+            ) : null}
+
+            <Pressable className="mt-5 rounded-2xl bg-[#0ca9f2] py-4" onPress={shareInviteLink}>
+              <Text className="text-center text-sm font-extrabold text-white">Link küldése</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
       <BottomNavigation />
     </KeyboardAvoidingView>
   );
@@ -342,11 +494,18 @@ const cardShadow = {
   elevation: 4,
 };
 
-function SummaryBox({ label, value }) {
+function SummaryBox({ label, value, highlighted = false }) {
   return (
-    <View className="flex-1 rounded-2xl bg-[#eef7ff] px-4 py-4">
-      <Text className="text-xs font-bold text-neutral-500">{label}</Text>
-      <Text className="mt-1 text-lg font-extrabold text-black">{value}</Text>
+    <View className={`flex-1 rounded-2xl px-4 py-4 ${highlighted ? 'bg-[#0ca9f2]' : 'bg-[#f3f7fb]'}`}>
+      <Text className={`text-xs font-bold ${highlighted ? 'text-white/80' : 'text-[#6c7a89]'}`}>
+        {label}
+      </Text>
+      <Text
+        className={`mt-1 text-lg font-extrabold ${highlighted ? 'text-white' : 'text-black'}`}
+        numberOfLines={1}
+      >
+        {value}
+      </Text>
     </View>
   );
 }
@@ -433,6 +592,15 @@ function BackIcon() {
         strokeLinecap="round"
         strokeLinejoin="round"
       />
+    </Svg>
+  );
+}
+
+function QrIcon() {
+  return (
+    <Svg width={19} height={19} viewBox="0 0 24 24" fill="none">
+      <Path d="M4 4h6v6H4V4Zm10 0h6v6h-6V4ZM4 14h6v6H4v-6Z" stroke="#fff" strokeWidth="2" strokeLinejoin="round" />
+      <Path d="M14 14h2v2h-2v-2Zm4 0h2v6h-6v-2h4v-4Z" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </Svg>
   );
 }

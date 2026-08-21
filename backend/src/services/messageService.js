@@ -1,5 +1,6 @@
 const { admin, db } = require('./firestoreClient');
 const { getNextId } = require('./counterService');
+const { sendPushToUser } = require('./pushTokenService');
 
 const usersCollection = db.collection('users');
 const friendsCollection = db.collection('friends');
@@ -92,7 +93,8 @@ const sendMessage = async (senderId, receiverId, body) => {
       return { data: null, error: { message: 'You cannot message yourself' } };
     }
 
-    const [receiver, conversationId] = await Promise.all([
+    const [sender, receiver, conversationId] = await Promise.all([
+      getUserOrThrow(normalizedSenderId),
       getUserOrThrow(normalizedReceiverId),
       ensureFriends(normalizedSenderId, normalizedReceiverId),
     ]);
@@ -127,10 +129,19 @@ const sendMessage = async (senderId, receiverId, body) => {
     });
 
     const doc = await messageRef.get();
+    const createdMessage = snapshotToMessage(doc);
+
+    notifyDirectMessageReceiver({
+      sender,
+      receiverId: normalizedReceiverId,
+      message: createdMessage,
+    }).catch((err) => {
+      console.log('[push] failed to send direct message notification:', err?.message || err);
+    });
 
     return {
       data: {
-        message: snapshotToMessage(doc),
+        message: createdMessage,
         participant: receiver,
       },
       error: null,
@@ -138,6 +149,27 @@ const sendMessage = async (senderId, receiverId, body) => {
   } catch (err) {
     return { data: null, error: toServiceError(err) };
   }
+};
+
+const notifyDirectMessageReceiver = async ({ sender, receiverId, message }) => {
+  const senderName =
+    sender?.full_name ||
+    sender?.username ||
+    sender?.email ||
+    'Valaki';
+  const body = String(message?.body || '').slice(0, 120);
+
+  await sendPushToUser({
+    uid: receiverId,
+    title: `Új üzenet: ${senderName}`,
+    body,
+    data: {
+      type: 'direct_message',
+      senderId: String(sender?.id || message?.sender_id || ''),
+      receiverId: String(receiverId),
+      messageId: String(message?.id || ''),
+    },
+  });
 };
 
 module.exports = {

@@ -12,6 +12,7 @@ import ProfileEditScreen from './screens/ProfileScreen/ProfileEditScreen'
 import PostDetailScreen from './screens/PostDetailScreen/PostDetailScreen'
 import MessageScreen from './screens/MessageScreen/MessageScreen'
 import SubscriptionShareScreen from './screens/SubscriptionScreen/SubscriptionShareScreen'
+import SubscriptionJoinScreen from './screens/SubscriptionScreen/SubscriptionJoinScreen'
 import { useAuth } from './auth/UseAuth'
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
             <Route path="/home" element={<HomeScreen />} />
             <Route path="/subscriptions" element={<SubscriptionList />} />
             <Route path="/subscriptions/:id/share" element={<SubscriptionShareScreen />} />
+            <Route path="/subscription-share/:token" element={<SubscriptionJoinScreen />} />
             <Route path="/profile" element={<ProfileScreen />} />
             <Route path="/profile/edit" element={<ProfileEditScreen />} />
             <Route path="/settings" element={<ProfileEditScreen />} />
@@ -41,6 +43,7 @@ function App() {
           </>
         ) : (
           <>
+            <Route path="/subscription-share/:token" element={<LoginScreen />} />
             <Route path="/register" element={<RegisterScreen />} />
             <Route path="/login" element={<LoginScreen />} />
             <Route path="*" element={<Navigate to="/login" replace />} />

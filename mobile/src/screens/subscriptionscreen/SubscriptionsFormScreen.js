@@ -20,6 +20,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import CurvedHeader, { HeaderIconButton } from '../../components/layout/CurvedHeader';
 import AnimatedScreen from '../../components/layout/AnimatedScreen';
+import useKeyboardSafeScroll from '../../hooks/useKeyboardSafeScroll';
 
 const storage = new MMKV();
 
@@ -62,6 +63,14 @@ export default function SubscriptionsFormScreen() {
   const [isActive, setIsActive] = useState(editingSubscription?.is_active ?? true);
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState('');
+  const {
+    scrollRef,
+    contentContainerStyle,
+    scrollToEndAfterKeyboard,
+  } = useKeyboardSafeScroll({
+    defaultBottomPadding: 288,
+    keyboardBottomPadding: 380,
+  });
 
   useEffect(() => {
     const loadDictionaries = async () => {
@@ -172,8 +181,10 @@ export default function SubscriptionsFormScreen() {
       <StatusBar barStyle="light-content" backgroundColor="#19386e" />
 
       <ScrollView
+        ref={scrollRef}
         className="flex-1"
         contentContainerClassName="pb-72"
+        contentContainerStyle={contentContainerStyle}
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -297,7 +308,10 @@ export default function SubscriptionsFormScreen() {
               <FieldLabel label="Kezdő nap" />
               <Pressable
                 className="h-14 justify-center rounded-2xl bg-[#f7f8fa] px-4"
-                onPress={() => setShowStartDatePicker(true)}
+                onPress={() => {
+                  setShowStartDatePicker(true);
+                  scrollToEndAfterKeyboard();
+                }}
               >
                 <Text className="text-base font-semibold text-black">
                   {startDate || 'Válassz dátumot'}
@@ -337,7 +351,10 @@ export default function SubscriptionsFormScreen() {
                 <FieldLabel label="Következő fizetés" />
                 <Pressable
                   className="h-14 justify-center rounded-2xl bg-[#f7f8fa] px-4"
-                  onPress={() => setShowNextBillingDatePicker(true)}
+                  onPress={() => {
+                    setShowNextBillingDatePicker(true);
+                    scrollToEndAfterKeyboard();
+                  }}
                 >
                   <Text className="text-base font-semibold text-black">
                     {nextBillingDate || 'Automatikus számítás'}
@@ -408,7 +425,10 @@ export default function SubscriptionsFormScreen() {
                   <FieldLabel label="Próbaidő vége" />
                   <Pressable
                     className="h-14 justify-center rounded-2xl bg-white px-4"
-                    onPress={() => setShowTrialDatePicker(true)}
+                    onPress={() => {
+                      setShowTrialDatePicker(true);
+                      scrollToEndAfterKeyboard();
+                    }}
                   >
                     <Text className="text-base font-semibold text-black">
                       {trialEndDate || 'Válassz dátumot'}

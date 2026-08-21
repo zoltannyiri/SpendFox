@@ -6,8 +6,11 @@ const {
 	updateSubscription,
 	deleteSubscription,
 	refreshExchangeRates,
+	createSubscriptionShareLink,
 	getSubscriptionShareInvites,
+	getSubscriptionShareLink,
 	inviteSubscriptionShare,
+	joinSubscriptionShare,
 	removeSubscriptionShare,
 	getSubscriptionShareOverview,
 	respondToSubscriptionShare,
@@ -23,7 +26,10 @@ router.get('/subscriptions', getSubscriptions);
 router.post('/subscriptions/exchange-rates/refresh', requireAuth, refreshExchangeRates);
 router.get('/subscriptions/share-invites', requireAuth, getSubscriptionShareInvites);
 router.post('/subscriptions/share-invites/:inviteId/:action', requireAuth, respondToSubscriptionShare);
+router.get('/subscriptions/share-links/:token', requireAuth, getSubscriptionShareLink);
+router.post('/subscriptions/share-links/:token/join', requireAuth, joinSubscriptionShare);
 router.get('/subscriptions/:id/share/overview', requireAuth, getSubscriptionShareOverview);
+router.post('/subscriptions/:id/share/link', requireAuth, createSubscriptionShareLink);
 router.post('/subscriptions/:id/share/invite', requireAuth, inviteSubscriptionShare);
 router.get('/subscriptions/:id/share/messages', requireAuth, getSubscriptionShareMessages);
 router.post('/subscriptions/:id/share/messages', requireAuth, sendSubscriptionShareMessage);

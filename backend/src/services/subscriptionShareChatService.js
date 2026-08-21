@@ -2,8 +2,11 @@ const { admin, db } = require('./firestoreClient');
 const { getNextId } = require('./counterService');
 const { getUserById } = require('./userService');
 const { getSubscriptionShareAccess } = require('./subscriptionShareService');
+const { sendPushToUser } = require('./pushTokenService');
 
 const messagesCollection = db.collection('subscription_share_messages');
+const subscriptionsCollection = db.collection('subscriptions');
+const shareInvitesCollection = db.collection('subscription_share_invites');
 
 const toServiceError = (err) => ({
   message: err.message || 'Firestore operation failed',
@@ -106,11 +109,89 @@ const createSubscriptionShareMessage = async (currentUserId, subscriptionId, bod
     await ref.set(message);
 
     const createdDoc = await ref.get();
+    const enrichedMessage = await enrichMessage(snapshotToMessage(createdDoc));
 
-    return { data: await enrichMessage(snapshotToMessage(createdDoc)), error: null };
+    notifyShareMessageReceivers({
+      currentUserId,
+      subscriptionId,
+      message: enrichedMessage,
+    }).catch((err) => {
+      console.log('[push] failed to send shared chat notification:', err?.message || err);
+    });
+
+    return { data: enrichedMessage, error: null };
   } catch (err) {
     return { data: null, error: toServiceError(err) };
   }
+};
+
+const notifyShareMessageReceivers = async ({ currentUserId, subscriptionId, message }) => {
+  const subscriptionDoc = await subscriptionsCollection.doc(String(subscriptionId)).get();
+
+  if (!subscriptionDoc.exists) {
+    return;
+  }
+
+  const subscription = {
+    id: Number(subscriptionDoc.id) || subscriptionDoc.id,
+    ...subscriptionDoc.data(),
+  };
+  const inviteSnapshot = await shareInvitesCollection
+    .where('subscription_id', '==', String(subscriptionId))
+    .get();
+  const receiverIds = new Set();
+
+  if (String(subscription.user_id) !== String(currentUserId)) {
+    receiverIds.add(String(subscription.user_id));
+  }
+
+  inviteSnapshot.docs.forEach((doc) => {
+    const invite = doc.data();
+
+    if (invite.status === 'accepted' && String(invite.receiver_id) !== String(currentUserId)) {
+      receiverIds.add(String(invite.receiver_id));
+    }
+  });
+
+  if (receiverIds.size === 0) {
+    console.log('[push] shared chat skipped: no receivers', {
+      subscriptionId: String(subscriptionId),
+      senderId: String(currentUserId),
+    });
+    return;
+  }
+
+  const senderName =
+    message?.sender?.full_name ||
+    message?.sender?.username ||
+    message?.sender?.email ||
+    'Valaki';
+  const body = String(message?.body || '').slice(0, 120);
+
+  const results = await Promise.allSettled(
+    [...receiverIds].map((uid) =>
+      sendPushToUser({
+        uid,
+        title: `Új üzenet: ${subscription.name || 'közös előfizetés'}`,
+        body: `${senderName}: ${body}`,
+        data: {
+          type: 'subscription_share_message',
+          subscriptionId: String(subscriptionId),
+        },
+      })
+    )
+  );
+
+  console.log('[push] shared chat notification sent', {
+    subscriptionId: String(subscriptionId),
+    senderId: String(currentUserId),
+    receiverIds: [...receiverIds],
+    results: results.map((result) =>
+      result.status === 'fulfilled'
+        ? result.value?.data || null
+        : { error: result.reason?.message || String(result.reason) }
+    ),
+  });
 };
 
 module.exports = {

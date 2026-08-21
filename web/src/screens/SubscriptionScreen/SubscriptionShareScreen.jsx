@@ -4,10 +4,14 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   FiArrowLeft,
   FiCheckCircle,
+  FiCopy,
   FiMessageCircle,
+  FiGrid,
   FiSend,
+  FiShare2,
   FiTrash2,
   FiUserPlus,
+  FiX,
 } from "react-icons/fi";
 
 import { useAuth } from "../../auth/UseAuth";
@@ -91,6 +95,10 @@ const SubscriptionShareScreen = () => {
   const [messagesLoading, setMessagesLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [inviteLink, setInviteLink] = useState(null);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [copyState, setCopyState] = useState("");
 
   const participants = useMemo(
     () => subscription?.participants || [],
@@ -301,6 +309,68 @@ const SubscriptionShareScreen = () => {
     }
   };
 
+  const createInviteLink = async () => {
+    if (inviteLoading) return;
+
+    setInviteLoading(true);
+    setError("");
+    setCopyState("");
+
+    try {
+      const response = await axios.post(
+        `${API_HOST}/subscriptions/${id}/share/link`,
+        null,
+        { headers: authHeaders() }
+      );
+      const token = response.data.data?.token;
+
+      if (!token) {
+        throw new Error("Missing invite token");
+      }
+
+      const deepLink = `spendfox://subscription-share/${token}`;
+      const webUrl = `${window.location.origin}/subscription-share/${token}`;
+
+      setInviteLink({
+        token,
+        deepLink,
+        webUrl,
+        qrUrl: `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=16&data=${encodeURIComponent(deepLink)}`,
+      });
+      setInviteModalOpen(true);
+    } catch (err) {
+      setError(err.response?.data?.error || "Nem sikerült létrehozni a QR meghívót.");
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
+  const copyInviteLink = async () => {
+    if (!inviteLink?.deepLink) return;
+
+    try {
+      await navigator.clipboard.writeText(inviteLink.deepLink);
+      setCopyState("App link másolva.");
+    } catch {
+      setCopyState("Nem sikerült automatikusan másolni.");
+    }
+  };
+
+  const shareInviteLink = async () => {
+    if (!inviteLink?.deepLink) return;
+
+    if (navigator.share) {
+      await navigator.share({
+        title: "SpendFox közös előfizetés meghívó",
+        text: `Csatlakozz ehhez a SpendFox közös előfizetéshez az appban: ${inviteLink.deepLink}`,
+        url: inviteLink.deepLink,
+      });
+      return;
+    }
+
+    await copyInviteLink();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 px-5 py-16">
@@ -352,10 +422,10 @@ const SubscriptionShareScreen = () => {
           </div>
         )}
 
-        <section className="overflow-hidden rounded-[2rem] bg-slate-950 text-white shadow-xl">
-          <div className="grid gap-8 p-8 md:grid-cols-[1.1fr_0.9fr] md:p-10">
+        <section className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+          <div className="grid gap-8 bg-gradient-to-br from-sky-50 via-white to-blue-50 p-8 md:grid-cols-[1.1fr_0.9fr] md:p-10">
             <div>
-              <div className="text-xs font-black uppercase tracking-[0.28em] text-blue-300">
+              <div className="text-xs font-black uppercase tracking-[0.28em] text-sky-600">
                 Közös előfizetés
               </div>
               <div className="mt-5 max-w-xl">
@@ -364,42 +434,53 @@ const SubscriptionShareScreen = () => {
                   name={subscription?.name}
                 />
               </div>
-              <p className="mt-5 max-w-2xl text-sm leading-relaxed text-slate-300">
+              <p className="mt-5 max-w-2xl text-sm font-semibold leading-relaxed text-slate-600">
                 Itt egy helyen látjátok, ki mennyit fizet, mikor jön a következő levonás,
                 és meg tudjátok beszélni a közös előfizetés részleteit.
               </p>
+              {isOwner && (
+                <button
+                  type="button"
+                  onClick={createInviteLink}
+                  disabled={inviteLoading}
+                  className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white shadow-sm transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                >
+                  <FiGrid />
+                  {inviteLoading ? "QR készül..." : "QR meghívó"}
+                </button>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-3xl bg-white/10 p-5">
-                <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+              <div className="rounded-3xl bg-sky-500 p-5 text-white shadow-sm">
+                <div className="text-xs font-bold uppercase tracking-[0.18em] text-white/80">
                   Saját részed
                 </div>
                 <div className="mt-3 text-3xl font-black">
                   {formatMoney(subscription?.my_share_price_huf)}
                 </div>
               </div>
-              <div className="rounded-3xl bg-white/10 p-5">
-                <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+              <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
                   Teljes ár
                 </div>
-                <div className="mt-3 text-3xl font-black">
+                <div className="mt-3 text-3xl font-black text-slate-950">
                   {formatMoney(subscription?.price_huf)}
                 </div>
               </div>
-              <div className="rounded-3xl bg-white/10 p-5">
-                <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+              <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
                   Következő fizetés
                 </div>
-                <div className="mt-3 text-xl font-black">
+                <div className="mt-3 text-xl font-black text-slate-950">
                   {formatDate(subscription?.next_billing_date)}
                 </div>
               </div>
-              <div className="rounded-3xl bg-white/10 p-5">
-                <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-400">
+              <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
                   Résztvevők
                 </div>
-                <div className="mt-3 text-xl font-black">
+                <div className="mt-3 text-xl font-black text-slate-950">
                   {acceptedParticipants.length || 1} fő
                 </div>
               </div>
@@ -588,6 +669,26 @@ const SubscriptionShareScreen = () => {
                     Meghívás
                   </button>
                 </div>
+
+                <div className="mt-4 rounded-3xl border border-sky-100 bg-sky-50 p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                      <div className="text-sm font-black text-slate-950">QR meghívó</div>
+                      <p className="mt-1 text-sm font-semibold text-slate-600">
+                        Linkkel vagy QR-kóddal is csatlakozhatnak a közös előfizetéshez.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={createInviteLink}
+                      disabled={inviteLoading}
+                      className="inline-flex cursor-pointer items-center gap-2 rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                    >
+                      <FiGrid />
+                      {inviteLoading ? "Készül..." : "QR megnyitása"}
+                    </button>
+                  </div>
+                </div>
               </form>
             )}
           </section>
@@ -681,6 +782,77 @@ const SubscriptionShareScreen = () => {
           </section>
         </div>
       </div>
+
+      {inviteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-5 py-8 backdrop-blur-sm">
+          <div className="w-full max-w-xl overflow-hidden rounded-[2rem] bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-5 border-b border-slate-100 p-6">
+              <div>
+                <div className="inline-flex rounded-full bg-sky-50 px-3 py-1 text-xs font-black uppercase tracking-[0.22em] text-sky-600">
+                  QR meghívó
+                </div>
+                <h2 className="mt-4 text-3xl font-black text-slate-950">
+                  Csatlakozás közös előfizetéshez
+                </h2>
+                <p className="mt-2 text-sm font-semibold leading-relaxed text-slate-600">
+                  Olvastasd be telefonról a QR-kódot. A SpendFox app nyílik meg, és bejelentkezés után a másik fél automatikusan a csatlakozó oldalra kerül.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setInviteModalOpen(false)}
+                className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-2xl bg-slate-100 text-slate-600 transition hover:bg-slate-200"
+                aria-label="Bezárás"
+              >
+                <FiX />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {inviteLink?.qrUrl && (
+                <div className="flex flex-col items-center rounded-[2rem] bg-slate-50 p-6">
+                  <img
+                    src={inviteLink.qrUrl}
+                    alt="Közös előfizetés QR meghívó"
+                    className="h-72 w-72 rounded-3xl bg-white p-3 shadow-sm"
+                  />
+                  <div className="mt-5 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-center text-sm font-bold text-slate-600 break-all">
+                    {inviteLink.deepLink}
+                  </div>
+                  <div className="mt-3 w-full rounded-2xl border border-slate-200 bg-white/70 px-4 py-3 text-center text-xs font-bold text-slate-500 break-all">
+                    Webes tartalék link: {inviteLink.webUrl}
+                  </div>
+                </div>
+              )}
+
+              {copyState && (
+                <div className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-black text-emerald-700">
+                  {copyState}
+                </div>
+              )}
+
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={copyInviteLink}
+                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm font-black text-slate-800 transition hover:bg-slate-50"
+                >
+                  <FiCopy />
+                  App link másolása
+                </button>
+                <button
+                  type="button"
+                  onClick={shareInviteLink}
+                  className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-2xl bg-blue-600 px-5 py-4 text-sm font-black text-white transition hover:bg-blue-500"
+                >
+                  <FiShare2 />
+                  Megosztás
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 };

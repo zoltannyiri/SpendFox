@@ -10,7 +10,10 @@ const { convertPriceToHuf } = require('../services/exchangeRateService');
 const { resolveBrandLogoUrl } = require('../services/brandLogoService');
 const {
   getSubscriptionShareAccess,
+  getOrCreateSubscriptionShareLink,
+  getSubscriptionShareLinkPreview,
   inviteSubscriptionParticipant,
+  joinSubscriptionShareLink,
   listUserShareInvites,
   removeSubscriptionShareParticipant,
   respondToSubscriptionShareInvite,
@@ -311,6 +314,69 @@ const inviteSubscriptionShare = async (req, res) => {
   }
 };
 
+const createSubscriptionShareLink = async (req, res) => {
+  try {
+    const userId = req.auth?.uid;
+    const { id } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Missing authenticated user' });
+    }
+
+    const { data, error } = await getOrCreateSubscriptionShareLink(userId, id);
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    return res.json({ data });
+  } catch (err) {
+    return res.status(500).json({ error: 'Unexpected error' });
+  }
+};
+
+const getSubscriptionShareLink = async (req, res) => {
+  try {
+    const userId = req.auth?.uid;
+    const { token } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Missing authenticated user' });
+    }
+
+    const { data, error } = await getSubscriptionShareLinkPreview(userId, token);
+
+    if (error) {
+      return res.status(404).json({ error: error.message });
+    }
+
+    return res.json({ data });
+  } catch (err) {
+    return res.status(500).json({ error: 'Unexpected error' });
+  }
+};
+
+const joinSubscriptionShare = async (req, res) => {
+  try {
+    const userId = req.auth?.uid;
+    const { token } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({ error: 'Missing authenticated user' });
+    }
+
+    const { data, error } = await joinSubscriptionShareLink(userId, token);
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    return res.json({ data });
+  } catch (err) {
+    return res.status(500).json({ error: 'Unexpected error' });
+  }
+};
+
 const updateSubscriptionShare = async (req, res) => {
   try {
     const userId = req.auth?.uid;
@@ -582,7 +648,10 @@ module.exports = {
   updateSubscription,
   refreshExchangeRates,
   getSubscriptionShareInvites,
+  createSubscriptionShareLink,
   inviteSubscriptionShare,
+  getSubscriptionShareLink,
+  joinSubscriptionShare,
   removeSubscriptionShare,
   getSubscriptionShareOverview,
   respondToSubscriptionShare,

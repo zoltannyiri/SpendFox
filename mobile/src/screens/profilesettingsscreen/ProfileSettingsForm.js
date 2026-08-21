@@ -20,6 +20,7 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import BottomNavigation from '../../components/layout/BottomNavigation';
 import CurvedHeader, { HeaderIconButton } from '../../components/layout/CurvedHeader';
 import AnimatedScreen from '../../components/layout/AnimatedScreen';
+import useKeyboardSafeScroll from '../../hooks/useKeyboardSafeScroll';
 
 const storage = new MMKV();
 
@@ -90,6 +91,14 @@ export default function ProfileSettingsForm() {
   );
   const [saving, setSaving] = useState(false);
   const [errorText, setErrorText] = useState('');
+  const {
+    scrollRef,
+    contentContainerStyle,
+    scrollToEndAfterKeyboard,
+  } = useKeyboardSafeScroll({
+    defaultBottomPadding: 288,
+    keyboardBottomPadding: 380,
+  });
 
   useEffect(() => {
     const storedUser = getStoredUser();
@@ -234,8 +243,10 @@ export default function ProfileSettingsForm() {
       <StatusBar barStyle="light-content" backgroundColor="#19386e" />
 
       <ScrollView
+        ref={scrollRef}
         className="flex-1"
         contentContainerClassName="pb-72"
+        contentContainerStyle={contentContainerStyle}
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
@@ -352,6 +363,7 @@ export default function ProfileSettingsForm() {
                 multiline
                 value={isEmbeddedImage(avatarUrl) ? '' : avatarUrl}
                 onChangeText={setAvatarUrl}
+                onFocus={scrollToEndAfterKeyboard}
                 returnKeyType="done"
               />
             </View>
@@ -366,6 +378,7 @@ export default function ProfileSettingsForm() {
                 maxLength={260}
                 value={bio}
                 onChangeText={setBio}
+                onFocus={scrollToEndAfterKeyboard}
                 textAlignVertical="top"
               />
               <Text className="mt-2 text-right text-xs font-bold text-neutral-400">
@@ -381,6 +394,7 @@ export default function ProfileSettingsForm() {
                 placeholderTextColor="#9b9ba1"
                 value={location}
                 onChangeText={setLocation}
+                onFocus={scrollToEndAfterKeyboard}
                 returnKeyType="done"
               />
             </View>
