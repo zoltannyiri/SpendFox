@@ -5,6 +5,7 @@ import { Avatar } from "primereact/avatar";
 import { FiArrowLeft, FiCheck, FiEye, FiGlobe, FiImage, FiLock, FiMapPin, FiUser } from "react-icons/fi";
 
 import { useAuth } from "../../auth/UseAuth";
+import PageLoadingBar from "../../components/PageLoadingBar";
 
 const visibilityOptions = [
   {
@@ -154,7 +155,8 @@ const ProfileEditScreen = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 px-5 pb-12 pt-10 text-slate-950">
+    <div className="sf-page-bg min-h-screen px-5 pb-12 pt-10 text-slate-950">
+      <PageLoadingBar show={saving || !user} />
       <div className="mx-auto max-w-6xl">
         <button
           type="button"

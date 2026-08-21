@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 
 import AppLogo from "../../components/AppLogo";
+import PageLoadingBar from "../../components/PageLoadingBar";
 
 const normalizeUsername = (value) => value.trim().toLowerCase();
 const isValidUsername = (value) => /^[a-z][a-z0-9_]*$/.test(value);
@@ -15,10 +16,16 @@ const RegisterScreen = () => {
   const [verifyPassword, setVerifyPassword] = useState("");
   const [avatar] = useState(null);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    if (loading) return;
+
+    setLoading(true);
+    setError("");
+
     const normalizedUsername = normalizeUsername(username);
     const payload = {
       username: normalizedUsername,
@@ -29,43 +36,51 @@ const RegisterScreen = () => {
     }
     if (!username || !email || !fullName || !password || !verifyPassword) {
       setError("Kérlek töltsd ki az összes mezőt.");
+      setLoading(false);
       return;
     }
     if (password !== verifyPassword) {
       setError("A jelszavak nem egyeznek.");
+      setLoading(false);
       return;
     }
     if (email.length < 5 || !email.includes("@")) {
       setError("Érvénytelen e-mail cím.");
+      setLoading(false);
       return;
     }
     if (normalizedUsername.length < 3) {
       setError("A felhasználónév túl rövid.");
+      setLoading(false);
       return;
     }
     if (!isValidUsername(normalizedUsername)) {
       setError("A felhasználónév betűvel kezdődjön, és csak kisbetűt, számot vagy aláhúzást tartalmazhat.");
+      setLoading(false);
       return;
     }
     if (fullName.length < 3) {
       setError("A teljes név túl rövid.");
+      setLoading(false);
       return;
     }
-    axios.post(`${import.meta.env.VITE_API_HOST}/auth/register`, payload)
-      .then((response) => {
-        console.log("Registration successful:", response.data);
-        localStorage.setItem("accessToken", response.data.data.session.access_token);
-        navigate("/login");
-      })
-      .catch((error) => {
-        console.error("Error during registration:", error.response.data);
-        setError(error.response.data.error || error.response || "Hiba történt a regisztráció során.");
-      })
+    try {
+      const response = await axios.post(`${import.meta.env.VITE_API_HOST}/auth/register`, payload);
+      console.log("Registration successful:", response.data);
+      localStorage.setItem("accessToken", response.data.data.session.access_token);
+      navigate("/login");
+    } catch (error) {
+      console.error("Error during registration:", error.response?.data || error);
+      setError(error.response?.data?.error || error.response || "Hiba történt a regisztráció során.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center bg-white px-4 py-12">
-      <div className="w-full max-w-md space-y-8 rounded-3xl bg-black p-8 shadow-2xl border border-zinc-800">
+    <div className="sf-auth-page flex min-h-screen w-full items-center justify-center px-4 py-12">
+      <PageLoadingBar show={loading} />
+      <div className="sf-auth-card w-full max-w-md space-y-8 rounded-[2rem] border border-white/10 p-8 shadow-2xl">
         
         <div className="flex flex-col items-center text-center">
           <div className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-b from-cyan-300 to-blue-600 shadow-inner mb-4">
@@ -157,10 +172,10 @@ const RegisterScreen = () => {
           {/* Regisztráció gomb */}
           <button
             type="submit"
-            onClick={handleRegister}
-            className="w-full rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 active:scale-[0.98]"
+            disabled={loading}
+            className="w-full rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black transition hover:bg-zinc-200 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Regisztráció
+            {loading ? "Regisztráció..." : "Regisztráció"}
           </button>
           {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
         </form>

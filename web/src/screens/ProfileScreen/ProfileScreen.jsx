@@ -24,6 +24,7 @@ import {
 import { LuLightbulb } from "react-icons/lu";
 
 import { useAuth } from "../../auth/UseAuth";
+import PageLoadingBar from "../../components/PageLoadingBar";
 
 const CATEGORY_META = {
   streaming: { label: "Streaming", color: "bg-violet-100 text-violet-700" },
@@ -324,16 +325,10 @@ const ActivityCard = ({
   </Card>
 );
 
-const TopLoader = () => (
-  <div className="fixed left-0 right-0 top-[76px] z-50 h-1 overflow-hidden bg-blue-50">
-    <div className="h-full w-1/2 animate-[profile-loader_1.1s_ease-in-out_infinite] rounded-full bg-blue-600 shadow-[0_0_18px_rgba(37,99,235,0.55)]" />
-  </div>
-);
-
 const ProfileError = ({ message }) => (
-  <div className="min-h-screen bg-slate-50 px-5 pb-12 pt-10 text-slate-950">
+  <div className="sf-page-bg min-h-screen px-5 pb-12 pt-10 text-slate-950">
     <div className="mx-auto flex min-h-[70vh] max-w-[88rem] items-center justify-center">
-      <div className="rounded-[2rem] border border-red-100 bg-white px-10 py-12 text-center shadow-sm">
+      <div className="sf-card rounded-[2rem] px-10 py-12 text-center">
         <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-50 text-2xl text-red-600">
           !
         </div>
@@ -565,8 +560,8 @@ const ProfileScreen = () => {
 
   if (isProfileLoading) {
     return (
-      <div className="min-h-screen bg-slate-50 px-5 pb-12 pt-10 text-slate-950">
-        <TopLoader />
+      <div className="sf-page-bg min-h-screen px-5 pb-12 pt-10 text-slate-950">
+        <PageLoadingBar />
         <div className="mx-auto max-w-[88rem]" />
       </div>
     );
@@ -577,10 +572,10 @@ const ProfileScreen = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 px-5 pb-12 pt-10 text-slate-950">
+    <div className="sf-page-bg min-h-screen px-5 pb-12 pt-10 text-slate-950">
       <div className="mx-auto max-w-[88rem]">
-        <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-          <div className="relative min-h-[360px] overflow-hidden bg-slate-950 px-10 py-12 text-white">
+        <div className="sf-card overflow-hidden rounded-[2rem]">
+          <div className="sf-dark-panel min-h-[360px] px-10 py-12">
             <div className="pointer-events-none absolute inset-0">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_20%,rgba(37,99,235,0.18),transparent_28%),linear-gradient(135deg,#020617_0%,#0f172a_55%,#020617_100%)]" />
               <div className="absolute -right-32 bottom-4 h-72 w-[640px] rounded-[100%] border border-white/10 bg-white/[0.03] blur-[1px]" />

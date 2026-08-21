@@ -3,6 +3,7 @@ import axios from "axios";
 import { useNavigate, useParams } from "react-router-dom";
 import { FiArrowLeft, FiCheckCircle, FiLoader, FiUsers } from "react-icons/fi";
 
+import PageLoadingBar from "../../components/PageLoadingBar";
 import SubscriptionLogo from "../../components/SubscriptionLogo";
 
 const API_HOST = import.meta.env.VITE_API_HOST;
@@ -104,7 +105,8 @@ const SubscriptionJoinScreen = () => {
   const owner = preview?.owner;
 
   return (
-    <main className="min-h-screen bg-slate-50 px-5 py-16 text-slate-950">
+    <main className="sf-page-bg min-h-screen px-5 py-16 text-slate-950">
+      <PageLoadingBar show={loading || joining} />
       <div className="mx-auto max-w-3xl">
         <button
           type="button"

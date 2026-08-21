@@ -12,6 +12,7 @@ import {
   FiUsers,
 } from "react-icons/fi";
 import { LuLightbulb } from "react-icons/lu";
+import PageLoadingBar from "../../components/PageLoadingBar";
 
 const API_HOST = import.meta.env.VITE_API_HOST;
 
@@ -245,11 +246,9 @@ const PostDetailScreen = () => {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-slate-50 px-5 pb-16 pt-10">
+      <main className="sf-page-bg min-h-screen px-5 pb-16 pt-10">
+        <PageLoadingBar />
         <div className="mx-auto max-w-[88rem]">
-          <div className="h-1 overflow-hidden rounded-full bg-blue-50">
-            <div className="h-full w-1/2 animate-[profile-loader_1.1s_ease-in-out_infinite] rounded-full bg-blue-600" />
-          </div>
           <div className="mt-8 rounded-[2rem] border border-slate-200 bg-white p-10 shadow-sm">
             <div className="h-8 w-56 rounded-full bg-slate-100" />
             <div className="mt-8 h-72 rounded-[2rem] bg-slate-100" />
@@ -261,7 +260,7 @@ const PostDetailScreen = () => {
 
   if (error || !activity) {
     return (
-      <main className="min-h-screen bg-slate-50 px-5 pb-16 pt-10">
+      <main className="sf-page-bg min-h-screen px-5 pb-16 pt-10">
         <div className="mx-auto max-w-[88rem]">
           <button
             type="button"
@@ -284,7 +283,7 @@ const PostDetailScreen = () => {
   const author = activity.author;
 
   return (
-    <main className="min-h-screen bg-slate-50 px-5 pb-16 pt-10 text-slate-950">
+    <main className="sf-page-bg min-h-screen px-5 pb-16 pt-10 text-slate-950">
       <div className="mx-auto max-w-[88rem]">
         <button
           type="button"

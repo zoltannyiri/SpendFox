@@ -24,34 +24,36 @@ function App() {
     console.log("No user token found.");
   }
   return (
-    <Router>
-      <Navbar />
-      <Routes>
-        {user ? (
-          <>
-            <Route path="/home" element={<HomeScreen />} />
-            <Route path="/subscriptions" element={<SubscriptionList />} />
-            <Route path="/subscriptions/:id/share" element={<SubscriptionShareScreen />} />
-            <Route path="/subscription-share/:token" element={<SubscriptionJoinScreen />} />
-            <Route path="/profile" element={<ProfileScreen />} />
-            <Route path="/profile/edit" element={<ProfileEditScreen />} />
-            <Route path="/settings" element={<ProfileEditScreen />} />
-            <Route path="/messages/:userId" element={<MessageScreen />} />
-            <Route path="/post/:activityId" element={<PostDetailScreen />} />
-            <Route path="/:username" element={<ProfileScreen />} />
-            <Route path="*" element={<Navigate to="/home" replace />} />
-          </>
-        ) : (
-          <>
-            <Route path="/subscription-share/:token" element={<LoginScreen />} />
-            <Route path="/register" element={<RegisterScreen />} />
-            <Route path="/login" element={<LoginScreen />} />
-            <Route path="*" element={<Navigate to="/login" replace />} />
-          </>
-        )}
-      </Routes>
-      <Footer />
-    </Router>
+    <div className="sf-app-shell">
+      <Router>
+        <Navbar />
+        <Routes>
+          {user ? (
+            <>
+              <Route path="/home" element={<HomeScreen />} />
+              <Route path="/subscriptions" element={<SubscriptionList />} />
+              <Route path="/subscriptions/:id/share" element={<SubscriptionShareScreen />} />
+              <Route path="/subscription-share/:token" element={<SubscriptionJoinScreen />} />
+              <Route path="/profile" element={<ProfileScreen />} />
+              <Route path="/profile/edit" element={<ProfileEditScreen />} />
+              <Route path="/settings" element={<ProfileEditScreen />} />
+              <Route path="/messages/:userId" element={<MessageScreen />} />
+              <Route path="/post/:activityId" element={<PostDetailScreen />} />
+              <Route path="/:username" element={<ProfileScreen />} />
+              <Route path="*" element={<Navigate to="/home" replace />} />
+            </>
+          ) : (
+            <>
+              <Route path="/subscription-share/:token" element={<LoginScreen />} />
+              <Route path="/register" element={<RegisterScreen />} />
+              <Route path="/login" element={<LoginScreen />} />
+              <Route path="*" element={<Navigate to="/login" replace />} />
+            </>
+          )}
+        </Routes>
+        <Footer />
+      </Router>
+    </div>
   )
 }
 

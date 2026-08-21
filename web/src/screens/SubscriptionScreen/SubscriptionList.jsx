@@ -16,6 +16,7 @@ import SubscriptionLogo from '../../components/SubscriptionLogo';
 import SubscriptionTable from '../../components/SubscriptionTable';
 import SubscriptionForm from './SubscriptionForm';
 import { useAuth } from "../../auth/UseAuth";
+import PageLoadingBar from '../../components/PageLoadingBar';
 import { Badge } from 'primereact/badge';
 import { Sidebar } from 'primereact/sidebar';
 
@@ -223,13 +224,14 @@ const SubscriptionList = () => {
 
   return (
     <>
+      <PageLoadingBar show={loading} />
       <Sidebar visible={visible} position="right" onHide={() => setVisible(false)} className="mt-40 rounded-3xl mr-10 mb-30" style={{width: '30%'}}>
         <SubscriptionForm subscriptionId={subscriptionId} onSuccess={fetchSubscriptions} onClose={() => setVisible(false)} />
       </Sidebar>
 
 
       <div className="flex w-full flex-col items-center gap-6 px-4 py-12 xl:px-8">
-        <div className="w-full max-w-[1700px] space-y-8 rounded-3xl bg-black p-8 shadow-2xl border border-zinc-800 gap-y-2">
+        <div className="sf-dark-panel w-full max-w-[1700px] space-y-8 rounded-3xl p-8 gap-y-2">
           <div className="relative">
 
             <div className="flex flex-col ml-0 text-white">
@@ -310,7 +312,7 @@ const SubscriptionList = () => {
             </div>
           )}
 
-          <div className="md:col-span-4 rounded-3xl border border-zinc-300 bg-gray-900 p-6 text-white shadow-md">
+          <div className="sf-dark-panel md:col-span-4 rounded-3xl p-6 text-white">
             <div className="text-gray-300 text-md">
               Ebben a hónapban 
               {/* {monthlyTotal}  */}
@@ -361,7 +363,7 @@ const SubscriptionList = () => {
           </div>
 
 
-          <div className="md:col-span-2 rounded-2xl border border-zinc-300 bg-white p-6 text-black shadow-md">
+          <div className="sf-card md:col-span-2 rounded-2xl p-6 text-black">
             <div className="flex h-16 w-16 bg-green-100 rounded-2xl items-center justify-center">
               {FiCheckCircle && <FiCheckCircle className="text-4xl text-green-500 " />}
             </div>
@@ -376,7 +378,7 @@ const SubscriptionList = () => {
             </div>
           </div>
 
-          <div className="md:col-span-2 rounded-2xl border border-zinc-300 bg-white p-6 text-black shadow-md">
+          <div className="sf-card md:col-span-2 rounded-2xl p-6 text-black">
             <div className="flex h-16 w-16 bg-orange-100 rounded-2xl items-center justify-center">
               {LuClock && <LuClock className="text-4xl text-orange-500 " />}
             </div>
@@ -391,7 +393,7 @@ const SubscriptionList = () => {
             </div>
           </div>
           
-          <div className="md:col-span-2 rounded-2xl border border-zinc-300 bg-white p-6 text-black shadow-md break-words">
+          <div className="sf-card md:col-span-2 rounded-2xl p-6 text-black break-words">
             <div className="flex h-16 w-16 bg-green-100 rounded-2xl items-center justify-center">
               {FiRefreshCw && <FiRefreshCw className="text-4xl text-green-500 " />}
             </div>
@@ -408,7 +410,7 @@ const SubscriptionList = () => {
         </div>
         
         <div className="w-full max-w-[1700px] grid grid-cols-1 gap-4 xl:grid-cols-12">
-          <div className="w-full space-y-8 rounded-3xl border border-zinc-300 p-8 shadow-2xl gap-y-2 xl:col-span-9">
+          <div className="sf-card w-full space-y-8 rounded-3xl p-8 gap-y-2 xl:col-span-9">
             <h1 className="text-xl font-bold">Fizetések</h1>
             <SubscriptionTable 
               subscriptions={subscriptions} 
@@ -420,7 +422,7 @@ const SubscriptionList = () => {
             }}/>
           </div>
           <div className="w-full space-y-8 rounded-3xl gap-y-2 xl:col-span-3">
-            <div className="rounded-3xl border border-zinc-300 bg-white p-6 text-black shadow-md">
+            <div className="sf-card rounded-3xl p-6 text-black">
               <div className="text-lg font-bold">
                 Állapot szerinti bontás
               </div>
@@ -460,7 +462,7 @@ const SubscriptionList = () => {
               </div>
             </div>
 
-            <div className="rounded-3xl border border-zinc-300 bg-white p-6 text-black shadow-md">
+            <div className="sf-card rounded-3xl p-6 text-black">
               <div className="text-lg font-bold">
                 Közelgő fizetések
               </div>
@@ -498,7 +500,7 @@ const SubscriptionList = () => {
                 </DataTable>
               </div>
             </div>
-            <div className="rounded-3xl border border-zinc-300 bg-slate-50 p-6 text-black shadow-md">
+            <div className="sf-card rounded-3xl p-6 text-black">
               <div className="grid grid-cols-2 gap-4 md:grid-cols-10">
                 <div className="md:col-span-3">
                   <RiSecurePaymentLine className="text-7xl text-green-500" />

@@ -6,6 +6,7 @@ import { FiArrowLeft, FiSend, FiUser } from "react-icons/fi";
 import { io } from "socket.io-client";
 
 import { useAuth } from "../../auth/UseAuth";
+import PageLoadingBar from "../../components/PageLoadingBar";
 
 const getAuthHeaders = () => ({
   Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
@@ -159,7 +160,8 @@ const MessageScreen = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 px-5 pb-12 pt-10 text-slate-950">
+    <div className="sf-page-bg min-h-screen px-5 pb-12 pt-10 text-slate-950">
+      <PageLoadingBar show={loading} />
       <div className="mx-auto max-w-4xl overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
         <div className="flex items-center justify-between gap-4 border-b border-slate-100 bg-white px-6 py-5">
           <div className="flex min-w-0 items-center gap-4">

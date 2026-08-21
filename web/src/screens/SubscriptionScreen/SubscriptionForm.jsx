@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../auth/UseAuth';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import {ProgressBar} from 'primereact/progressbar';
 import { Form, Field } from 'react-final-form';
 import {Button} from "primereact/button";
 import {InputText} from "primereact/inputtext";
@@ -12,6 +11,7 @@ import {Calendar} from "primereact/calendar";
 import { addLocale, locale } from 'primereact/api';
 import {Checkbox} from "primereact/checkbox";
 import {InputSwitch} from "primereact/inputswitch";
+import PageLoadingBar from '../../components/PageLoadingBar';
 
 
 
@@ -42,7 +42,7 @@ const SubscriptionForm = ({ onSuccess, onClose, subscriptionId }) => {
   const { profileId } = useAuth();
   // const [subscriptionId, setSubscriptionId] = useState(null);
   const navigate = useNavigate();
-  const [loading, setLoading] = useState();
+  const [loading, setLoading] = useState(Boolean(subscriptionId));
   const [formData, setFormData] = useState({});
   const [currency, setCurrency] = useState([]);
   const [friends, setFriends] = useState([]);
@@ -223,8 +223,10 @@ const SubscriptionForm = ({ onSuccess, onClose, subscriptionId }) => {
 
   useEffect(() => {
     if (!subscriptionId) {
+      setLoading(false);
       return;
     }
+    setLoading(true);
     axios.get(import.meta.env.VITE_API_HOST + `/subscriptions/${subscriptionId}`)
       .then((response) => {
         const subscription = response.data.data;
@@ -245,10 +247,7 @@ const SubscriptionForm = ({ onSuccess, onClose, subscriptionId }) => {
 
   return (
     <div className="ml-10 mr-10">
-      {loading &&
-        <ProgressBar mode="indeterminate"
-                     style={{height: '5px', position: "absolute", top: 0, left: 0, borderRadius: 0,}}></ProgressBar>
-      }
+      <PageLoadingBar show={loading} />
       <div className="font-bold text-2xl text-black">
         {subscriptionId ? "Előfizetés szerkesztése" : "Új előfizetés hozzáadása"}
       </div>

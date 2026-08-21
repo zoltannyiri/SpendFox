@@ -16,6 +16,7 @@ import {
 } from "react-icons/fi";
 import { LuLightbulb } from "react-icons/lu";
 import { useAuth } from "../../auth/UseAuth";
+import PageLoadingBar from "../../components/PageLoadingBar";
 
 const API_HOST = import.meta.env.VITE_API_HOST;
 
@@ -699,22 +700,11 @@ const HomeScreen = () => {
           : "nincs közelgő";
 
   return (
-    <main className="min-h-screen bg-[#f5f7fb] px-4 py-10 text-slate-950 sm:px-6 lg:px-8">
-      {loading && (
-        <div className="fixed left-0 right-0 top-0 z-50 h-1 overflow-hidden bg-blue-100">
-          <div className="h-full w-1/2 animate-[homeLoader_1.1s_ease-in-out_infinite] rounded-full bg-blue-600" />
-        </div>
-      )}
-
-      <style>{`
-        @keyframes homeLoader {
-          0% { transform: translateX(-110%); }
-          100% { transform: translateX(220%); }
-        }
-      `}</style>
+    <main className="sf-page-bg min-h-screen px-4 py-10 text-slate-950 sm:px-6 lg:px-8">
+      <PageLoadingBar show={loading || feedLoading} />
 
       <div className="mx-auto flex w-full max-w-[92rem] flex-col gap-6">
-        <section className="rounded-[34px] border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+        <section className="sf-card rounded-[34px] p-5 sm:p-7">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-3xl">
               <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-blue-600">
@@ -749,7 +739,7 @@ const HomeScreen = () => {
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="space-y-5">
-            <div className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="sf-card rounded-[30px] p-5">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <h2 className="text-2xl font-black text-slate-950">Feed</h2>
@@ -780,7 +770,7 @@ const HomeScreen = () => {
             </div>
 
             {feedLoading ? (
-              <div className="rounded-[32px] border border-slate-200 bg-white p-8 shadow-sm">
+              <div className="sf-card rounded-[32px] p-8">
                 <div className="h-4 w-40 animate-pulse rounded-full bg-slate-100" />
                 <div className="mt-6 space-y-3">
                   <div className="h-20 animate-pulse rounded-3xl bg-slate-100" />
@@ -812,7 +802,7 @@ const HomeScreen = () => {
           </div>
 
           <aside className="space-y-5">
-            <div className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="sf-card rounded-[30px] p-5">
               <div className="flex items-start gap-4">
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-xl text-orange-600">
                   <FiClock />
@@ -828,7 +818,7 @@ const HomeScreen = () => {
               </div>
             </div>
 
-            <div className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="sf-card rounded-[30px] p-5">
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-lg font-black text-slate-950">Leggyakoribb kategóriáid</div>
@@ -855,7 +845,7 @@ const HomeScreen = () => {
               </div>
             </div>
 
-            <div className="rounded-[30px] border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="sf-card rounded-[30px] p-5">
               <div className="text-lg font-black text-slate-950">Gyors műveletek</div>
               <div className="mt-4 space-y-3">
                 <QuickAction

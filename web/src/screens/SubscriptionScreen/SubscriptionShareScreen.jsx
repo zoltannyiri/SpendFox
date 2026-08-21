@@ -15,6 +15,7 @@ import {
 } from "react-icons/fi";
 
 import { useAuth } from "../../auth/UseAuth";
+import PageLoadingBar from "../../components/PageLoadingBar";
 import SubscriptionLogo from "../../components/SubscriptionLogo";
 
 const API_HOST = import.meta.env.VITE_API_HOST;
@@ -373,11 +374,9 @@ const SubscriptionShareScreen = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 px-5 py-16">
+      <div className="sf-page-bg min-h-screen px-5 py-16">
+        <PageLoadingBar />
         <div className="mx-auto max-w-7xl overflow-hidden rounded-3xl bg-white shadow-sm">
-          <div className="h-1 w-full overflow-hidden bg-slate-100">
-            <div className="h-full w-1/2 animate-pulse rounded-full bg-blue-600" />
-          </div>
           <div className="p-10 text-sm font-bold text-slate-500">
             Közös előfizetés betöltése...
           </div>
@@ -388,7 +387,7 @@ const SubscriptionShareScreen = () => {
 
   if (error && !subscription) {
     return (
-      <div className="min-h-screen bg-slate-50 px-5 py-16">
+      <div className="sf-page-bg min-h-screen px-5 py-16">
         <div className="mx-auto max-w-3xl rounded-3xl border border-red-100 bg-red-50 p-8 text-red-700">
           <div className="text-xl font-black">Nem elérhető</div>
           <p className="mt-2 text-sm font-semibold">{error}</p>
@@ -405,7 +404,7 @@ const SubscriptionShareScreen = () => {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50 px-5 pb-16 pt-10 text-slate-950">
+    <main className="sf-page-bg min-h-screen px-5 pb-16 pt-10 text-slate-950">
       <div className="mx-auto max-w-7xl">
         <button
           type="button"
